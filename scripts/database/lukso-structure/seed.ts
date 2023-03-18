@@ -1,10 +1,10 @@
 import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
-import {LUKSO_STRUCTURE_CONNECTION_STRING, STRUCTURE_TABLE} from "../../../database/lukso-structure/config";
 
-if (process.env.NODE_ENV === 'test')
-  config({ path: path.resolve(process.cwd(), '.env.test') });
+import { STRUCTURE_TABLE } from '../../../database/lukso-structure/config';
+
+if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
 config();
 

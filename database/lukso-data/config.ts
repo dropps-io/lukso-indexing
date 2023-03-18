@@ -8,7 +8,10 @@ export enum DATA_TABLE {
   CONTRACT_TOKEN = 'contract_token',
   DATA_CHANGED = 'data_changed',
   TRANSACTION = 'transaction',
+  TRANSACTION_INPUT = 'transaction_input',
   TRANSACTION_PARAMETER = 'transaction_parameter',
   EVENT = 'event',
-  EVENT_PARAMETER = 'event_parameter'
+  EVENT_PARAMETER = 'event_parameter',
 }
+
+export const LUKSO_DATA_CONNECTION_STRING = process.env.LUKSO_DATA_CONNECTION_STRING;
