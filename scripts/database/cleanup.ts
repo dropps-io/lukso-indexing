@@ -4,7 +4,7 @@ import { setupEnv } from '../../utils/setup-env';
 import {
   LUKSO_STRUCTURE_CONNECTION_STRING,
   STRUCTURE_TABLE,
-} from '../../database/lukso-structure/config';
+} from '../../libs/database/lukso-structure/config';
 
 setupEnv();
 

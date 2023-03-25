@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
 
-import { STRUCTURE_TABLE } from '../../../database/lukso-structure/config';
+import { STRUCTURE_TABLE } from '../../../libs/database/lukso-structure/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
@@ -17,7 +17,7 @@ export const seedLuksoStructure = async (dropTables?: boolean) => {
 
   if (dropTables) {
     for (const table of Object.keys(STRUCTURE_TABLE).values())
-      await client.query(`DROP TABLE IF EXISTS ${table}`);
+      await client.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
 
   await client.query(`
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.CONTRACT_INTERFACE} (
 	"id" CHAR(10) NOT NULL,
   "code" VARCHAR(10) NOT NULL,
 	"name" VARCHAR(40) NOT NULL,
+	"version" VARCHAR(10),
 	PRIMARY KEY ("id")
 )`);
 
@@ -54,8 +55,20 @@ CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.METHOD_PARAMETER} (
 	"type" VARCHAR(20) NOT NULL,
 	"indexed" BOOLEAN NOT NULL,
 	"position" INTEGER NOT NULL,
-	CONSTRAINT fk_id FOREIGN KEY("methodId") REFERENCES ${STRUCTURE_TABLE.METHOD_INTERFACE}("id")
+	FOREIGN KEY("methodId") REFERENCES ${STRUCTURE_TABLE.METHOD_INTERFACE}("id") ON DELETE CASCADE
 )`);
+
+  await client.query(`
+CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.CONFIG} (
+	"blockIteration" INTEGER NOT NULL DEFAULT 5000,
+	"sleepBetweenIteration" INTEGER NOT NULL DEFAULT 2000,
+	"nbrOfThreads" INTEGER NOT NULL DEFAULT 20,
+	"paused" BOOLEAN NOT NULL DEFAULT false,
+	"latestIndexedBlock" INTEGER NOT NULL DEFAULT 0,
+	"latestIndexedEventBlock" INTEGER NOT NULL DEFAULT 0
+	)`);
+
+  await client.query(`INSERT INTO ${STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
 
   await client.end();
   console.log('lukso-structure seed script successfully executed');
