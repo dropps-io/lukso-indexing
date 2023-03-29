@@ -275,8 +275,8 @@ export class LuksoDataDbService {
         transactionParameter.unwrapped,
         transactionParameter.value,
         transactionParameter.name,
-        transactionParameter.index,
         transactionParameter.type,
+        transactionParameter.position,
       ],
     );
   }
@@ -330,8 +330,8 @@ export class LuksoDataDbService {
         eventParameter.eventId,
         eventParameter.value,
         eventParameter.name,
-        eventParameter.index,
         eventParameter.type,
+        eventParameter.position,
       ],
     );
   }

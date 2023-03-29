@@ -5,6 +5,8 @@ import { FetchingModule } from './fetching/fetching.module';
 import { DecodingModule } from './decoding/decoding.module';
 import { LuksoDataDbModule } from '../../../libs/database/lukso-data/lukso-data-db.module';
 import { UpdateModule } from './update/update.module';
+import { LuksoStructureDbModule } from '../../../libs/database/lukso-structure/lukso-structure-db.module';
+import { IndexingService } from './indexing.service';
 
 @Module({
   imports: [
@@ -12,7 +14,9 @@ import { UpdateModule } from './update/update.module';
     FetchingModule,
     DecodingModule,
     LuksoDataDbModule,
+    LuksoStructureDbModule,
     UpdateModule,
   ],
+  providers: [IndexingService],
 })
 export class IndexingModule {}

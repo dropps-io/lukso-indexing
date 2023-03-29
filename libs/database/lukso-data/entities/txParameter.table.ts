@@ -3,6 +3,6 @@ export interface TxParameterTable {
   unwrapped: boolean;
   value: string;
   name: string;
-  index: number;
   type: string;
+  position: number;
 }

@@ -96,7 +96,7 @@ VALUES ($1, $2, $3, $
   }
   async getMethodInterfaceById(id: string): Promise<MethodInterfaceTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "id" = $1`,
+      `SELECT * FROM ${STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "id" = $1 ORDER BY "position"`,
       [id],
     );
     return result.rows.length > 0 ? (result.rows[0] as MethodInterfaceTable) : null;

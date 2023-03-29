@@ -142,8 +142,8 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.TRANSACTION_PARAMETER} (
   "unwrapped" CHAR(66) NOT NULL DEFAULT false,
   "value" VARCHAR NOT NULL,
   "name" VARCHAR NOT NULL,
-  "index" SMALLINT NOT NULL,
   "type" VARCHAR(20) NOT NULL,
+   "position" SMALLINT NOT NULL,
   FOREIGN KEY ("transactionHash") REFERENCES transaction("hash") ON DELETE CASCADE
 )`);
 
@@ -170,8 +170,8 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.EVENT_PARAMETER} (
     "eventId" CHAR(66) NOT NULL,
     "value" VARCHAR NOT NULL,
     "name" VARCHAR NOT NULL,
-    "index" SMALLINT NOT NULL,
     "type" VARCHAR NOT NULL,
+    "position" SMALLINT NOT NULL,
     FOREIGN KEY ("eventId") REFERENCES event("id") ON DELETE CASCADE 
   )`);
 
