@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "indexing": "nest start indexing",
+    "compile": "tsc",
     "seed-lukso-structure-db": "ts-node scripts/database/lukso-structure/index.ts",
+    "populate-lukso-structure-db": "ts-node scripts/database/lukso-structure/populate.ts",
     "seed-lukso-data-db": "ts-node scripts/database/lukso-data/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint:fix": "eslint \"{apps,libs,test,types,scripts,utils,database,contracts}/**/*{.ts,.js}\" --fix"
@@ -14,12 +16,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@erc725/erc725.js": "^0.15.0",
+    "@lukso/lsp-smart-contracts": "^0.7.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/schedule": "^2.1.0",
     "@nestjs/swagger": "^6.1.4",
+    "@openzeppelin/contracts": "^4.8.2",
     "dotenv": "^16.0.3",
     "pg": "^8.10.0",
     "web3": "^1.8.2"

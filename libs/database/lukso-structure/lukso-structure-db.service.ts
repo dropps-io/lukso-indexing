@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Pool } from 'pg';
 
 import { LUKSO_STRUCTURE_CONNECTION_STRING, STRUCTURE_TABLE } from './config';
@@ -9,13 +9,21 @@ import { MethodInterfaceTable } from './entities/methodInterface.table';
 import { MethodParameterTable } from './entities/methodParameter.table';
 
 @Injectable()
-export class LuksoStructureDbService {
+export class LuksoStructureDbService implements OnModuleDestroy {
   private readonly client: Pool;
 
   constructor() {
     this.client = new Pool({
       connectionString: LUKSO_STRUCTURE_CONNECTION_STRING,
     });
+  }
+
+  async onModuleDestroy() {
+    await this.disconnect();
+  }
+
+  public async disconnect() {
+    await this.client.end();
   }
 
   public async getConfig(): Promise<ConfigTable> {
@@ -87,10 +95,8 @@ export class LuksoStructureDbService {
   async insertMethodInterface(methodInterface: MethodInterfaceTable): Promise<void> {
     await this.client.query(
       `
-INSERT INTO ${STRUCTURE_TABLE.METHOD_INTERFACE}
-("id", "hash", "name", "type")
-VALUES ($1, $2, $3, $
-}`,
+      INSERT INTO ${STRUCTURE_TABLE.METHOD_INTERFACE}
+      VALUES ($1, $2, $3, $4)`,
       [methodInterface.id, methodInterface.hash, methodInterface.name, methodInterface.type],
     );
   }
