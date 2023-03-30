@@ -15,13 +15,9 @@ const luksoStructureClient = new Client({
 const cleanup = async () => {
   await luksoStructureClient.connect();
 
-  console.log('Cleaning DB...');
-
   for (const table of Object.values(DB_STRUCTURE_TABLE)) {
     await luksoStructureClient.query(`DELETE FROM ${table}`);
   }
-
-  console.log('DB cleaned!');
 
   await luksoStructureClient.end();
 };

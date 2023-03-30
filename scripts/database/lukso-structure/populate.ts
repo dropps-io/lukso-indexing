@@ -76,6 +76,7 @@ async function populateLuksoStructure() {
   ]);
 
   await db.disconnect();
+  // eslint-disable-next-line no-console
   console.log('Db populated');
 }
 

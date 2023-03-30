@@ -12,9 +12,7 @@ export class IndexingService implements OnModuleInit {
     private readonly structureDB: LuksoStructureDbService,
     private readonly dataDB: LuksoDataDbService,
     private readonly fetchingService: FetchingService,
-  ) {
-    console.log('here');
-  }
+  ) {}
   onModuleInit() {
     if (NODE_ENV != 'test') {
       this.indexByBlock().then();

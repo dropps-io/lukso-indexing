@@ -78,5 +78,6 @@ CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONFIG} (
   await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
 
   await client.end();
+  // eslint-disable-next-line no-console
   console.log('lukso-structure seed script successfully executed');
 };

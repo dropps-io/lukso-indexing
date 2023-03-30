@@ -121,7 +121,6 @@ describe('DecodingService', () => {
 
       const result = await service.identifyAndDecodeTransactionInput(inputToDecode);
 
-      console.log(result);
       expect(result?.methodName).toEqual('execute');
       expect(result?.parameters).toEqual([
         {

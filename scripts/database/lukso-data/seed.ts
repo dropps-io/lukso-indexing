@@ -176,5 +176,6 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT_PARAMETER} (
   )`);
 
   await client.end();
+  // eslint-disable-next-line no-console
   console.log('lukso-data seed script successfully executed');
 };
