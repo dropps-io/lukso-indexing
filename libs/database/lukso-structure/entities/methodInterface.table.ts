@@ -2,5 +2,5 @@ export interface MethodInterfaceTable {
   id: string;
   hash: string;
   name: string;
-  type: string;
+  type: 'event' | 'function';
 }

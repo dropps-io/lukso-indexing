@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Pool } from 'pg';
 
-import { LUKSO_STRUCTURE_CONNECTION_STRING, STRUCTURE_TABLE } from './config';
+import { LUKSO_STRUCTURE_CONNECTION_STRING, DB_STRUCTURE_TABLE } from './config';
 import { ConfigTable } from './entities/config.table';
 import { ERC725YSchemaTable } from './entities/erc725YSchema.table';
 import { ContractInterfaceTable } from './entities/contractInterface.table';
@@ -27,7 +27,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   }
 
   public async getConfig(): Promise<ConfigTable> {
-    const result = await this.client.query(`SELECT * FROM ${STRUCTURE_TABLE.CONFIG}`);
+    const result = await this.client.query(`SELECT * FROM ${DB_STRUCTURE_TABLE.CONFIG}`);
     if (result.rows.length === 0) throw 'Config table need to be initialized';
     else return result.rows[0] as ConfigTable;
   }
@@ -35,7 +35,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   public async updateLatestIndexedBlock(blockNumber: number): Promise<void> {
     await this.client.query(
       `
-      UPDATE ${STRUCTURE_TABLE.CONFIG}
+      UPDATE ${DB_STRUCTURE_TABLE.CONFIG}
       SET "latestIndexedBlock" = $1
     `,
       [blockNumber],
@@ -45,7 +45,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   public async updateLatestIndexedEventBlock(blockNumber: number): Promise<void> {
     await this.client.query(
       `
-      UPDATE ${STRUCTURE_TABLE.CONFIG}
+      UPDATE ${DB_STRUCTURE_TABLE.CONFIG}
       SET "latestIndexedEventBlock" = $1
     `,
       [blockNumber],
@@ -55,7 +55,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   async insertErc725ySchema(schema: ERC725YSchemaTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${STRUCTURE_TABLE.ERC725Y_SCHEMA}
+      INSERT INTO ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA}
       ("key", "name", "keyType", "valueType", "valueContent")
       VALUES ($1, $2, $3, $4, $5)
     `,
@@ -65,7 +65,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
   async getErc725ySchemaByKey(key: string): Promise<ERC725YSchemaTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${STRUCTURE_TABLE.ERC725Y_SCHEMA} WHERE "key" = $1`,
+      `SELECT * FROM ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA} WHERE "key" = $1`,
       [key],
     );
     return result.rows.length > 0 ? (result.rows[0] as ERC725YSchemaTable) : null;
@@ -74,7 +74,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   async insertContractInterface(contractInterface: ContractInterfaceTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version") VALUES ($1, $2, $3, $4)`,
+      INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version") VALUES ($1, $2, $3, $4)`,
       [
         contractInterface.id,
         contractInterface.code,
@@ -86,7 +86,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
   async getContractInterfaceById(id: string): Promise<ContractInterfaceTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${STRUCTURE_TABLE.CONTRACT_INTERFACE} WHERE "id" = $1`,
+      `SELECT * FROM ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} WHERE "id" = $1`,
       [id],
     );
     return result.rows.length > 0 ? (result.rows[0] as ContractInterfaceTable) : null;
@@ -95,14 +95,14 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   async insertMethodInterface(methodInterface: MethodInterfaceTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${STRUCTURE_TABLE.METHOD_INTERFACE}
+      INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}
       VALUES ($1, $2, $3, $4)`,
       [methodInterface.id, methodInterface.hash, methodInterface.name, methodInterface.type],
     );
   }
   async getMethodInterfaceById(id: string): Promise<MethodInterfaceTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "id" = $1 ORDER BY "position"`,
+      `SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "id" = $1`,
       [id],
     );
     return result.rows.length > 0 ? (result.rows[0] as MethodInterfaceTable) : null;
@@ -110,7 +110,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
   async insertMethodParameter(methodParameter: MethodParameterTable): Promise<void> {
     await this.client.query(
-      `INSERT INTO ${STRUCTURE_TABLE.METHOD_PARAMETER} ("methodId", "name", "type", "indexed", "position") VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_PARAMETER} ("methodId", "name", "type", "indexed", "position") VALUES ($1, $2, $3, $4, $5)`,
       [
         methodParameter.methodId,
         methodParameter.name,
@@ -123,7 +123,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
   async getMethodParametersByMethodId(methodId: string): Promise<MethodParameterTable[]> {
     const result = await this.client.query(
-      `SELECT * FROM ${STRUCTURE_TABLE.METHOD_PARAMETER} WHERE "methodId" = $1`,
+      `SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_PARAMETER} WHERE "methodId" = $1`,
       [methodId],
     );
     return result.rows.map((row) => row as MethodParameterTable);

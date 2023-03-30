@@ -2,7 +2,7 @@ import { setupEnv } from '../../../utils/setup-env';
 
 setupEnv();
 
-export enum DATA_TABLE {
+export enum DB_DATA_TABLE {
   CONTRACT = 'contract',
   METADATA = 'metadata',
   METADATA_IMAGE = 'metadata_image',

@@ -3,7 +3,7 @@ import { Client } from 'pg';
 import { setupEnv } from '../../utils/setup-env';
 import {
   LUKSO_STRUCTURE_CONNECTION_STRING,
-  STRUCTURE_TABLE,
+  DB_STRUCTURE_TABLE,
 } from '../../libs/database/lukso-structure/config';
 
 setupEnv();
@@ -17,7 +17,7 @@ const cleanup = async () => {
 
   console.log('Cleaning DB...');
 
-  for (const table of Object.values(STRUCTURE_TABLE)) {
+  for (const table of Object.values(DB_STRUCTURE_TABLE)) {
     await luksoStructureClient.query(`DELETE FROM ${table}`);
   }
 

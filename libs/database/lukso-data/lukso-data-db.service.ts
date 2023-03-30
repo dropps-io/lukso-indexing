@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 
-import { DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
+import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
 import { ContractTokenTable } from './entities/contractToken.table';
 import { MetadataTable } from './entities/metadata.table';
@@ -30,7 +30,7 @@ export class LuksoDataDbService {
   public async insertContract(contract: ContractTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.CONTRACT}
+      INSERT INTO ${DB_DATA_TABLE.CONTRACT}
       ("address", "interfaceCode", "interfaceVersion")
       VALUES ($1, $2, $3)
     `,
@@ -40,7 +40,7 @@ export class LuksoDataDbService {
 
   public async getContractByAddress(address: string): Promise<ContractTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.CONTRACT} WHERE "address" = $1`,
+      `SELECT * FROM ${DB_DATA_TABLE.CONTRACT} WHERE "address" = $1`,
       [address],
     );
     return result.rows.length > 0 ? (result.rows[0] as ContractTable) : null;
@@ -50,7 +50,7 @@ export class LuksoDataDbService {
   public async insertContractToken(contractToken: ContractTokenTable): Promise<void> {
     await this.client.query(
       `
-          INSERT INTO ${DATA_TABLE.CONTRACT_TOKEN}
+          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN}
           VALUES ($1, $2, $3, $4, $5)
         `,
       [
@@ -65,7 +65,7 @@ export class LuksoDataDbService {
 
   public async getContractTokenById(id: string): Promise<ContractTokenTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.CONTRACT_TOKEN} WHERE "id" = $1`,
+      `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "id" = $1`,
       [id],
     );
     return result.rows.length > 0 ? (result.rows[0] as ContractTokenTable) : null;
@@ -75,7 +75,7 @@ export class LuksoDataDbService {
   public async insertMetadata(metadata: MetadataTable): Promise<void> {
     await this.client.query(
       `
-          INSERT INTO ${DATA_TABLE.METADATA}
+          INSERT INTO ${DB_DATA_TABLE.METADATA}
           ("address", "tokenId", "name", "symbol", "description", "isNFT")
           VALUES ($1, $2, $3, $4, $5, $6)
         `,
@@ -95,7 +95,7 @@ export class LuksoDataDbService {
     tokenId: string | null,
   ): Promise<MetadataTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId" = $2`,
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId" = $2`,
       [address, tokenId],
     );
     return result.rows.length > 0 ? (result.rows[0] as MetadataTable) : null;
@@ -105,7 +105,7 @@ export class LuksoDataDbService {
   public async insertMetadataImage(metadataImage: MetadataImageTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.METADATA_IMAGE}
+      INSERT INTO ${DB_DATA_TABLE.METADATA_IMAGE}
       ("address", "tokenId", "url", "width", "height", "type", "hash")
       VALUES ($1, $2, $3, $4, $5, $6, $7)
     `,
@@ -125,7 +125,7 @@ export class LuksoDataDbService {
   public async insertMetadataLink(metadataLink: MetadataLinkTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.METADATA_LINK}
+      INSERT INTO ${DB_DATA_TABLE.METADATA_LINK}
       ("address", "tokenId", "title",       "url")
       VALUES ($1, $2, $3, $4)
     `,
@@ -137,7 +137,7 @@ export class LuksoDataDbService {
   public async insertMetadataTag(metadataTag: MetadataTagTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.METADATA_TAG}
+      INSERT INTO ${DB_DATA_TABLE.METADATA_TAG}
       ("address", "tokenId", "title")
       VALUES ($1, $2, $3)
     `,
@@ -150,7 +150,7 @@ export class LuksoDataDbService {
     tokenId: string,
   ): Promise<string[]> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.METADATA_TAG} WHERE "address" = $1 AND "tokenId" = $2`,
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG} WHERE "address" = $1 AND "tokenId" = $2`,
       [address, tokenId],
     );
     return result.rows.map((r: MetadataTagTable) => r.title);
@@ -160,7 +160,7 @@ export class LuksoDataDbService {
   public async insertMetadataAsset(metadataAsset: MetadataAssetTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.METADATA_ASSET}
+      INSERT INTO ${DB_DATA_TABLE.METADATA_ASSET}
       ("address", "tokenId", "url", "fileType", "hash")
       VALUES ($1, $2, $3, $4, $5)
     `,
@@ -179,7 +179,7 @@ export class LuksoDataDbService {
     tokenId: string,
   ): Promise<MetadataAssetTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.METADATA_ASSET} WHERE "address" = $1 AND "tokenId" = $2`,
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET} WHERE "address" = $1 AND "tokenId" = $2`,
       [address, tokenId],
     );
     return result.rows.length > 0 ? (result.rows[0] as MetadataAssetTable) : null;
@@ -189,7 +189,7 @@ export class LuksoDataDbService {
   public async insertDataChanged(dataChanged: DataChangedTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.DATA_CHANGED}
+      INSERT INTO ${DB_DATA_TABLE.DATA_CHANGED}
       ("address", "key", "value", "blockNumber")
       VALUES ($1, $2, $3, $4)
     `,
@@ -202,7 +202,7 @@ export class LuksoDataDbService {
     key: string,
   ): Promise<DataChangedTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.DATA_CHANGED} WHERE "address" = $1 AND "key" = $2`,
+      `SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED} WHERE "address" = $1 AND "key" = $2`,
       [address, key],
     );
     return result.rows.length > 0 ? (result.rows[0] as DataChangedTable) : null;
@@ -212,7 +212,7 @@ export class LuksoDataDbService {
   public async insertTransaction(transaction: TransactionTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.TRANSACTION}
+      INSERT INTO ${DB_DATA_TABLE.TRANSACTION}
       ("hash", "nonce", "blockHash", "blockNumber", "transactionIndex", "methodId", "from", "to", "value", "gasPrice", "gas", "input", "unwrappedMethodId", "unwrappedFrom", "unwrappedTo")
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     `,
@@ -237,7 +237,7 @@ export class LuksoDataDbService {
 
   public async getTransactionByHash(hash: string): Promise<TransactionTable | null> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.TRANSACTION} WHERE "hash" = $1`,
+      `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION} WHERE "hash" = $1`,
       [hash],
     );
     return result.rows.length > 0 ? (result.rows[0] as TransactionTable) : null;
@@ -247,7 +247,7 @@ export class LuksoDataDbService {
   public async insertTransactionInput(transactionInput: TxInputTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.TRANSACTION_INPUT}
+      INSERT INTO ${DB_DATA_TABLE.TRANSACTION_INPUT}
       ("transactionHash", "input")
       VALUES ($1, $2)
     `,
@@ -257,7 +257,7 @@ export class LuksoDataDbService {
 
   public async getTransactionInputByTransactionHash(transactionHash: string): Promise<string> {
     const result = await this.client.query(
-      `SELECT input FROM ${DATA_TABLE.TRANSACTION_INPUT} WHERE "transactionHash" = $1`,
+      `SELECT input FROM ${DB_DATA_TABLE.TRANSACTION_INPUT} WHERE "transactionHash" = $1`,
       [transactionHash],
     );
     return result.rows.length > 0 ? result.rows[0].input : null;
@@ -267,7 +267,7 @@ export class LuksoDataDbService {
   public async insertTransactionParameter(transactionParameter: TxParameterTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.TRANSACTION_PARAMETER}
+      INSERT INTO ${DB_DATA_TABLE.TRANSACTION_PARAMETER}
       VALUES ($1, $2, $3, $4, $5, $6)
     `,
       [
@@ -285,7 +285,7 @@ export class LuksoDataDbService {
     transactionHash: string,
   ): Promise<TxParameterTable[]> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.TRANSACTION_PARAMETER} WHERE "transactionHash" = $1`,
+      `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_PARAMETER} WHERE "transactionHash" = $1`,
       [transactionHash],
     );
     return result.rows as TxParameterTable[];
@@ -295,7 +295,7 @@ export class LuksoDataDbService {
   public async insertEvent(event: EventTable): Promise<void> {
     await this.client.query(
       `
-      INSERT INTO ${DATA_TABLE.EVENT}
+      INSERT INTO ${DB_DATA_TABLE.EVENT}
       ("id", "blockNumber", "transactionHash", "logIndex", "address", "eventName", "topic0", "topic1", "topic2", "topic3", "data")
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `,
@@ -316,7 +316,7 @@ export class LuksoDataDbService {
   }
 
   public async getEventById(id: string): Promise<EventTable | null> {
-    const result = await this.client.query(`SELECT * FROM ${DATA_TABLE.EVENT} WHERE "id" = $1`, [
+    const result = await this.client.query(`SELECT * FROM ${DB_DATA_TABLE.EVENT} WHERE "id" = $1`, [
       id,
     ]);
     return result.rows.length > 0 ? (result.rows[0] as EventTable) : null;
@@ -325,7 +325,7 @@ export class LuksoDataDbService {
   // EventParameter table functions
   public async insertEventParameter(eventParameter: EventParameterTable): Promise<void> {
     await this.client.query(
-      `INSERT INTO ${DATA_TABLE.EVENT_PARAMETER} VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO ${DB_DATA_TABLE.EVENT_PARAMETER} VALUES ($1, $2, $3, $4, $5)`,
       [
         eventParameter.eventId,
         eventParameter.value,
@@ -338,7 +338,7 @@ export class LuksoDataDbService {
 
   public async getEventParametersByEventId(eventId: string): Promise<EventParameterTable[]> {
     const result = await this.client.query(
-      `SELECT * FROM ${DATA_TABLE.EVENT_PARAMETER} WHERE "eventId" = $1`,
+      `SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER} WHERE "eventId" = $1`,
       [eventId],
     );
     return result.rows as EventParameterTable[];

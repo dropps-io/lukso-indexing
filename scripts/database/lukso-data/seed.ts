@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
 
-import { DATA_TABLE } from '../../../libs/database/lukso-data/config';
+import { DB_DATA_TABLE } from '../../../libs/database/lukso-data/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
@@ -16,12 +16,12 @@ export const seedLuksoData = async (dropTables?: boolean) => {
   await client.connect();
 
   if (dropTables) {
-    for (const table of Object.keys(DATA_TABLE).values())
+    for (const table of Object.keys(DB_DATA_TABLE).values())
       await client.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.CONTRACT} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT} (
 	"address" CHAR(42) NOT NULL,
   "interfaceCode" VARCHAR(10) NOT NULL,
   "interfaceVersion" VARCHAR(10),
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.CONTRACT} (
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.CONTRACT_TOKEN} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT_TOKEN} (
   "id" CHAR(66) NOT NULL,
   "address" CHAR(42) NOT NULL,
   "index" INTEGER NOT NULL,
@@ -37,23 +37,23 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.CONTRACT_TOKEN} (
   "rawTokenId" CHAR(66) NOT NULL,
   PRIMARY KEY ("id"),
   UNIQUE ("address", "rawTokenId"),
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.METADATA} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
   "address" CHAR(42) NOT NULL,
   "tokenId" VARCHAR(66),
   "name" VARCHAR NOT NULL,
   "symbol" VARCHAR NOT NULL,
   "description" VARCHAR NOT NULL,
   "isNFT" BOOLEAN,
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.METADATA_IMAGE} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_IMAGE} (
   "address" CHAR(42) NOT NULL,
   "tokenId" VARCHAR(66),
   "url" VARCHAR NOT NULL,
@@ -61,51 +61,51 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.METADATA_IMAGE} (
   "height" SMALLINT NOT NULL,
   "type" VARCHAR NOT NULL,
   "hash" CHAR(66) NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.METADATA_LINK} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_LINK} (
   "address" CHAR(42) NOT NULL,
   "tokenId" VARCHAR(66),
   "title" VARCHAR NOT NULL,
   "url" VARCHAR NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.METADATA_TAG} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_TAG} (
   "address" CHAR(42) NOT NULL,
   "tokenId" VARCHAR(66),
   "title" VARCHAR NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.METADATA_ASSET} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_ASSET} (
   "address" CHAR(42) NOT NULL,
   "tokenId" VARCHAR(66),
   "url" VARCHAR NOT NULL,
   "fileType" VARCHAR(10) NOT NULL,
   "hash" CHAR(66) NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES  ${DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("address", "tokenId") REFERENCES  ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.DATA_CHANGED} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.DATA_CHANGED} (
   "address" CHAR(42) NOT NULL,
   "key" CHAR(66) NOT NULL,
   "value" VARCHAR NOT NULL,
   "blockNumber" INTEGER NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.TRANSACTION} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TRANSACTION} (
 	"hash" CHAR(66) NOT NULL,
   "nonce" INTEGER NOT NULL,
   "blockHash" CHAR(66) NOT NULL,
@@ -124,20 +124,20 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.TRANSACTION} (
   "unwrappedFrom" CHAR(42),
   "unwrappedTo" CHAR(42),
 	PRIMARY KEY ("hash"),
-  FOREIGN KEY ("from") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("to") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
+  FOREIGN KEY ("from") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("to") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.TRANSACTION_INPUT} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TRANSACTION_INPUT} (
 	"transactionHash" CHAR(66) NOT NULL,
   "input" VARCHAR(65536) NOT NULL,
 	PRIMARY KEY ("transactionHash"),
-  FOREIGN KEY ("transactionHash") REFERENCES ${DATA_TABLE.TRANSACTION}("hash") ON DELETE CASCADE
+  FOREIGN KEY ("transactionHash") REFERENCES ${DB_DATA_TABLE.TRANSACTION}("hash") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.TRANSACTION_PARAMETER} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TRANSACTION_PARAMETER} (
   "transactionHash" CHAR(66) NOT NULL,
   "unwrapped" CHAR(66) NOT NULL DEFAULT false,
   "value" VARCHAR NOT NULL,
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.TRANSACTION_PARAMETER} (
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.EVENT} ( 
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT} ( 
     "id" CHAR(66) NOT NULL, 
     "blockNumber" INTEGER NOT NULL, 
     "transactionHash" CHAR(66) NOT NULL, 
@@ -162,11 +162,11 @@ CREATE TABLE IF NOT EXISTS ${DATA_TABLE.EVENT} (
     "data" VARCHAR, 
     PRIMARY KEY ("id"), 
     FOREIGN KEY ("transactionHash") REFERENCES transaction("hash") ON DELETE CASCADE, 
-    FOREIGN KEY ("address") REFERENCES ${DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE 
+    FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE 
     )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DATA_TABLE.EVENT_PARAMETER} ( 
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT_PARAMETER} ( 
     "eventId" CHAR(66) NOT NULL,
     "value" VARCHAR NOT NULL,
     "name" VARCHAR NOT NULL,

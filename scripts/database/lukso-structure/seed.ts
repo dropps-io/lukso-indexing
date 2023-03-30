@@ -2,7 +2,10 @@ import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
 
-import { STRUCTURE_TABLE } from '../../../libs/database/lukso-structure/config';
+import {
+  DB_STRUCTURE_TABLE,
+  DB_STRUCTURE_TYPE,
+} from '../../../libs/database/lukso-structure/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
@@ -16,12 +19,14 @@ export const seedLuksoStructure = async (dropTables?: boolean) => {
   await client.connect();
 
   if (dropTables) {
-    for (const table of Object.keys(STRUCTURE_TABLE).values())
+    for (const table of Object.keys(DB_STRUCTURE_TABLE).values())
       await client.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
+    for (const type of Object.keys(DB_STRUCTURE_TYPE).values())
+      await client.query(`DROP TYPE IF EXISTS ${type}`);
   }
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.ERC725Y_SCHEMA} (
+CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA} (
 	"key" CHAR(66) NOT NULL,
   "name" VARCHAR(66) NOT NULL,
 	"keyType" VARCHAR(20) NOT NULL,
@@ -31,35 +36,37 @@ CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.ERC725Y_SCHEMA} (
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.CONTRACT_INTERFACE} (
+CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} (
 	"id" CHAR(10) NOT NULL,
-  "code" VARCHAR(10) NOT NULL,
+  "code" VARCHAR(20) NOT NULL,
 	"name" VARCHAR(40) NOT NULL,
 	"version" VARCHAR(10),
 	PRIMARY KEY ("id")
 )`);
 
+  await client.query(`CREATE TYPE ${DB_STRUCTURE_TYPE.METHOD_TYPE} AS ENUM ('event', 'function')`);
+
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.METHOD_INTERFACE} (
+CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} (
 	"id" CHAR(10) NOT NULL,
   "hash" CHAR(66) NOT NULL,
 	"name" VARCHAR(40) NOT NULL,
-	"type" VARCHAR(20) NOT NULL,
+	"type" ${DB_STRUCTURE_TYPE.METHOD_TYPE} NOT NULL,
 	PRIMARY KEY ("id")
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.METHOD_PARAMETER} (
+CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.METHOD_PARAMETER} (
 	"methodId" CHAR(10) NOT NULL,
 	"name" VARCHAR(40) NOT NULL,
 	"type" VARCHAR(40) NOT NULL,
 	"indexed" BOOLEAN NOT NULL,
 	"position" INTEGER NOT NULL,
-	FOREIGN KEY("methodId") REFERENCES ${STRUCTURE_TABLE.METHOD_INTERFACE}("id") ON DELETE CASCADE
+	FOREIGN KEY("methodId") REFERENCES ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}("id") ON DELETE CASCADE
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.CONFIG} (
+CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONFIG} (
 	"blockIteration" INTEGER NOT NULL DEFAULT 5000,
 	"sleepBetweenIteration" INTEGER NOT NULL DEFAULT 2000,
 	"nbrOfThreads" INTEGER NOT NULL DEFAULT 20,
@@ -68,7 +75,7 @@ CREATE TABLE IF NOT EXISTS ${STRUCTURE_TABLE.CONFIG} (
 	"latestIndexedEventBlock" INTEGER NOT NULL DEFAULT 0
 	)`);
 
-  await client.query(`INSERT INTO ${STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
+  await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
 
   await client.end();
   console.log('lukso-structure seed script successfully executed');
