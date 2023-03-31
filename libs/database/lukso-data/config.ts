@@ -14,6 +14,9 @@ export enum DB_DATA_TABLE {
   TRANSACTION = 'transaction',
   TRANSACTION_INPUT = 'transaction_input',
   TRANSACTION_PARAMETER = 'transaction_parameter',
+  WRAPPED_TRANSACTION = 'wrapped_transaction',
+  WRAPPED_TRANSACTION_INPUT = 'wrapped_transaction_input',
+  WRAPPED_TRANSACTION_PARAMETER = 'wrapped_transaction_parameter',
   EVENT = 'event',
   EVENT_PARAMETER = 'event_parameter',
 }

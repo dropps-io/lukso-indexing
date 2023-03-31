@@ -21,10 +21,10 @@ const dataClient = new Client({
 
 const cleanup = async () => {
   for (const table of Object.keys(DB_STRUCTURE_TABLE).values()) {
-    await structureClient.query(`DELETE FROM ${table}`);
+    await structureClient.query(`DELETE FROM ${DB_STRUCTURE_TABLE[table]}`);
   }
   for (const table of Object.keys(DB_DATA_TABLE).values())
-    await dataClient.query(`DELETE FROM ${table}`);
+    await dataClient.query(`DELETE FROM ${DB_DATA_TABLE[table]}`);
 
   await structureClient.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
 };

@@ -20,9 +20,9 @@ export const seedLuksoStructure = async (dropTables?: boolean) => {
 
   if (dropTables) {
     for (const table of Object.keys(DB_STRUCTURE_TABLE).values())
-      await client.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
+      await client.query(`DROP TABLE IF EXISTS ${DB_STRUCTURE_TABLE[table]} CASCADE`);
     for (const type of Object.keys(DB_STRUCTURE_TYPE).values())
-      await client.query(`DROP TYPE IF EXISTS ${type}`);
+      await client.query(`DROP TYPE IF EXISTS ${DB_STRUCTURE_TYPE[type]}`);
   }
 
   await client.query(`
