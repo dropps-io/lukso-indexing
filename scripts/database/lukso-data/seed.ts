@@ -33,15 +33,16 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT_TOKEN} (
   "id" CHAR(66) NOT NULL,
   "address" CHAR(42) NOT NULL,
   "index" INTEGER NOT NULL,
-  "tokenId" VARCHAR(66) NOT NULL,
-  "rawTokenId" CHAR(66) NOT NULL,
+  "decodedTokenId" VARCHAR(66) NOT NULL,
+  "tokenId" CHAR(66) NOT NULL,
   PRIMARY KEY ("id"),
-  UNIQUE ("address", "rawTokenId"),
+  UNIQUE ("address", "tokenId"),
   FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
 )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
+  "id" SERIAL PRIMARY KEY,
   "address" CHAR(42) NOT NULL,
   "tokenId" VARCHAR(66),
   "name" VARCHAR(100) NOT NULL,
@@ -49,50 +50,42 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
   "description" VARCHAR(512) NOT NULL,
   "isNFT" BOOLEAN,
   FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "tokenId") ON DELETE CASCADE
 )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_IMAGE} (
-  "address" CHAR(42) NOT NULL,
-  "tokenId" VARCHAR(66),
+  "metadataId" INTEGER NOT NULL,
   "url" VARCHAR(2048) NOT NULL,
   "width" SMALLINT NOT NULL,
   "height" SMALLINT NOT NULL,
   "type" VARCHAR(20) NOT NULL,
   "hash" CHAR(66) NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
 )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_LINK} (
-  "address" CHAR(42) NOT NULL,
-  "tokenId" VARCHAR(66),
+  "metadataId" INTEGER NOT NULL,
   "title" VARCHAR(30) NOT NULL,
   "url" VARCHAR(2048) NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+  FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
 )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_TAG} (
-  "address" CHAR(42) NOT NULL,
-  "tokenId" VARCHAR(66),
+  "metadataId" INTEGER NOT NULL,
   "title" VARCHAR(40) NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
 )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_ASSET} (
-  "address" CHAR(42) NOT NULL,
-  "tokenId" VARCHAR(66),
+  "metadataId" INTEGER NOT NULL,
   "url" VARCHAR(2048) NOT NULL,
   "fileType" VARCHAR(10) NOT NULL,
   "hash" CHAR(66) NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("address", "tokenId") REFERENCES  ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "rawTokenId") ON DELETE CASCADE
+   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
 )`);
 
   await client.query(`
@@ -100,9 +93,8 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.DATA_CHANGED} (
   "address" CHAR(42) NOT NULL,
   "key" CHAR(66) NOT NULL,
   "value" VARCHAR(2048) NOT NULL,
-  "blockNumber" INTEGER NOT NULL,
-  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
-)`);
+  "blockNumber" INTEGER NOT NULL
+  )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TRANSACTION} (
@@ -118,9 +110,7 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TRANSACTION} (
   "value" VARCHAR(24) NOT NULL,
   "gasPrice" VARCHAR(14) NOT NULL,
   "gas" INTEGER NOT NULL,
-	PRIMARY KEY ("hash"),
-  FOREIGN KEY ("from") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
-  FOREIGN KEY ("to") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
+	PRIMARY KEY ("hash")
 )`);
 
   await client.query(`
@@ -179,16 +169,14 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT} (
     "blockNumber" INTEGER NOT NULL, 
     "transactionHash" CHAR(66) NOT NULL, 
     "logIndex" INTEGER NOT NULL, 
-    "address" CHAR(66) NOT NULL, 
+    "address" CHAR(42) NOT NULL, 
     "eventName" VARCHAR(40), 
     "topic0" CHAR(66) NOT NULL, 
     "topic1" CHAR(66), 
     "topic2" CHAR(66), 
     "topic3" CHAR(66), 
     "data" VARCHAR(512), 
-    PRIMARY KEY ("id"), 
-    FOREIGN KEY ("transactionHash") REFERENCES transaction("hash") ON DELETE CASCADE, 
-    FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE 
+    PRIMARY KEY ("id")
     )`);
 
   await client.query(`

@@ -1,4 +1,5 @@
 export interface MetadataTable {
+  id: number;
   address: string;
   tokenId: string | null;
   name: string;

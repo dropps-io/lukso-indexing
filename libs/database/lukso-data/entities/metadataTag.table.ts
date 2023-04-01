@@ -1,5 +1,4 @@
 export interface MetadataTagTable {
-  address: string;
-  tokenId: string | null;
+  metadataId: number;
   title: string;
 }

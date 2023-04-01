@@ -1,6 +1,5 @@
 export interface MetadataLinkTable {
-  address: string;
-  tokenId: string | null;
+  metadataId: number;
   title: string;
   url: string;
 }

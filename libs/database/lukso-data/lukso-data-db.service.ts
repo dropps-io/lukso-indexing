@@ -57,8 +57,8 @@ export class LuksoDataDbService {
         contractToken.id,
         contractToken.address,
         contractToken.index,
+        contractToken.decodedTokenId,
         contractToken.tokenId,
-        contractToken.rawTokenId,
       ],
     );
   }
@@ -72,12 +72,13 @@ export class LuksoDataDbService {
   }
 
   // Metadata table functions
-  public async insertMetadata(metadata: MetadataTable): Promise<void> {
-    await this.client.query(
+  public async insertMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
+    const result = await this.client.query(
       `
           INSERT INTO ${DB_DATA_TABLE.METADATA}
           ("address", "tokenId", "name", "symbol", "description", "isNFT")
           VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING id;
         `,
       [
         metadata.address,
@@ -88,16 +89,16 @@ export class LuksoDataDbService {
         metadata.isNFT,
       ],
     );
-  }
 
-  public async getMetadataByAddressAndTokenId(
-    address: string,
-    tokenId: string | null,
-  ): Promise<MetadataTable | null> {
-    const result = await this.client.query(
-      `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId" = $2`,
-      [address, tokenId],
-    );
+    return { id: result.rows[0].id };
+  }
+  public async getMetadata(address: string, tokenId?: string): Promise<MetadataTable | null> {
+    const query = `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId"${
+      tokenId ? '=$2' : ' IS NULL'
+    }`;
+    const queryParams = tokenId ? [address, tokenId] : [address];
+
+    const result = await this.client.query(query, queryParams);
     return result.rows.length > 0 ? (result.rows[0] as MetadataTable) : null;
   }
 
@@ -106,12 +107,11 @@ export class LuksoDataDbService {
     await this.client.query(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_IMAGE}
-      ("address", "tokenId", "url", "width", "height", "type", "hash")
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ("metadataId", "url", "width", "height", "type", "hash")
+      VALUES ($1, $2, $3, $4, $5, $6)
     `,
       [
-        metadataImage.address,
-        metadataImage.tokenId,
+        metadataImage.metadataId,
         metadataImage.url,
         metadataImage.width,
         metadataImage.height,
@@ -126,10 +126,10 @@ export class LuksoDataDbService {
     await this.client.query(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_LINK}
-      ("address", "tokenId", "title",       "url")
-      VALUES ($1, $2, $3, $4)
+      ("metadataId", "title", "url")
+      VALUES ($1, $2, $3)
     `,
-      [metadataLink.address, metadataLink.tokenId, metadataLink.title, metadataLink.url],
+      [metadataLink.metadataId, metadataLink.title, metadataLink.url],
     );
   }
 
@@ -138,20 +138,17 @@ export class LuksoDataDbService {
     await this.client.query(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_TAG}
-      ("address", "tokenId", "title")
-      VALUES ($1, $2, $3)
+      ("metadataId", "title")
+      VALUES ($1, $2)
     `,
-      [metadataTag.address, metadataTag.tokenId, metadataTag.title],
+      [metadataTag.metadataId, metadataTag.title],
     );
   }
 
-  public async getMetadataTagsByAddressAndTokenId(
-    address: string,
-    tokenId: string,
-  ): Promise<string[]> {
+  public async getMetadataTagsByMetadataId(metadataId: number): Promise<string[]> {
     const result = await this.client.query(
-      `SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG} WHERE "address" = $1 AND "tokenId" = $2`,
-      [address, tokenId],
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG} WHERE "metadataId" = $1`,
+      [metadataId],
     );
     return result.rows.map((r: MetadataTagTable) => r.title);
   }
@@ -161,28 +158,19 @@ export class LuksoDataDbService {
     await this.client.query(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_ASSET}
-      ("address", "tokenId", "url", "fileType", "hash")
-      VALUES ($1, $2, $3, $4, $5)
+      ("metadataId", "url", "fileType", "hash")
+      VALUES ($1, $2, $3, $4)
     `,
-      [
-        metadataAsset.address,
-        metadataAsset.tokenId,
-        metadataAsset.url,
-        metadataAsset.fileType,
-        metadataAsset.hash,
-      ],
+      [metadataAsset.metadataId, metadataAsset.url, metadataAsset.fileType, metadataAsset.hash],
     );
   }
 
-  public async getMetadataAssetByAddressAndTokenId(
-    address: string,
-    tokenId: string,
-  ): Promise<MetadataAssetTable | null> {
+  public async getMetadataAssetsByMetadataId(metadataId: number): Promise<MetadataAssetTable[]> {
     const result = await this.client.query(
-      `SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET} WHERE "address" = $1 AND "tokenId" = $2`,
-      [address, tokenId],
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET} WHERE "metadataId" = $1`,
+      [metadataId],
     );
-    return result.rows.length > 0 ? (result.rows[0] as MetadataAssetTable) : null;
+    return result.rows as MetadataAssetTable[];
   }
 
   // DataChanged table functions
@@ -197,15 +185,15 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getDataChangedByAddressAndKey(
+  public async getDataChangedHistoryByAddressAndKey(
     address: string,
     key: string,
-  ): Promise<DataChangedTable | null> {
+  ): Promise<DataChangedTable[]> {
     const result = await this.client.query(
       `SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED} WHERE "address" = $1 AND "key" = $2`,
       [address, key],
     );
-    return result.rows.length > 0 ? (result.rows[0] as DataChangedTable) : null;
+    return result.rows as DataChangedTable[];
   }
 
   // Transaction table functions
@@ -213,8 +201,8 @@ export class LuksoDataDbService {
     await this.client.query(
       `
       INSERT INTO ${DB_DATA_TABLE.TRANSACTION}
-      ("hash", "nonce", "blockHash", "blockNumber", "transactionIndex", "methodId", "from", "to", "value", "gasPrice", "gas", "input", "unwrappedMethodId", "unwrappedFrom", "unwrappedTo")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ("hash", "nonce", "blockHash", "blockNumber", "transactionIndex", "methodId", "methodName", "from", "to", "value", "gasPrice", "gas") VALUES
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     `,
       [
         transaction.hash,
@@ -223,14 +211,12 @@ export class LuksoDataDbService {
         transaction.blockNumber,
         transaction.transactionIndex,
         transaction.methodId,
+        transaction.methodName,
         transaction.from,
         transaction.to,
         transaction.value,
         transaction.gasPrice,
         transaction.gas,
-        transaction.unwrappedMethodId,
-        transaction.unwrappedFrom,
-        transaction.unwrappedTo,
       ],
     );
   }
@@ -255,7 +241,7 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getTransactionInputByTransactionHash(transactionHash: string): Promise<string> {
+  public async getTransactionInput(transactionHash: string): Promise<string> {
     const result = await this.client.query(
       `SELECT input FROM ${DB_DATA_TABLE.TRANSACTION_INPUT} WHERE "transactionHash" = $1`,
       [transactionHash],
@@ -268,11 +254,10 @@ export class LuksoDataDbService {
     await this.client.query(
       `
       INSERT INTO ${DB_DATA_TABLE.TRANSACTION_PARAMETER}
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5)
     `,
       [
         transactionParameter.transactionHash,
-        transactionParameter.unwrapped,
         transactionParameter.value,
         transactionParameter.name,
         transactionParameter.type,
@@ -281,9 +266,7 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getTransactionParametersByTransactionHash(
-    transactionHash: string,
-  ): Promise<TxParameterTable[]> {
+  public async getTransactionParameters(transactionHash: string): Promise<TxParameterTable[]> {
     const result = await this.client.query(
       `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_PARAMETER} WHERE "transactionHash" = $1`,
       [transactionHash],
@@ -336,7 +319,7 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getEventParametersByEventId(eventId: string): Promise<EventParameterTable[]> {
+  public async getEventParameters(eventId: string): Promise<EventParameterTable[]> {
     const result = await this.client.query(
       `SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER} WHERE "eventId" = $1`,
       [eventId],

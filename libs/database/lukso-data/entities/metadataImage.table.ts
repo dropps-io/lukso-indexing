@@ -1,6 +1,5 @@
 export interface MetadataImageTable {
-  address: string;
-  tokenId: string | null;
+  metadataId: number;
   url: string;
   width: number;
   height: number;

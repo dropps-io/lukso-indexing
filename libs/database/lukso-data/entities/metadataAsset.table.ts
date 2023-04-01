@@ -1,6 +1,5 @@
 export interface MetadataAssetTable {
-  address: string;
-  tokenId: string | null;
+  metadataId: number;
   url: string;
   fileType: string;
   hash: string;
