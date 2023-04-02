@@ -24,4 +24,8 @@ export class FetchingService {
   async getPastLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
     return await this.web3.eth.getPastLogs({ fromBlock: fromBlock, toBlock: toBlock });
   }
+
+  async getLastBlock(): Promise<number> {
+    return await this.web3.eth.getBlockNumber();
+  }
 }

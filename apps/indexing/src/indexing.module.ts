@@ -7,6 +7,7 @@ import { LuksoDataDbModule } from '../../../libs/database/lukso-data/lukso-data-
 import { UpdateModule } from './update/update.module';
 import { LuksoStructureDbModule } from '../../../libs/database/lukso-structure/lukso-structure-db.module';
 import { IndexingService } from './indexing.service';
+import { LoggerModule } from '../../../libs/logger/logger.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { IndexingService } from './indexing.service';
     DecodingModule,
     LuksoDataDbModule,
     LuksoStructureDbModule,
+    LoggerModule,
     UpdateModule,
   ],
   providers: [IndexingService],

@@ -29,7 +29,8 @@
     "@openzeppelin/contracts": "^4.8.2",
     "dotenv": "^16.0.3",
     "pg": "^8.10.0",
-    "web3": "^1.8.2"
+    "web3": "^1.8.2",
+    "winston": "^3.8.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
