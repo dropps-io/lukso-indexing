@@ -1,6 +1,6 @@
 import { DecodedParameter } from './decoded-parameter';
 
-export interface UnwrappedTransaction {
+export interface WrappedTransaction {
   input: string;
   to: string;
   value: string;

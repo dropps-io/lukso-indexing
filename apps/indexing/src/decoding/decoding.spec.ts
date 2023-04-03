@@ -26,7 +26,7 @@ class TestDecodingService extends DecodingService {
   }
 
   async testGetUnwrappedTransaction(wrappedInput: string, toAddress: string, value: string) {
-    return await this.getUnwrappedTransaction(wrappedInput, toAddress, value);
+    return await this.getWrappedTransaction(wrappedInput, toAddress, value);
   }
 }
 

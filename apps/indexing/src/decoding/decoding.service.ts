@@ -8,7 +8,7 @@ import { LuksoStructureDbService } from '../../../../libs/database/lukso-structu
 import { WRAPPING_METHOD } from './types/enums';
 import { Web3Service } from '../web3/web3.service';
 import { LoggerService } from '../../../../libs/logger/logger.service';
-import { UnwrappedTransaction } from './types/unwrapped-tx';
+import { WrappedTransaction } from './types/wrapped-tx';
 import { DecodedParameter } from './types/decoded-parameter';
 
 @Injectable()
@@ -69,11 +69,20 @@ export class DecodingService {
     }
   }
 
+  /**
+   * Unwraps the wrapped transactions based on the provided method ID and decoded parameters.
+   *
+   * @param {string} methodId - Method ID of the transaction.
+   * @param {DecodedParameter[]} decodedParameters - Decoded parameters of the transaction.
+   * @param {string} contractAddress - Address of the contract where the transaction was executed
+   *
+   * @returns {Promise<WrappedTransaction[] | null>} - An array containing the wrapped transaction object(s), or null if the method ID is not recognized.
+   */
   public async unwrapTransaction(
     methodId: string,
     decodedParameters: DecodedParameter[],
     contractAddress: string,
-  ): Promise<UnwrappedTransaction[] | null> {
+  ): Promise<WrappedTransaction[] | null> {
     this.logger.info('Unwrapping transaction', { methodId, decodedParameters, contractAddress });
 
     try {
@@ -113,12 +122,19 @@ export class DecodingService {
     }
   }
 
+  /**
+   * Unwraps an ERC725X execute transaction.
+   *
+   * @param {Record<string, string>} parametersMap - Map of parameter names to values.
+   *
+   * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
+   */
   protected async unwrapErc725XExecute(
     parametersMap: Record<string, string>,
-  ): Promise<UnwrappedTransaction | null> {
+  ): Promise<WrappedTransaction | null> {
     try {
       const wrappedInput: string = parametersMap['data'];
-      return await this.getUnwrappedTransaction(
+      return await this.getWrappedTransaction(
         wrappedInput,
         toChecksumAddress(parametersMap['to']),
         parametersMap['value'],
@@ -131,10 +147,18 @@ export class DecodingService {
     }
   }
 
+  /**
+   * Unwraps an LSP6 execute or execute relay transaction.
+   *
+   * @param {string} contractAddress - Address of the contract which executed the wrapped transaction.
+   * @param {Record<string, string>} parametersMap - Map of parameter names to values.
+   *
+   * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
+   */
   protected async unwrapLSP6Execute(
     contractAddress: string,
     parametersMap: Record<string, string>,
-  ): Promise<UnwrappedTransaction | null> {
+  ): Promise<WrappedTransaction | null> {
     try {
       const keyManagerContract = new this.web3.eth.Contract(
         LSP6KeyManager.abi as AbiItem[],
@@ -142,7 +166,7 @@ export class DecodingService {
       );
       const toAddress = await keyManagerContract.methods.target().call();
       const wrappedInput = parametersMap['payload'] as string;
-      return await this.getUnwrappedTransaction(wrappedInput, toAddress, '0');
+      return await this.getWrappedTransaction(wrappedInput, toAddress, '0');
     } catch (e) {
       this.logger.error(`Error unwrapping LSP6 execute: ${e.message}`, {
         contractAddress,
@@ -152,11 +176,20 @@ export class DecodingService {
     }
   }
 
-  protected async getUnwrappedTransaction(
+  /**
+   * Decodes the input data of a wrapped transaction input and returns the decoded parameters and method name.
+   *
+   * @param {string} wrappedInput - The input data of the wrapped transaction to be decoded.
+   * @param {string} toAddress - The address of the contract to which the transaction was sent.
+   * @param {string} value - The value (in wei) sent with the wrapped transaction.
+   *
+   * @returns {Promise<WrappedTransaction>} - The wrapped transaction object.
+   */
+  protected async getWrappedTransaction(
     wrappedInput: string,
     toAddress: string,
     value: string,
-  ): Promise<UnwrappedTransaction> {
+  ): Promise<WrappedTransaction> {
     const wrappedParams = await this.decodeTransactionInput(wrappedInput);
     return {
       input: wrappedInput,

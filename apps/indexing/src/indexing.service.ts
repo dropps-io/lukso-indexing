@@ -10,6 +10,9 @@ import { DecodingService } from './decoding/decoding.service';
 import { LoggerService } from '../../../libs/logger/logger.service';
 import { DecodedParameter } from './decoding/types/decoded-parameter';
 
+/**
+ * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
+ */
 @Injectable()
 export class IndexingService implements OnModuleInit {
   private readonly fileLogger: winston.Logger;
@@ -29,6 +32,9 @@ export class IndexingService implements OnModuleInit {
     }
   }
 
+  /**
+   * Recursively indexes transactions from the blockchain by blocks.
+   */
   protected async indexByBlock() {
     const startTime = new Date();
 
@@ -62,6 +68,11 @@ export class IndexingService implements OnModuleInit {
     setTimeout(this.indexByBlock.bind(this), timeout);
   }
 
+  /**
+   * Indexes a transaction to the LuksoData database.
+   *
+   * @param {string} transactionHash - The transaction hash to index.
+   */
   protected async indexTransaction(transactionHash: string) {
     const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
     if (transactionAlreadyIndexed) return;
@@ -105,6 +116,15 @@ export class IndexingService implements OnModuleInit {
     }
   }
 
+  /**
+   * Recursively indexes wrapped transactions that are part of a larger transaction.
+   *
+   * @param {string} input - The input data of the transaction.
+   * @param {DecodedParameter[]} decodedParams - The decoded input parameters of the transaction.
+   * @param {string} contractAddress - The contract address of the transaction where the transaction was executed.
+   * @param {number|null} parentId - The parent ID of the wrapped transaction.
+   * @param {string|null} parentTxHash - The hash of the parent transaction.
+   */
   protected async indexWrappedTransactions(
     input: string,
     decodedParams: DecodedParameter[],
@@ -115,12 +135,14 @@ export class IndexingService implements OnModuleInit {
     this.fileLogger.info('Indexing wrapped transactions', { parentId, parentTxHash });
 
     try {
+      // Unwrap the transaction, to see if there are any wrapped transactions inside
       const unwrappedTransactions = await this.decodingService.unwrapTransaction(
         input.slice(0, 10),
         decodedParams,
         contractAddress,
       );
 
+      // If there are wrapped transactions, insert them into the database and index their wrapped transactions as well
       if (unwrappedTransactions) {
         for (const unwrappedTransaction of unwrappedTransactions) {
           const row = await this.dataDB.insertWrappedTransaction({
@@ -144,6 +166,7 @@ export class IndexingService implements OnModuleInit {
               wrappedTransactionId: row.id,
             });
 
+          // Index the wrapped transaction's wrapped transactions as well
           await this.indexWrappedTransactions(
             unwrappedTransaction.input,
             unwrappedTransaction.parameters,
