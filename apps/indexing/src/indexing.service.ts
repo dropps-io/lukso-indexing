@@ -3,7 +3,7 @@ import winston from 'winston';
 
 import { NODE_ENV } from './globals';
 import { LuksoStructureDbService } from '../../../libs/database/lukso-structure/lukso-structure-db.service';
-import { FetchingService } from './fetching/fetching.service';
+import { Web3Service } from './web3/web3.service';
 import { LuksoDataDbService } from '../../../libs/database/lukso-data/lukso-data-db.service';
 import { TransactionTable } from '../../../libs/database/lukso-data/entities/tx.table';
 import { DecodingService } from './decoding/decoding.service';
@@ -16,11 +16,11 @@ export class IndexingService implements OnModuleInit {
   constructor(
     private readonly structureDB: LuksoStructureDbService,
     private readonly dataDB: LuksoDataDbService,
-    private readonly fetchingService: FetchingService,
+    private readonly fetchingService: Web3Service,
     private readonly decodingService: DecodingService,
     private readonly logger: LoggerService,
   ) {
-    this.fileLogger = logger.getChildLogger('indexing');
+    this.fileLogger = logger.getChildLogger('Indexing');
   }
   onModuleInit() {
     if (NODE_ENV !== 'test') {
@@ -71,9 +71,7 @@ export class IndexingService implements OnModuleInit {
 
     const methodId = transaction.input.slice(0, 10);
 
-    const decodedTxInput = await this.decodingService.identifyAndDecodeTransactionInput(
-      transaction.input,
-    );
+    const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
 
     const transactionRow: TransactionTable = {
       ...transaction,

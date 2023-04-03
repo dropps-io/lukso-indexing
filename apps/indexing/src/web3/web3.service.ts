@@ -5,11 +5,15 @@ import { Transaction, Log } from 'web3-core';
 import { RPC_URL } from '../globals';
 
 @Injectable()
-export class FetchingService {
+export class Web3Service {
   private readonly web3: Web3;
 
   constructor() {
     this.web3 = new Web3(RPC_URL);
+  }
+
+  getWeb3(): Web3 {
+    return this.web3;
   }
 
   async getBlockTransactions(blockNumber: number): Promise<string[]> {

@@ -11,6 +11,7 @@
     "seed-lukso-data-db": "ts-node scripts/database/lukso-data/index.ts",
     "populate-lukso-structure-db": "ts-node scripts/database/lukso-structure/populate.ts",
     "test": "jest --runInBand",
+    "test:cov": "jest --coverage --runInBand",
     "test:watch": "jest --runInBand --watch",
     "lint:fix": "eslint \"{apps,libs,test,types,scripts,utils,database,contracts}/**/*{.ts,.js}\" --fix"
   },
