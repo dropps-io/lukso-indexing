@@ -8,6 +8,7 @@ import { LuksoDataDbService } from '../../../libs/database/lukso-data/lukso-data
 import { TransactionTable } from '../../../libs/database/lukso-data/entities/tx.table';
 import { DecodingService } from './decoding/decoding.service';
 import { LoggerService } from '../../../libs/logger/logger.service';
+import { DecodedParameter } from './decoding/types/decoded-parameter';
 
 @Injectable()
 export class IndexingService implements OnModuleInit {
@@ -67,29 +68,99 @@ export class IndexingService implements OnModuleInit {
 
     this.fileLogger.info('Indexing transaction', { transactionHash });
 
-    const transaction = await this.fetchingService.getTransaction(transactionHash);
+    try {
+      const transaction = await this.fetchingService.getTransaction(transactionHash);
+      const methodId = transaction.input.slice(0, 10);
+      const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
 
-    const methodId = transaction.input.slice(0, 10);
+      const transactionRow: TransactionTable = {
+        ...transaction,
+        methodId,
+        blockHash: transaction.blockHash ?? '',
+        blockNumber: transaction.blockNumber ?? 0,
+        transactionIndex: transaction.transactionIndex ?? 0,
+        to: transaction.to ?? '',
+        methodName: decodedTxInput?.methodName || null,
+      };
 
-    const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
+      await this.dataDB.insertTransaction(transactionRow);
+      this.logger.incrementIndexedTransactions();
 
-    const transactionRow: TransactionTable = {
-      ...transaction,
-      methodId,
-      blockHash: transaction.blockHash ?? '',
-      blockNumber: transaction.blockNumber ?? 0,
-      transactionIndex: transaction.transactionIndex ?? 0,
-      to: transaction.to ?? '',
-      methodName: decodedTxInput?.methodName || null,
-    };
+      await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.input });
 
-    await this.dataDB.insertTransaction(transactionRow);
-    this.logger.incrementIndexedTransactions();
+      if (decodedTxInput?.parameters) {
+        for (const parameter of decodedTxInput.parameters)
+          await this.dataDB.insertTransactionParameter({ ...parameter, transactionHash });
 
-    await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.input });
+        await this.indexWrappedTransactions(
+          transaction.input,
+          decodedTxInput.parameters,
+          transactionRow.to,
+          null,
+          transactionHash,
+        );
+      }
+    } catch (e) {
+      this.fileLogger.error(`Error while indexing transaction: ${e.message}`, { transactionHash });
+    }
+  }
 
-    if (decodedTxInput?.parameters)
-      for (const parameter of decodedTxInput.parameters)
-        await this.dataDB.insertTransactionParameter({ ...parameter, transactionHash });
+  protected async indexWrappedTransactions(
+    input: string,
+    decodedParams: DecodedParameter[],
+    contractAddress: string,
+    parentId: number | null,
+    parentTxHash: string | null,
+  ) {
+    this.fileLogger.info('Indexing wrapped transactions', { parentId, parentTxHash });
+
+    try {
+      const unwrappedTransactions = await this.decodingService.unwrapTransaction(
+        input.slice(0, 10),
+        decodedParams,
+        contractAddress,
+      );
+
+      if (unwrappedTransactions) {
+        for (const unwrappedTransaction of unwrappedTransactions) {
+          const row = await this.dataDB.insertWrappedTransaction({
+            from: contractAddress,
+            to: unwrappedTransaction.to,
+            value: unwrappedTransaction.value,
+            parentId: parentId,
+            parentTransactionHash: parentTxHash,
+            methodId: unwrappedTransaction.input.slice(0, 10),
+            methodName: unwrappedTransaction.methodName,
+          });
+
+          await this.dataDB.insertWrappedTransactionInput({
+            wrappedTransactionId: row.id,
+            input: unwrappedTransaction.input,
+          });
+
+          for (const parameter of unwrappedTransaction.parameters)
+            await this.dataDB.insertWrappedTransactionParameter({
+              ...parameter,
+              wrappedTransactionId: row.id,
+            });
+
+          await this.indexWrappedTransactions(
+            unwrappedTransaction.input,
+            unwrappedTransaction.parameters,
+            unwrappedTransaction.to,
+            row.id,
+            null,
+          );
+        }
+      }
+    } catch (e) {
+      this.fileLogger.error(`Failed to index wrapped transactions: ${e.message}`, {
+        input,
+        decodedParams,
+        contractAddress,
+        parentId,
+        parentTxHash,
+      });
+    }
   }
 }

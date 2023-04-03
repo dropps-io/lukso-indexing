@@ -6,5 +6,5 @@ export interface WrappedTransactionTable {
   to: string;
   value: string;
   methodId: string;
-  methodName: string;
+  methodName: string | null;
 }

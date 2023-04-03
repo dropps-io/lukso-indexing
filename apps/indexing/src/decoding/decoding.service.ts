@@ -8,21 +8,8 @@ import { LuksoStructureDbService } from '../../../../libs/database/lukso-structu
 import { WRAPPING_METHOD } from './types/enums';
 import { Web3Service } from '../web3/web3.service';
 import { LoggerService } from '../../../../libs/logger/logger.service';
-
-interface DecodedParameter {
-  value: string;
-  position: number;
-  name: string;
-  type: string;
-}
-
-interface UnwrappedTransaction {
-  input: string;
-  to: string;
-  value: string;
-  parameters: DecodedParameter[];
-  methodName: string | null;
-}
+import { UnwrappedTransaction } from './types/unwrapped-tx';
+import { DecodedParameter } from './types/decoded-parameter';
 
 @Injectable()
 export class DecodingService {
@@ -67,7 +54,7 @@ export class DecodingService {
 
       // Map the decoded parameters to the DecodedParameter[] format.
       const parameters: DecodedParameter[] = methodParameters.map((parameter) => ({
-        value: decodedParameters[parameter.name] as string,
+        value: (decodedParameters[parameter.name] as string) || '',
         position: parameter.position,
         name: parameter.name,
         type: parameter.type,
@@ -87,31 +74,42 @@ export class DecodingService {
     decodedParameters: DecodedParameter[],
     contractAddress: string,
   ): Promise<UnwrappedTransaction[] | null> {
-    if (decodedParameters.length === 0) return null;
+    this.logger.info('Unwrapping transaction', { methodId, decodedParameters, contractAddress });
 
-    const parametersMap = decodedParameters.reduce((map, parameter) => {
-      map[parameter.name] = parameter.value;
-      return map;
-    }, {});
+    try {
+      if (decodedParameters.length === 0) return null;
 
-    //TODO: Implement batch execution unwrapping
+      const parametersMap = decodedParameters.reduce((map, parameter) => {
+        map[parameter.name] = parameter.value;
+        return map;
+      }, {});
 
-    switch (methodId) {
-      case WRAPPING_METHOD.LSP6_EXECUTE_V0_6:
-      case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_V0_6: {
-        const unwrappedTransaction = await this.unwrapLSP6Execute(contractAddress, parametersMap);
-        return unwrappedTransaction ? [unwrappedTransaction] : null;
+      //TODO: Implement batch execution unwrapping
+
+      switch (methodId) {
+        case WRAPPING_METHOD.LSP6_EXECUTE_V0_6:
+        case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_V0_6: {
+          const unwrappedTransaction = await this.unwrapLSP6Execute(contractAddress, parametersMap);
+          return unwrappedTransaction ? [unwrappedTransaction] : null;
+        }
+        case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_BATCH_V0_8:
+        case WRAPPING_METHOD.LSP6_EXECUTE_BATCH_V0_8:
+        case WRAPPING_METHOD.ERC725X_EXECUTE_BATCH_V4_2:
+          return null;
+        case WRAPPING_METHOD.ERC725X_EXECUTE_V3: {
+          const unwrappedTransaction = await this.unwrapErc725XExecute(parametersMap);
+          return unwrappedTransaction ? [unwrappedTransaction] : null;
+        }
+        default:
+          return null;
       }
-      case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_BATCH_V0_8:
-      case WRAPPING_METHOD.LSP6_EXECUTE_BATCH_V0_8:
-      case WRAPPING_METHOD.ERC725X_EXECUTE_BATCH_V4_2:
-        return null;
-      case WRAPPING_METHOD.ERC725X_EXECUTE_V3: {
-        const unwrappedTransaction = await this.unwrapErc725XExecute(parametersMap);
-        return unwrappedTransaction ? [unwrappedTransaction] : null;
-      }
-      default:
-        return null;
+    } catch (e) {
+      this.logger.error(`Error unwrapping transaction: ${e.message}`, {
+        methodId,
+        decodedParameters,
+        contractAddress,
+      });
+      return null;
     }
   }
 
