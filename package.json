@@ -10,6 +10,7 @@
     "seed-lukso-structure-db": "ts-node scripts/database/lukso-structure/index.ts",
     "seed-lukso-data-db": "ts-node scripts/database/lukso-data/index.ts",
     "populate-lukso-structure-db": "ts-node scripts/database/lukso-structure/populate.ts",
+    "seed:populate": "npm run seed-lukso-structure-db && npm run seed-lukso-data-db && npm run populate-lukso-structure-db",
     "test": "jest --runInBand",
     "test:cov": "jest --coverage --runInBand",
     "test:watch": "jest --runInBand --watch",
