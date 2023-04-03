@@ -3,18 +3,21 @@ import { Pool } from 'pg';
 
 import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
-import { ContractTokenTable } from './entities/contractToken.table';
+import { ContractTokenTable } from './entities/contract-token.table';
 import { MetadataTable } from './entities/metadata.table';
-import { MetadataImageTable } from './entities/metadataImage.table';
-import { MetadataTagTable } from './entities/metadataTag.table';
-import { MetadataLinkTable } from './entities/metadataLink.table';
-import { MetadataAssetTable } from './entities/metadataAsset.table';
-import { DataChangedTable } from './entities/dataChanged.table';
+import { MetadataImageTable } from './entities/metadata-image.table';
+import { MetadataTagTable } from './entities/metadata-tag.table';
+import { MetadataLinkTable } from './entities/metadata-link.table';
+import { MetadataAssetTable } from './entities/metadata-asset.table';
+import { DataChangedTable } from './entities/data-changed.table';
 import { TransactionTable } from './entities/tx.table';
-import { TxParameterTable } from './entities/txParameter.table';
-import { TxInputTable } from './entities/txInput.table';
+import { TxParameterTable } from './entities/tx-parameter.table';
+import { TxInputTable } from './entities/tx-input.table';
 import { EventTable } from './entities/event.table';
-import { EventParameterTable } from './entities/eventParameter.table';
+import { EventParameterTable } from './entities/event-parameter.table';
+import { WrappedTransactionTable } from './entities/wrapped-tx.table';
+import { WrappedTransactionParameterTable } from './entities/wrapped-tx-parameter.table';
+import { WrappedTransactionInputTable } from './entities/wrapped-tx-input.table';
 
 @Injectable()
 export class LuksoDataDbService {
@@ -272,6 +275,91 @@ export class LuksoDataDbService {
       [transactionHash],
     );
     return result.rows as TxParameterTable[];
+  }
+
+  // Wrapped Transaction table functions
+  public async insertWrappedTransaction(
+    wrappedTransaction: Omit<WrappedTransactionTable, 'id'>,
+  ): Promise<{ id: number }> {
+    const result = await this.client.query(
+      `
+    INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION}
+    ("parentTransactionHash", "parentId", "from", "to", "value", "methodId", "methodName")
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id
+  `,
+      [
+        wrappedTransaction.parentTransactionHash,
+        wrappedTransaction.parentId,
+        wrappedTransaction.from,
+        wrappedTransaction.to,
+        wrappedTransaction.value,
+        wrappedTransaction.methodId,
+        wrappedTransaction.methodName,
+      ],
+    );
+
+    return { id: result.rows[0].id };
+  }
+
+  public async getWrappedTransactionById(id: number): Promise<WrappedTransactionTable | null> {
+    const result = await this.client.query(
+      `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION} WHERE "id" = $1`,
+      [id],
+    );
+    return result.rows.length > 0 ? (result.rows[0] as WrappedTransactionTable) : null;
+  }
+
+  // Wrapped Transaction Input table functions
+  public async insertWrappedTransactionInput(
+    wrappedTransactionInput: WrappedTransactionInputTable,
+  ): Promise<void> {
+    await this.client.query(
+      `
+    INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT}
+    ("wrappedTransactionId", "input")
+    VALUES ($1, $2)
+  `,
+      [wrappedTransactionInput.wrappedTransactionId, wrappedTransactionInput.input],
+    );
+  }
+
+  public async getWrappedTransactionInputById(wrappedTransactionId: number): Promise<string> {
+    const result = await this.client.query(
+      `SELECT input FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT} WHERE "wrappedTransactionId" = $1`,
+      [wrappedTransactionId],
+    );
+    return result.rows.length > 0 ? result.rows[0].input : null;
+  }
+
+  // Wrapped Transaction Parameter table functions
+  public async insertWrappedTransactionParameter(
+    wrappedTransactionParameter: WrappedTransactionParameterTable,
+  ): Promise<void> {
+    await this.client.query(
+      `
+    INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}
+    ("wrappedTransactionId", "value", "name", "type", "position")
+    VALUES ($1, $2, $3, $4, $5)
+  `,
+      [
+        wrappedTransactionParameter.wrappedTransactionId,
+        wrappedTransactionParameter.value,
+        wrappedTransactionParameter.name,
+        wrappedTransactionParameter.type,
+        wrappedTransactionParameter.position,
+      ],
+    );
+  }
+
+  public async getWrappedTransactionParameters(
+    wrappedTransactionId: number,
+  ): Promise<WrappedTransactionParameterTable[]> {
+    const result = await this.client.query(
+      `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER} WHERE "wrappedTransactionId" = $1`,
+      [wrappedTransactionId],
+    );
+    return result.rows as WrappedTransactionParameterTable[];
   }
 
   // Event table functions

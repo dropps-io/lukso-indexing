@@ -1,22 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ContractTokenTable } from './entities/contractToken.table';
-import { MetadataAssetTable } from './entities/metadataAsset.table';
-import { MetadataTagTable } from './entities/metadataTag.table';
+import { ContractTokenTable } from './entities/contract-token.table';
+import { MetadataAssetTable } from './entities/metadata-asset.table';
+import { MetadataTagTable } from './entities/metadata-tag.table';
 import { TransactionTable } from './entities/tx.table';
-import { EventParameterTable } from './entities/eventParameter.table';
+import { EventParameterTable } from './entities/event-parameter.table';
 import { ContractTable } from './entities/contract.table';
-import { DataChangedTable } from './entities/dataChanged.table';
+import { DataChangedTable } from './entities/data-changed.table';
 import { EventTable } from './entities/event.table';
-import { MetadataLinkTable } from './entities/metadataLink.table';
-import { TxParameterTable } from './entities/txParameter.table';
+import { MetadataLinkTable } from './entities/metadata-link.table';
+import { TxParameterTable } from './entities/tx-parameter.table';
 import { MetadataTable } from './entities/metadata.table';
-import { TxInputTable } from './entities/txInput.table';
+import { TxInputTable } from './entities/tx-input.table';
 import { LuksoDataDbService } from './lukso-data-db.service';
-import { MetadataImageTable } from './entities/metadataImage.table';
+import { MetadataImageTable } from './entities/metadata-image.table';
 import { ADDRESS1, ADDRESS2, HASH1, HASH2, HASH3 } from '../../../test/utils/test-values';
 import { executeQuery } from '../../../test/utils/db-helpers';
 import { DB_DATA_TABLE } from './config';
+import { WrappedTransactionTable } from './entities/wrapped-tx.table';
+import { WrappedTransactionInputTable } from './entities/wrapped-tx-input.table';
+import { WrappedTransactionParameterTable } from './entities/wrapped-tx-parameter.table';
 
 describe('LuksoDataDbService', () => {
   let service: LuksoDataDbService;
@@ -73,6 +76,16 @@ describe('LuksoDataDbService', () => {
     topic2: HASH3,
     topic3: null,
     data: '0xjkl',
+  };
+
+  const wrappedTransaction: Omit<WrappedTransactionTable, 'id'> = {
+    parentTransactionHash: HASH1,
+    parentId: null,
+    from: ADDRESS1,
+    to: ADDRESS2,
+    value: '1000000000000000000',
+    methodId: '0x12345678',
+    methodName: 'transfer',
   };
 
   beforeEach(async () => {
@@ -474,6 +487,136 @@ describe('LuksoDataDbService', () => {
     it('should fetch empty array if no event parameters', async () => {
       const res = await service.getEventParameters(event.id);
       expect(res).toEqual([]);
+    });
+  });
+
+  describe('WrappedTransactionTable', () => {
+    beforeEach(async () => {
+      await service.insertTransaction(transaction);
+    });
+
+    it('should be able to insert a wrapped transaction', async () => {
+      await service.insertWrappedTransaction(wrappedTransaction);
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(wrappedTransaction);
+    });
+
+    it('should return id when insert a wrapped transaction', async () => {
+      const res = await service.insertWrappedTransaction(wrappedTransaction);
+
+      expect(res.id).toBeDefined();
+    });
+
+    it('should be able to query a wrapped transaction by id', async () => {
+      const id = (await service.insertWrappedTransaction(wrappedTransaction)).id;
+
+      const res = await service.getWrappedTransactionById(id);
+      expect(res).toMatchObject(wrappedTransaction);
+    });
+
+    it('should return null if querying an unknown id', async () => {
+      const res = await service.getWrappedTransactionById(1);
+      expect(res).toBeNull();
+    });
+  });
+
+  describe('WrappedTransactionInputTable', () => {
+    const wrappedTxInput: WrappedTransactionInputTable = {
+      wrappedTransactionId: 1,
+      input: '0x456',
+    };
+
+    beforeEach(async () => {
+      await service.insertTransaction(transaction);
+      wrappedTxInput.wrappedTransactionId = (
+        await service.insertWrappedTransaction(wrappedTransaction)
+      ).id;
+    });
+
+    it('should be able to insert a wrapped transaction input', async () => {
+      await service.insertWrappedTransactionInput(wrappedTxInput);
+
+      const res = await executeQuery(
+        `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT}`,
+        'DATA',
+      );
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(wrappedTxInput);
+    });
+
+    it('should be able to query a wrapped transaction input by wrapped transaction id', async () => {
+      await service.insertWrappedTransactionInput(wrappedTxInput);
+
+      const res = await service.getWrappedTransactionInputById(wrappedTxInput.wrappedTransactionId);
+      expect(res).toEqual(wrappedTxInput.input);
+    });
+
+    it('should return null if querying an unknown wrapped transaction id', async () => {
+      const res = await service.getWrappedTransactionInputById(wrappedTxInput.wrappedTransactionId);
+      expect(res).toBeNull();
+    });
+  });
+
+  describe('WrappedTransactionParameterTable', () => {
+    const wrappedTxParameter: WrappedTransactionParameterTable = {
+      wrappedTransactionId: 1,
+      value: '0x123',
+      name: 'param1',
+      type: 'uint256',
+      position: 1,
+    };
+
+    beforeEach(async () => {
+      await service.insertTransaction(transaction);
+      wrappedTxParameter.wrappedTransactionId = (
+        await service.insertWrappedTransaction(wrappedTransaction)
+      ).id;
+    });
+
+    it('should be able to insert a wrapped transaction parameter', async () => {
+      await service.insertWrappedTransactionParameter(wrappedTxParameter);
+
+      const res = await executeQuery(
+        `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}`,
+        'DATA',
+      );
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(wrappedTxParameter);
+    });
+
+    it('should be able to query wrapped transaction parameters by wrapped transaction id', async () => {
+      await service.insertWrappedTransactionParameter(wrappedTxParameter);
+      await service.insertWrappedTransactionParameter({
+        ...wrappedTxParameter,
+        value: 'value1',
+      });
+      await service.insertWrappedTransactionParameter({
+        ...wrappedTxParameter,
+        value: 'value2',
+      });
+
+      const res = await service.getWrappedTransactionParameters(
+        wrappedTxParameter.wrappedTransactionId,
+      );
+      expect(res.length).toEqual(3);
+      expect(res).toMatchObject([
+        wrappedTxParameter,
+        {
+          ...wrappedTxParameter,
+          value: 'value1',
+        },
+        {
+          ...wrappedTxParameter,
+          value: 'value2',
+        },
+      ]);
+    });
+
+    it('should return an empty array if querying with an unknown wrapped transaction id', async () => {
+      const res = await service.getWrappedTransactionParameters(1);
+      expect(res.length).toEqual(0);
     });
   });
 });

@@ -94,6 +94,8 @@ export class DecodingService {
       return map;
     }, {});
 
+    //TODO: Implement batch execution unwrapping
+
     switch (methodId) {
       case WRAPPING_METHOD.LSP6_EXECUTE_V0_6:
       case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_V0_6: {
