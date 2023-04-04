@@ -3,6 +3,6 @@ export interface MetadataImageTable {
   url: string;
   width: number;
   height: number;
-  type: string;
+  type: string | null;
   hash: string;
 }
