@@ -1,35 +1,89 @@
 import { Injectable } from '@nestjs/common';
 import Web3 from 'web3';
 import { Transaction, Log } from 'web3-core';
+import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
+import { AbiItem } from 'web3-utils';
+import winston from 'winston';
+import { LoggerService } from '@libs/logger/logger.service';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import LSP0ERC725Account from '@lukso/lsp-smart-contracts/artifacts/LSP0ERC725Account.json';
 
 import { RPC_URL } from '../globals';
 
 @Injectable()
 export class Web3Service {
   private readonly web3: Web3;
+  private readonly logger: winston.Logger;
 
-  constructor() {
+  constructor(
+    protected readonly loggerService: LoggerService,
+    protected readonly structureDB: LuksoStructureDbService,
+  ) {
     this.web3 = new Web3(RPC_URL);
+    this.logger = loggerService.getChildLogger('Web3');
   }
 
-  getWeb3(): Web3 {
+  public getWeb3(): Web3 {
     return this.web3;
   }
 
-  async getBlockTransactions(blockNumber: number): Promise<string[]> {
+  public async getBlockTransactions(blockNumber: number): Promise<string[]> {
     const block = await this.web3.eth.getBlock(blockNumber);
     return block.transactions;
   }
 
-  async getTransaction(transactionHash: string): Promise<Transaction> {
+  public async getTransaction(transactionHash: string): Promise<Transaction> {
     return await this.web3.eth.getTransaction(transactionHash);
   }
 
-  async getPastLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
+  public async getPastLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
     return await this.web3.eth.getPastLogs({ fromBlock: fromBlock, toBlock: toBlock });
   }
 
-  async getLastBlock(): Promise<number> {
+  public async getLastBlock(): Promise<number> {
     return await this.web3.eth.getBlockNumber();
+  }
+
+  /**
+   * Finds and returns the contract interface based on the provided contract address.
+   *
+   * @param {string} address - The address of the contract to find the interface for.
+   *
+   * @returns {Promise<ContractInterfaceTable|null>} The contract interface for the provided address, or null if not found.
+   */
+  public async identifyContractInterface(address: string): Promise<ContractInterfaceTable | null> {
+    try {
+      // Get the bytecode of the contract.
+      const contractCode = await this.web3.eth.getCode(address);
+
+      // If mo bytecode is found, then it's an EOA.
+      if (contractCode === '0x')
+        return { id: '0x00000000', code: 'EOA', name: 'Externally Owned Account', version: '0' };
+
+      const contractInterfaces = await this.structureDB.getContractInterfaces();
+
+      for (const contractInterface of contractInterfaces) {
+        // Check if the contract bytecode contains the contract interface id.
+        if (contractCode.includes(contractInterface.id.slice(2, 10))) {
+          // If there is a match, return the contract interface.
+          return contractInterface;
+        }
+      }
+
+      // If a match was not found, try to get the contract interface using the contract instance.
+      const contract = new this.web3.eth.Contract(LSP0ERC725Account.abi as AbiItem[], address);
+
+      for (const contractInterface of contractInterfaces) {
+        // Check if the contract instance supports the contract interface.
+        if (await contract.methods.supportsInterface(contractInterface.id).call()) {
+          return contractInterface;
+        }
+      }
+    } catch (e) {
+      this.logger.error(`Error while finding contract interface`, { address, e });
+      return null;
+    }
+
+    return null;
   }
 }

@@ -75,14 +75,15 @@ const setDataDecodedInput = {
 describe('DecodingService', () => {
   let service: TestDecodingService;
   const db = new LuksoStructureDbService();
+  const logger = new LoggerService();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         TestDecodingService,
         { provide: LuksoStructureDbService, useValue: db },
-        { provide: Web3Service, useValue: new Web3Service() },
-        { provide: LoggerService, useValue: new LoggerService() },
+        { provide: Web3Service, useValue: new Web3Service(logger, db) },
+        { provide: LoggerService, useValue: logger },
       ],
     }).compile();
 
