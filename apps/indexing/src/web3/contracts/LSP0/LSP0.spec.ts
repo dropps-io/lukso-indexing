@@ -6,6 +6,8 @@ import { LSP0 } from './LSP0';
 import { Web3Service } from '../../web3.service';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
 
+jest.setTimeout(15_000);
+
 describe('LSP0', () => {
   let service: LSP0;
   const logger = new LoggerService();
@@ -32,7 +34,7 @@ describe('LSP0', () => {
       expect(res).toBeNull();
     });
 
-    it('should fetch LSP4 data', async () => {
+    it('should fetch LSP7 data', async () => {
       const res = await service.fetchData(e2eProfileAddress);
 
       expect(res).toEqual({

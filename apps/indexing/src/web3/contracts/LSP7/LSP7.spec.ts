@@ -2,18 +2,19 @@ import { Test } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
-import { LSP4 } from './LSP4';
+import { LSP7 } from './LSP7';
 import { Web3Service } from '../../web3.service';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
 
 jest.setTimeout(15_000);
 
-describe('LSP4', () => {
-  let service: LSP4;
+describe('LSP7', () => {
+  let service: LSP7;
   const logger = new LoggerService();
   const db = new LuksoStructureDbService(logger);
 
-  const lsp7Contract = '0x3429BB49c2c67f42ca83b2164D52566F61c4aDF4';
+  const lsp7TokenContract = '0x3429BB49c2c67f42ca83b2164D52566F61c4aDF4';
+  const lsp7NFTContract = '0xb2a520690812e1B26c38D0B1c562686caDF446ea';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -25,7 +26,7 @@ describe('LSP4', () => {
     }).compile();
 
     const web3Service: Web3Service = moduleRef.get<Web3Service>(Web3Service);
-    service = new LSP4(web3Service, logger.getChildLogger('LSP4'));
+    service = new LSP7(web3Service, logger.getChildLogger('LSP7'));
   });
 
   describe('fetchData', () => {
@@ -34,16 +35,16 @@ describe('LSP4', () => {
       expect(res).toBeNull();
     });
 
-    it('should fetch LSP4 data', async () => {
-      const res = await service.fetchData(lsp7Contract);
+    it('should fetch data for a LSP7 token', async () => {
+      const res = await service.fetchData(lsp7TokenContract);
       expect(res).toEqual({
         metadata: {
-          address: lsp7Contract,
+          address: lsp7TokenContract,
           tokenId: null,
           name: 'My Super Token',
           description: 'My super description',
           symbol: 'MYT',
-          isNFT: null,
+          isNFT: false,
         },
         images: [
           {
@@ -105,6 +106,25 @@ describe('LSP4', () => {
         ],
         tags: [],
         links: [{ title: 'LUKSO Docs', url: 'https://docs.lukso.tech' }],
+        assets: [],
+      });
+    });
+
+    it('should fetch data for a LSP7 NFT', async () => {
+      const res = await service.fetchData(lsp7NFTContract);
+
+      expect(res).toEqual({
+        metadata: {
+          address: '0xb2a520690812e1B26c38D0B1c562686caDF446ea',
+          tokenId: null,
+          name: 'test',
+          description: null,
+          symbol: 'YLDZ',
+          isNFT: true,
+        },
+        images: [],
+        tags: [],
+        links: [],
         assets: [],
       });
     });

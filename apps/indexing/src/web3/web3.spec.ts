@@ -37,7 +37,7 @@ describe('Web3Service', () => {
       expect(contractInterface).toBeNull();
     });
 
-    it('should identify a LSP4', async () => {
+    it('should identify a LSP7', async () => {
       const contractInterface = await service.identifyContractInterface(
         '0xDfC36914b30DE4985C739B7ddEba16165F3bB313',
       );
