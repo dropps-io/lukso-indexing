@@ -15,6 +15,7 @@ export class LoggerService {
   private latestIndexedBlock = 0;
   private latestIndexedEventBlock = 0;
   private indexedTransactions = 0;
+  private indexedContracts = 0;
 
   constructor() {
     const consoleFormat = format.printf(({ level, message }) => {
@@ -89,8 +90,15 @@ export class LoggerService {
     this.printConsole();
   }
 
-  public incrementIndexedTransactions(): void {
-    this.indexedTransactions++;
+  public incrementIndexedCount(type: 'transaction' | 'contract'): void {
+    switch (type) {
+      case 'transaction':
+        this.indexedTransactions++;
+        break;
+      case 'contract':
+        this.indexedContracts++;
+        break;
+    }
     this.printConsole();
   }
 
@@ -115,5 +123,6 @@ export class LoggerService {
       )}% complete (${this.latestIndexedBlock} / ${this.lastBlock})`,
     );
     this.consoleLogger.log('info', `Indexed transactions: ${this.indexedTransactions}`);
+    this.consoleLogger.log('info', `Indexed contracts: ${this.indexedContracts}`);
   }
 }

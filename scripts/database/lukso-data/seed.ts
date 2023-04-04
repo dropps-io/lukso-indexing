@@ -22,7 +22,7 @@ export const seedLuksoData = async (dropTables?: boolean) => {
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT} (
 	"address" CHAR(42) NOT NULL,
-  "interfaceCode" VARCHAR(10) NOT NULL,
+  "interfaceCode" VARCHAR(10),
   "interfaceVersion" VARCHAR(10),
 	PRIMARY KEY ("address")
 )`);

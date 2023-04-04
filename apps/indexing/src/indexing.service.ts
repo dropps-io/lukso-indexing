@@ -20,7 +20,7 @@ export class IndexingService implements OnModuleInit {
   constructor(
     private readonly structureDB: LuksoStructureDbService,
     private readonly dataDB: LuksoDataDbService,
-    private readonly fetchingService: Web3Service,
+    private readonly web3Service: Web3Service,
     private readonly decodingService: DecodingService,
     private readonly logger: LoggerService,
   ) {
@@ -39,7 +39,7 @@ export class IndexingService implements OnModuleInit {
     const startTime = new Date();
 
     const config = await this.structureDB.getConfig();
-    const lastBlock = await this.fetchingService.getLastBlock();
+    const lastBlock = await this.web3Service.getLastBlock();
 
     this.logger.setLastBlock(lastBlock);
     this.logger.setLatestIndexedBlock(config.latestIndexedBlock);
@@ -49,7 +49,7 @@ export class IndexingService implements OnModuleInit {
 
     this.fileLogger.info(`Indexing data from block ${blockToIndex}`, { block: blockToIndex });
 
-    const transactionsHashes = await this.fetchingService.getBlockTransactions(blockToIndex);
+    const transactionsHashes = await this.web3Service.getBlockTransactions(blockToIndex);
 
     for (const transactionHash of transactionsHashes) await this.indexTransaction(transactionHash);
 
@@ -81,7 +81,7 @@ export class IndexingService implements OnModuleInit {
     this.fileLogger.info('Indexing transaction', { transactionHash });
 
     try {
-      const transaction = await this.fetchingService.getTransaction(transactionHash);
+      const transaction = await this.web3Service.getTransaction(transactionHash);
       const methodId = transaction.input.slice(0, 10);
       const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
 
@@ -96,7 +96,7 @@ export class IndexingService implements OnModuleInit {
       };
 
       await this.dataDB.insertTransaction(transactionRow);
-      this.logger.incrementIndexedTransactions();
+      this.logger.incrementIndexedCount('transaction');
 
       await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.input });
 
@@ -186,5 +186,21 @@ export class IndexingService implements OnModuleInit {
         parentTxHash,
       });
     }
+  }
+
+  async indexContract(address: string) {
+    // Check if the contract have already been indexed (contract indexed only if interfaceCode is set)
+    const contractAlreadyIndexed = await this.dataDB.getContractByAddress(address);
+    if (contractAlreadyIndexed && contractAlreadyIndexed?.interfaceCode) return;
+
+    this.fileLogger.info('Indexing contract', { address });
+
+    const contractInterface = await this.web3Service.identifyContractInterface(address);
+    await this.dataDB.insertContract({
+      address,
+      interfaceCode: contractInterface?.code ?? 'unknown',
+      interfaceVersion: contractInterface?.version ?? null,
+    });
+    this.logger.incrementIndexedCount('contract');
   }
 }

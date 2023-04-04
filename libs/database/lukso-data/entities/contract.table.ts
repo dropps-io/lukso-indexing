@@ -1,5 +1,5 @@
 export interface ContractTable {
   address: string;
-  interfaceCode: string;
-  interfaceVersion: string;
+  interfaceCode: string | null;
+  interfaceVersion: string | null;
 }
