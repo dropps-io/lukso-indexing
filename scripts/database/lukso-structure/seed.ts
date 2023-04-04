@@ -1,11 +1,7 @@
 import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
-
-import {
-  DB_STRUCTURE_TABLE,
-  DB_STRUCTURE_TYPE,
-} from '../../../libs/database/lukso-structure/config';
+import { DB_STRUCTURE_TABLE, DB_STRUCTURE_TYPE } from '@db/lukso-structure/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 

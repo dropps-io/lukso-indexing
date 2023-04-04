@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { LuksoDataDbModule } from '@db/lukso-data/lukso-data-db.module';
+import { LuksoStructureDbModule } from '@db/lukso-structure/lukso-structure-db.module';
+import { LoggerModule } from '@libs/logger/logger.module';
 
 import { Web3Module } from './web3/web3.module';
 import { DecodingModule } from './decoding/decoding.module';
-import { LuksoDataDbModule } from '../../../libs/database/lukso-data/lukso-data-db.module';
 import { UpdateModule } from './update/update.module';
-import { LuksoStructureDbModule } from '../../../libs/database/lukso-structure/lukso-structure-db.module';
 import { IndexingService } from './indexing.service';
-import { LoggerModule } from '../../../libs/logger/logger.module';
 
 @Module({
   imports: [

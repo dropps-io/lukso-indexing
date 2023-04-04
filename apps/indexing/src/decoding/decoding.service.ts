@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import Web3 from 'web3';
-import LSP6KeyManager from '@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json';
-import { AbiItem, toChecksumAddress } from 'web3-utils';
 import winston from 'winston';
+import { AbiItem, toChecksumAddress } from 'web3-utils';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import { LoggerService } from '@libs/logger/logger.service';
+import LSP6KeyManager from '@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json';
 
-import { LuksoStructureDbService } from '../../../../libs/database/lukso-structure/lukso-structure-db.service';
 import { WRAPPING_METHOD } from './types/enums';
 import { Web3Service } from '../web3/web3.service';
-import { LoggerService } from '../../../../libs/logger/logger.service';
 import { WrappedTransaction } from './types/wrapped-tx';
 import { DecodedParameter } from './types/decoded-parameter';
 

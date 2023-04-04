@@ -19,10 +19,9 @@ import ERC721 from '@openzeppelin/contracts/build/contracts/ERC721PresetMinterPa
 import ERC777 from '@openzeppelin/contracts/build/contracts/ERC777PresetFixedSupply.json';
 import ERC1155 from '@openzeppelin/contracts/build/contracts/ERC1155PresetMinterPauser.json';
 import { ERC725JSONSchema } from '@erc725/erc725.js';
-
-import { tryExecuting } from '../../../utils/try-executing';
-import { generateAndPersistMethodInterfaces } from '../../../libs/database/lukso-structure/utils/generate-method-interfaces';
-import { LuksoStructureDbService } from '../../../libs/database/lukso-structure/lukso-structure-db.service';
+import { tryExecuting } from '@utils/try-executing';
+import { generateAndPersistMethodInterfaces } from '@db/lukso-structure/utils/generate-method-interfaces';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
 const standardInterfaces = [
   { id: '0x9a3bfe88', code: 'LSP0', name: 'Universal Profile', version: '0.6' },

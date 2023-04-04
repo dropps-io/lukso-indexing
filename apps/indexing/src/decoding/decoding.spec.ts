@@ -1,11 +1,11 @@
 import { Test } from '@nestjs/testing';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
+import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
+import { LoggerService } from '@libs/logger/logger.service';
 
-import { DecodingService } from './decoding.service';
-import { LuksoStructureDbService } from '../../../../libs/database/lukso-structure/lukso-structure-db.service';
-import { MethodInterfaceTable } from '../../../../libs/database/lukso-structure/entities/methodInterface.table';
-import { MethodParameterTable } from '../../../../libs/database/lukso-structure/entities/methodParameter.table';
 import { Web3Service } from '../web3/web3.service';
-import { LoggerService } from '../../../../libs/logger/logger.service';
+import { DecodingService } from './decoding.service';
 import { ADDRESS1 } from '../../../../test/utils/test-values';
 
 class TestDecodingService extends DecodingService {

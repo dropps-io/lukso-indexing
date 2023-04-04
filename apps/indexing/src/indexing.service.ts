@@ -1,13 +1,13 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import winston from 'winston';
+import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import { TransactionTable } from '@db/lukso-data/entities/tx.table';
+import { LoggerService } from '@libs/logger/logger.service';
 
 import { NODE_ENV } from './globals';
-import { LuksoStructureDbService } from '../../../libs/database/lukso-structure/lukso-structure-db.service';
 import { Web3Service } from './web3/web3.service';
-import { LuksoDataDbService } from '../../../libs/database/lukso-data/lukso-data-db.service';
-import { TransactionTable } from '../../../libs/database/lukso-data/entities/tx.table';
 import { DecodingService } from './decoding/decoding.service';
-import { LoggerService } from '../../../libs/logger/logger.service';
 import { DecodedParameter } from './decoding/types/decoded-parameter';
 
 /**
@@ -74,6 +74,7 @@ export class IndexingService implements OnModuleInit {
    * @param {string} transactionHash - The transaction hash to index.
    */
   protected async indexTransaction(transactionHash: string) {
+    // Check if the transaction have already been indexed
     const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
     if (transactionAlreadyIndexed) return;
 

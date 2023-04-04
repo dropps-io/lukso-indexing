@@ -1,8 +1,7 @@
 import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
-
-import { DB_DATA_TABLE } from '../../../libs/database/lukso-data/config';
+import { DB_DATA_TABLE } from '@db/lukso-data/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 

@@ -1,10 +1,6 @@
 import { Client } from 'pg';
-
-import { setupEnv } from '../../utils/setup-env';
-import {
-  LUKSO_STRUCTURE_CONNECTION_STRING,
-  DB_STRUCTURE_TABLE,
-} from '../../libs/database/lukso-structure/config';
+import { setupEnv } from '@utils/setup-env';
+import { LUKSO_STRUCTURE_CONNECTION_STRING, DB_STRUCTURE_TABLE } from '@db/lukso-structure/config';
 
 setupEnv();
 

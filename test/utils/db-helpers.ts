@@ -1,11 +1,8 @@
 import { Client, QueryResult } from 'pg';
+import { LUKSO_STRUCTURE_CONNECTION_STRING, DB_STRUCTURE_TABLE } from '@db/lukso-structure/config';
+import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from '@db/lukso-data/config';
+import { setupEnv } from '@utils/setup-env';
 
-import {
-  LUKSO_STRUCTURE_CONNECTION_STRING,
-  DB_STRUCTURE_TABLE,
-} from '../../libs/database/lukso-structure/config';
-import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from '../../libs/database/lukso-data/config';
-import { setupEnv } from '../../utils/setup-env';
 import { seedLuksoData } from '../../scripts/database/lukso-data/seed';
 import { seedLuksoStructure } from '../../scripts/database/lukso-structure/seed';
 

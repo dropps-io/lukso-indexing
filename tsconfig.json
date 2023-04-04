@@ -11,7 +11,7 @@
     "target": "es2017",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "baseUrl": ".",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -19,5 +19,15 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@db/lukso-data": ["libs/database/lukso-data"],
+      "@db/lukso-data/*": ["libs/database/lukso-data/*"],
+      "@db/lukso-structure": ["libs/database/lukso-structure"],
+      "@db/lukso-structure/*": ["libs/database/lukso-structure/*"],
+      "@libs/logger": ["libs/logger"],
+      "@libs/logger/*": ["libs/logger/*"],
+      "@utils": ["utils"],
+      "@utils/*": ["utils/*"],
+    },
   }
 }

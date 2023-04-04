@@ -7,9 +7,9 @@
     "indexing": "nest start indexing",
     "build": "nest build indexing",
     "compile": "tsc",
-    "seed-lukso-structure-db": "ts-node scripts/database/lukso-structure/index.ts",
-    "seed-lukso-data-db": "ts-node scripts/database/lukso-data/index.ts",
-    "populate-lukso-structure-db": "ts-node scripts/database/lukso-structure/populate.ts",
+    "seed-lukso-structure-db": "ts-node -r tsconfig-paths/register scripts/database/lukso-structure/index.ts",
+    "seed-lukso-data-db": "ts-node -r tsconfig-paths/register scripts/database/lukso-data/index.ts",
+    "populate-lukso-structure-db": "ts-node -r tsconfig-paths/register scripts/database/lukso-structure/populate.ts",
     "seed:populate": "npm run seed-lukso-structure-db && npm run seed-lukso-data-db && npm run populate-lukso-structure-db",
     "test": "jest --runInBand",
     "test:cov": "jest --coverage --runInBand",
@@ -53,6 +53,7 @@
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.4.2",
     "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^4.9.5"
   }
 }

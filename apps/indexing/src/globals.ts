@@ -1,4 +1,4 @@
-import { setupEnv } from '../../../utils/setup-env';
+import { setupEnv } from '@utils/setup-env';
 
 setupEnv();
 
