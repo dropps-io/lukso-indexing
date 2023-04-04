@@ -1,4 +1,4 @@
-import { setupEnv } from '../../../utils/setup-env';
+import { setupEnv } from '@utils/setup-env';
 
 setupEnv();
 
@@ -15,3 +15,5 @@ export enum DB_STRUCTURE_TYPE {
 }
 
 export const LUKSO_STRUCTURE_CONNECTION_STRING = process.env.LUKSO_STRUCTURE_CONNECTION_STRING;
+
+export const CACHE_REFRESH_INTERVAL_IN_MS = 1000 * 60 * 60; // 60 minutes

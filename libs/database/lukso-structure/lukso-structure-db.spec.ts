@@ -13,7 +13,8 @@ import {
 describe('LuksoStructureDbService', () => {
   let service: LuksoStructureDbService;
 
-  beforeAll(async () => {
+  // As the service is using a cache system, we need to reset the cache before each test
+  beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [LuksoStructureDbService],
     }).compile();
@@ -85,12 +86,85 @@ describe('LuksoStructureDbService', () => {
       );
       expect(fetchedContractInterface).toEqual(TEST_CONTRACT_INTERFACE[0]);
     });
+
+    it('should add the inserted row to the cache', async () => {
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[0]);
+
+      // Creating the cache
+      await service.getContractInterfaces();
+
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[1]);
+
+      const fetchedContractInterfaces = await service.getContractInterfaces();
+
+      expect(fetchedContractInterfaces).toEqual([
+        TEST_CONTRACT_INTERFACE[0],
+        TEST_CONTRACT_INTERFACE[1],
+      ]);
+    });
   });
 
   describe('getContractInterfaceById', () => {
     it('should return null if nothing found', async () => {
-      const fetchedSchema = await service.getContractInterfaceById(TEST_CONTRACT_INTERFACE[0].id);
-      expect(fetchedSchema).toBeNull();
+      const contractInterface = await service.getContractInterfaceById(
+        TEST_CONTRACT_INTERFACE[0].id,
+      );
+      expect(contractInterface).toBeNull();
+    });
+
+    it('should return cached data', async () => {
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[0]);
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[1]);
+
+      // Creating the cache
+      await service.getContractInterfaces();
+
+      // DELETING the values from the DB, to be sure that the cache is used
+      await executeQuery(`DELETE FROM ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE}`, 'STRUCTURE');
+
+      const contractInterface = await service.getContractInterfaceById(
+        TEST_CONTRACT_INTERFACE[1].id,
+      );
+
+      // As DB is empty, it will be true only if the cache is used
+      expect(contractInterface).toEqual(TEST_CONTRACT_INTERFACE[1]);
+    });
+  });
+
+  describe('getContractInterfaces', () => {
+    it('should return an array of ContractInterfaceTable records', async () => {
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[0]);
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[1]);
+
+      const fetchedContractInterfaces = await service.getContractInterfaces();
+      expect(fetchedContractInterfaces).toEqual([
+        TEST_CONTRACT_INTERFACE[0],
+        TEST_CONTRACT_INTERFACE[1],
+      ]);
+    });
+
+    it('should return cached data', async () => {
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[0]);
+      await service.insertContractInterface(TEST_CONTRACT_INTERFACE[1]);
+
+      // Creating the cache
+      await service.getContractInterfaces();
+
+      // DELETING the values from the DB, to be sure that the cache is used
+      await executeQuery(`DELETE FROM ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE}`, 'STRUCTURE');
+
+      const fetchedContractInterfaces = await service.getContractInterfaces();
+
+      // As DB is empty, it will be true only if the cache is used
+      expect(fetchedContractInterfaces).toEqual([
+        TEST_CONTRACT_INTERFACE[0],
+        TEST_CONTRACT_INTERFACE[1],
+      ]);
+    });
+
+    it('should return an empty array if nothing found', async () => {
+      const fetchedContractInterfaces = await service.getContractInterfaces();
+      expect(fetchedContractInterfaces).toEqual([]);
     });
   });
 

@@ -1,7 +1,11 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Pool } from 'pg';
 
-import { LUKSO_STRUCTURE_CONNECTION_STRING, DB_STRUCTURE_TABLE } from './config';
+import {
+  LUKSO_STRUCTURE_CONNECTION_STRING,
+  DB_STRUCTURE_TABLE,
+  CACHE_REFRESH_INTERVAL_IN_MS,
+} from './config';
 import { ConfigTable } from './entities/config.table';
 import { ERC725YSchemaTable } from './entities/erc725YSchema.table';
 import { ContractInterfaceTable } from './entities/contractInterface.table';
@@ -11,6 +15,17 @@ import { MethodParameterTable } from './entities/methodParameter.table';
 @Injectable()
 export class LuksoStructureDbService implements OnModuleDestroy {
   private readonly client: Pool;
+  private cache: {
+    contractInterfaces: {
+      values: ContractInterfaceTable[];
+      lastRefresh: number;
+    };
+  } = {
+    contractInterfaces: {
+      values: [],
+      lastRefresh: 0,
+    },
+  };
 
   constructor() {
     this.client = new Pool({
@@ -82,14 +97,38 @@ export class LuksoStructureDbService implements OnModuleDestroy {
         contractInterface.version,
       ],
     );
+
+    // Update cache with the new value
+    this.cache.contractInterfaces.values.push(contractInterface);
   }
 
   async getContractInterfaceById(id: string): Promise<ContractInterfaceTable | null> {
+    const cachedInterface = this.cache.contractInterfaces.values.find((c) => c.id === id);
+    if (cachedInterface) return cachedInterface;
+
     const result = await this.client.query(
       `SELECT * FROM ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} WHERE "id" = $1`,
       [id],
     );
     return result.rows.length > 0 ? (result.rows[0] as ContractInterfaceTable) : null;
+  }
+
+  async getContractInterfaces(): Promise<ContractInterfaceTable[]> {
+    const now = Date.now();
+
+    //If the cache is empty or the cache is older than CACHE_REFRESH_INTERVAL_IN_MS, then refresh the cache
+    if (
+      this.cache.contractInterfaces.values.length === 0 ||
+      now - this.cache.contractInterfaces.lastRefresh >= CACHE_REFRESH_INTERVAL_IN_MS
+    ) {
+      const result = await this.client.query(
+        `SELECT * FROM ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE}`,
+      );
+      this.cache.contractInterfaces.values = result.rows as ContractInterfaceTable[];
+      this.cache.contractInterfaces.lastRefresh = now;
+    }
+
+    return this.cache.contractInterfaces.values;
   }
 
   async insertMethodInterface(methodInterface: MethodInterfaceTable): Promise<void> {
