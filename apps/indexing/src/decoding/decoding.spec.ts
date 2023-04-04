@@ -74,8 +74,8 @@ const setDataDecodedInput = {
 
 describe('DecodingService', () => {
   let service: TestDecodingService;
-  const db = new LuksoStructureDbService();
   const logger = new LoggerService();
+  const db = new LuksoStructureDbService(logger);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({

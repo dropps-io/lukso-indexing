@@ -1,4 +1,4 @@
-export interface WrappedTransactionTable {
+export interface WrappedTxTable {
   id: number;
   parentTransactionHash: string | null;
   parentId: number | null;

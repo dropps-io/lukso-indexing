@@ -146,7 +146,7 @@ export class IndexingService implements OnModuleInit {
       // If there are wrapped transactions, insert them into the database and index their wrapped transactions as well
       if (unwrappedTransactions) {
         for (const unwrappedTransaction of unwrappedTransactions) {
-          const row = await this.dataDB.insertWrappedTransaction({
+          const row = await this.dataDB.insertWrappedTx({
             from: contractAddress,
             to: unwrappedTransaction.to,
             value: unwrappedTransaction.value,
@@ -156,13 +156,13 @@ export class IndexingService implements OnModuleInit {
             methodName: unwrappedTransaction.methodName,
           });
 
-          await this.dataDB.insertWrappedTransactionInput({
+          await this.dataDB.insertWrappedTxInput({
             wrappedTransactionId: row.id,
             input: unwrappedTransaction.input,
           });
 
           for (const parameter of unwrappedTransaction.parameters)
-            await this.dataDB.insertWrappedTransactionParameter({
+            await this.dataDB.insertWrappedTxParameter({
               ...parameter,
               wrappedTransactionId: row.id,
             });

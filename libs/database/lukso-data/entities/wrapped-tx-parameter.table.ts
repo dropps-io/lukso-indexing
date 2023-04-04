@@ -1,4 +1,4 @@
-export interface WrappedTransactionParameterTable {
+export interface WrappedTxParameterTable {
   wrappedTransactionId: number;
   value: string;
   name: string;

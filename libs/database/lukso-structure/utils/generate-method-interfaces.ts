@@ -1,7 +1,8 @@
 import { AbiItem, AbiInput, keccak256 } from 'web3-utils';
+import { LoggerService } from '@libs/logger/logger.service';
+import { tryExecuting } from '@utils/try-executing';
 
 import { MethodInterfaceTable } from '../entities/methodInterface.table';
-import { tryExecuting } from '../../../../utils/try-executing';
 import { LuksoStructureDbService } from '../lukso-structure-db.service';
 import { generateMethodSkeleton } from './method-skeleton';
 
@@ -9,7 +10,7 @@ type MethodInterfaceWithParams = MethodInterfaceTable & {
   parameters: AbiInput[];
 };
 
-const db = new LuksoStructureDbService();
+const db = new LuksoStructureDbService(new LoggerService());
 
 /**
  * Generates and persists method interfaces and their parameters from an array of contract ABIs.

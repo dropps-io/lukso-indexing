@@ -6,14 +6,15 @@ import { Web3Service } from './web3.service';
 import { TEST_CONTRACT_INTERFACE } from '../../../../test/utils/test-values';
 describe('Web3Service', () => {
   let service: Web3Service;
-  const db = new LuksoStructureDbService();
+  const logger = new LoggerService();
+  const db = new LuksoStructureDbService(logger);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         Web3Service,
         { provide: LuksoStructureDbService, useValue: db },
-        { provide: LoggerService, useValue: new LoggerService() },
+        { provide: LoggerService, useValue: logger },
       ],
     }).compile();
 

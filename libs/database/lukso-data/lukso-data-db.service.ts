@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Pool, QueryResult } from 'pg';
+import { LoggerService } from '@libs/logger/logger.service';
+import winston from 'winston';
 
 import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
@@ -15,15 +17,19 @@ import { TxParameterTable } from './entities/tx-parameter.table';
 import { TxInputTable } from './entities/tx-input.table';
 import { EventTable } from './entities/event.table';
 import { EventParameterTable } from './entities/event-parameter.table';
-import { WrappedTransactionTable } from './entities/wrapped-tx.table';
-import { WrappedTransactionParameterTable } from './entities/wrapped-tx-parameter.table';
-import { WrappedTransactionInputTable } from './entities/wrapped-tx-input.table';
+import { WrappedTxTable } from './entities/wrapped-tx.table';
+import { WrappedTxParameterTable } from './entities/wrapped-tx-parameter.table';
+import { WrappedTxInputTable } from './entities/wrapped-tx-input.table';
 
 @Injectable()
 export class LuksoDataDbService {
-  private readonly client: Pool;
+  private readonly client: Pool & {
+    query: (query: string, values?: any[]) => Promise<QueryResult<any>>;
+  };
+  private readonly logger: winston.Logger;
 
-  constructor() {
+  constructor(private readonly loggerService: LoggerService) {
+    this.logger = this.loggerService.getChildLogger('LuksoDataDb');
     this.client = new Pool({
       connectionString: LUKSO_DATA_CONNECTION_STRING,
     });
@@ -31,7 +37,7 @@ export class LuksoDataDbService {
 
   // Contract table functions
   public async insertContract(contract: ContractTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.CONTRACT}
       ("address", "interfaceCode", "interfaceVersion")
@@ -42,16 +48,16 @@ export class LuksoDataDbService {
   }
 
   public async getContractByAddress(address: string): Promise<ContractTable | null> {
-    const result = await this.client.query(
+    const rows = await this.executeQuery<ContractTable>(
       `SELECT * FROM ${DB_DATA_TABLE.CONTRACT} WHERE "address" = $1`,
       [address],
     );
-    return result.rows.length > 0 ? (result.rows[0] as ContractTable) : null;
+    return rows.length > 0 ? rows[0] : null;
   }
 
   // ContractToken table functions
   public async insertContractToken(contractToken: ContractTokenTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
           INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN}
           VALUES ($1, $2, $3, $4, $5)
@@ -67,16 +73,16 @@ export class LuksoDataDbService {
   }
 
   public async getContractTokenById(id: string): Promise<ContractTokenTable | null> {
-    const result = await this.client.query(
+    const rows = await this.executeQuery<ContractTokenTable>(
       `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "id" = $1`,
       [id],
     );
-    return result.rows.length > 0 ? (result.rows[0] as ContractTokenTable) : null;
+    return rows.length > 0 ? rows[0] : null;
   }
 
   // Metadata table functions
   public async insertMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
-    const result = await this.client.query(
+    const rows = await this.executeQuery<{ id: number }>(
       `
           INSERT INTO ${DB_DATA_TABLE.METADATA}
           ("address", "tokenId", "name", "symbol", "description", "isNFT")
@@ -93,7 +99,7 @@ export class LuksoDataDbService {
       ],
     );
 
-    return { id: result.rows[0].id };
+    return { id: rows[0].id };
   }
   public async getMetadata(address: string, tokenId?: string): Promise<MetadataTable | null> {
     const query = `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId"${
@@ -101,13 +107,13 @@ export class LuksoDataDbService {
     }`;
     const queryParams = tokenId ? [address, tokenId] : [address];
 
-    const result = await this.client.query(query, queryParams);
-    return result.rows.length > 0 ? (result.rows[0] as MetadataTable) : null;
+    const rows = await this.executeQuery<MetadataTable>(query, queryParams);
+    return rows.length > 0 ? rows[0] : null;
   }
 
   // MetadataImage table functions
   public async insertMetadataImage(metadataImage: MetadataImageTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_IMAGE}
       ("metadataId", "url", "width", "height", "type", "hash")
@@ -126,7 +132,7 @@ export class LuksoDataDbService {
 
   // MetadataLink table functions
   public async insertMetadataLink(metadataLink: MetadataLinkTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_LINK}
       ("metadataId", "title", "url")
@@ -138,7 +144,7 @@ export class LuksoDataDbService {
 
   // MetadataTag table functions
   public async insertMetadataTag(metadataTag: MetadataTagTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_TAG}
       ("metadataId", "title")
@@ -149,16 +155,16 @@ export class LuksoDataDbService {
   }
 
   public async getMetadataTagsByMetadataId(metadataId: number): Promise<string[]> {
-    const result = await this.client.query(
+    const rows = await this.executeQuery<MetadataTagTable>(
       `SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG} WHERE "metadataId" = $1`,
       [metadataId],
     );
-    return result.rows.map((r: MetadataTagTable) => r.title);
+    return rows.map((r) => r.title);
   }
 
   // MetadataAsset table functions
   public async insertMetadataAsset(metadataAsset: MetadataAssetTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.METADATA_ASSET}
       ("metadataId", "url", "fileType", "hash")
@@ -169,16 +175,15 @@ export class LuksoDataDbService {
   }
 
   public async getMetadataAssetsByMetadataId(metadataId: number): Promise<MetadataAssetTable[]> {
-    const result = await this.client.query(
+    return await this.executeQuery<MetadataAssetTable>(
       `SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET} WHERE "metadataId" = $1`,
       [metadataId],
     );
-    return result.rows as MetadataAssetTable[];
   }
 
   // DataChanged table functions
   public async insertDataChanged(dataChanged: DataChangedTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.DATA_CHANGED}
       ("address", "key", "value", "blockNumber")
@@ -192,16 +197,15 @@ export class LuksoDataDbService {
     address: string,
     key: string,
   ): Promise<DataChangedTable[]> {
-    const result = await this.client.query(
+    return await this.executeQuery<DataChangedTable>(
       `SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED} WHERE "address" = $1 AND "key" = $2`,
       [address, key],
     );
-    return result.rows as DataChangedTable[];
   }
 
   // Transaction table functions
   public async insertTransaction(transaction: TransactionTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.TRANSACTION}
       ("hash", "nonce", "blockHash", "blockNumber", "transactionIndex", "methodId", "methodName", "from", "to", "value", "gasPrice", "gas") VALUES
@@ -225,16 +229,16 @@ export class LuksoDataDbService {
   }
 
   public async getTransactionByHash(hash: string): Promise<TransactionTable | null> {
-    const result = await this.client.query(
+    const rows = await this.executeQuery<TransactionTable>(
       `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION} WHERE "hash" = $1`,
       [hash],
     );
-    return result.rows.length > 0 ? (result.rows[0] as TransactionTable) : null;
+    return rows.length > 0 ? rows[0] : null;
   }
 
   // TransactionInput table functions
   public async insertTransactionInput(transactionInput: TxInputTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.TRANSACTION_INPUT}
       ("transactionHash", "input")
@@ -244,17 +248,17 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getTransactionInput(transactionHash: string): Promise<string> {
-    const result = await this.client.query(
+  public async getTransactionInput(transactionHash: string): Promise<string | null> {
+    const rows = await this.executeQuery<TxInputTable>(
       `SELECT input FROM ${DB_DATA_TABLE.TRANSACTION_INPUT} WHERE "transactionHash" = $1`,
       [transactionHash],
     );
-    return result.rows.length > 0 ? result.rows[0].input : null;
+    return rows.length > 0 ? rows[0].input : null;
   }
 
   // TransactionParameter table functions
   public async insertTransactionParameter(transactionParameter: TxParameterTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.TRANSACTION_PARAMETER}
       VALUES ($1, $2, $3, $4, $5)
@@ -270,18 +274,17 @@ export class LuksoDataDbService {
   }
 
   public async getTransactionParameters(transactionHash: string): Promise<TxParameterTable[]> {
-    const result = await this.client.query(
+    return await this.executeQuery<TxParameterTable>(
       `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_PARAMETER} WHERE "transactionHash" = $1`,
       [transactionHash],
     );
-    return result.rows as TxParameterTable[];
   }
 
   // Wrapped Transaction table functions
-  public async insertWrappedTransaction(
-    wrappedTransaction: Omit<WrappedTransactionTable, 'id'>,
+  public async insertWrappedTx(
+    wrappedTransaction: Omit<WrappedTxTable, 'id'>,
   ): Promise<{ id: number }> {
-    const result = await this.client.query(
+    const rows = await this.executeQuery<{ id: number }>(
       `
     INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION}
     ("parentTransactionHash", "parentId", "from", "to", "value", "methodId", "methodName")
@@ -299,22 +302,20 @@ export class LuksoDataDbService {
       ],
     );
 
-    return { id: result.rows[0].id };
+    return { id: rows[0].id };
   }
 
-  public async getWrappedTransactionById(id: number): Promise<WrappedTransactionTable | null> {
-    const result = await this.client.query(
+  public async getWrappedTxById(id: number): Promise<WrappedTxTable | null> {
+    const rows = await this.executeQuery<WrappedTxTable>(
       `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION} WHERE "id" = $1`,
       [id],
     );
-    return result.rows.length > 0 ? (result.rows[0] as WrappedTransactionTable) : null;
+    return rows.length > 0 ? rows[0] : null;
   }
 
   // Wrapped Transaction Input table functions
-  public async insertWrappedTransactionInput(
-    wrappedTransactionInput: WrappedTransactionInputTable,
-  ): Promise<void> {
-    await this.client.query(
+  public async insertWrappedTxInput(wrappedTransactionInput: WrappedTxInputTable): Promise<void> {
+    await this.executeQuery(
       `
     INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT}
     ("wrappedTransactionId", "input")
@@ -324,19 +325,19 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getWrappedTransactionInputById(wrappedTransactionId: number): Promise<string> {
-    const result = await this.client.query(
+  public async getWrappedTxInputById(wrappedTransactionId: number): Promise<string | null> {
+    const rows = await this.executeQuery<WrappedTxInputTable>(
       `SELECT input FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT} WHERE "wrappedTransactionId" = $1`,
       [wrappedTransactionId],
     );
-    return result.rows.length > 0 ? result.rows[0].input : null;
+    return rows.length > 0 ? rows[0].input : null;
   }
 
   // Wrapped Transaction Parameter table functions
-  public async insertWrappedTransactionParameter(
-    wrappedTransactionParameter: WrappedTransactionParameterTable,
+  public async insertWrappedTxParameter(
+    wrappedTransactionParameter: WrappedTxParameterTable,
   ): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
     INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}
     ("wrappedTransactionId", "value", "name", "type", "position")
@@ -352,19 +353,18 @@ export class LuksoDataDbService {
     );
   }
 
-  public async getWrappedTransactionParameters(
+  public async getWrappedTxParameters(
     wrappedTransactionId: number,
-  ): Promise<WrappedTransactionParameterTable[]> {
-    const result = await this.client.query(
+  ): Promise<WrappedTxParameterTable[]> {
+    return await this.executeQuery<WrappedTxParameterTable>(
       `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER} WHERE "wrappedTransactionId" = $1`,
       [wrappedTransactionId],
     );
-    return result.rows as WrappedTransactionParameterTable[];
   }
 
   // Event table functions
   public async insertEvent(event: EventTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.EVENT}
       ("id", "blockNumber", "transactionHash", "logIndex", "address", "eventName", "topic0", "topic1", "topic2", "topic3", "data")
@@ -387,15 +387,16 @@ export class LuksoDataDbService {
   }
 
   public async getEventById(id: string): Promise<EventTable | null> {
-    const result = await this.client.query(`SELECT * FROM ${DB_DATA_TABLE.EVENT} WHERE "id" = $1`, [
-      id,
-    ]);
-    return result.rows.length > 0 ? (result.rows[0] as EventTable) : null;
+    const rows = await this.executeQuery<EventTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.EVENT} WHERE "id" = $1`,
+      [id],
+    );
+    return rows.length > 0 ? rows[0] : null;
   }
 
   // EventParameter table functions
   public async insertEventParameter(eventParameter: EventParameterTable): Promise<void> {
-    await this.client.query(
+    await this.executeQuery(
       `INSERT INTO ${DB_DATA_TABLE.EVENT_PARAMETER} VALUES ($1, $2, $3, $4, $5)`,
       [
         eventParameter.eventId,
@@ -408,10 +409,20 @@ export class LuksoDataDbService {
   }
 
   public async getEventParameters(eventId: string): Promise<EventParameterTable[]> {
-    const result = await this.client.query(
+    return await this.executeQuery<EventParameterTable>(
       `SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER} WHERE "eventId" = $1`,
       [eventId],
     );
-    return result.rows as EventParameterTable[];
+  }
+
+  private async executeQuery<T>(query: string, values?: any[]): Promise<T[]> {
+    try {
+      const result = await this.client.query(query, values);
+      return result.rows as T[];
+    } catch (error) {
+      // Log the error and rethrow a custom error with a more specific message
+      this.logger.error('Error executing a query', { query, values, error });
+      throw new Error(`Error executing query: ${query}`);
+    }
   }
 }

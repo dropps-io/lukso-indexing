@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { LoggerService } from '@libs/logger/logger.service';
 
 import { LuksoStructureDbService } from './lukso-structure-db.service';
 import { ConfigTable } from './entities/config.table';
@@ -16,7 +17,10 @@ describe('LuksoStructureDbService', () => {
   // As the service is using a cache system, we need to reset the cache before each test
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [LuksoStructureDbService],
+      providers: [
+        LuksoStructureDbService,
+        { provide: LoggerService, useValue: new LoggerService() },
+      ],
     }).compile();
 
     service = moduleRef.get<LuksoStructureDbService>(LuksoStructureDbService);

@@ -22,6 +22,7 @@ import { ERC725JSONSchema } from '@erc725/erc725.js';
 import { tryExecuting } from '@utils/try-executing';
 import { generateAndPersistMethodInterfaces } from '@db/lukso-structure/utils/generate-method-interfaces';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import { LoggerService } from '@libs/logger/logger.service';
 
 const standardInterfaces = [
   { id: '0x9a3bfe88', code: 'LSP0', name: 'Universal Profile', version: '0.6' },
@@ -38,7 +39,7 @@ const standardInterfaces = [
   { id: '0x7050cee9', code: 'LSP9', name: 'Vault', version: '0.8' },
 ];
 
-const db = new LuksoStructureDbService();
+const db = new LuksoStructureDbService(new LoggerService());
 
 async function populateLuksoStructure() {
   for (const standardInterface of standardInterfaces) {
