@@ -2,13 +2,13 @@ import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import LSP3UniversalProfileMetadataJSON from '@erc725/erc725.js/schemas/LSP3UniversalProfileMetadata.json';
 import { LSP3Profile } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp3-profile';
 import winston from 'winston';
-import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 
 import { Web3Service } from '../../web3.service';
 import { MetadataResponse } from '../../types/contract-metadata';
 import { IPFS_GATEWAY } from '../../../globals';
-import { LSP3_PROFILE } from '../config';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
+import { ERC725Y_KEY } from '../config';
+import { formatMetadataImages } from '../utils/format-metadata-images';
 
 export class LSP0 {
   constructor(private web3Service: Web3Service, private logger: winston.Logger) {}
@@ -31,7 +31,7 @@ export class LSP0 {
       );
 
       // Fetch the LSP3Profile data from the contract.
-      const fetchedData = await erc725.fetchData(LSP3_PROFILE);
+      const fetchedData = await erc725.fetchData(ERC725Y_KEY.LSP3_PROFILE);
 
       // Extract the LSP3Profile from the fetched data, if available.
       const lsp3Profile: LSP3Profile | undefined = (
@@ -40,22 +40,6 @@ export class LSP0 {
 
       // Return null if LSP3Profile data is not found.
       if (!lsp3Profile) return null;
-
-      // Format profile images.
-      const formattedProfileImages: Omit<MetadataImageTable, 'metadataId'>[] =
-        lsp3Profile.profileImage
-          ? lsp3Profile.profileImage.flat().map((image) => {
-              return { ...image, type: METADATA_IMAGE_TYPE.PROFILE };
-            })
-          : [];
-
-      // Format background images.
-      const formattedBackgroundImages: Omit<MetadataImageTable, 'metadataId'>[] =
-        lsp3Profile.backgroundImage
-          ? lsp3Profile.backgroundImage.flat().map((image) => {
-              return { ...image, type: METADATA_IMAGE_TYPE.BACKGROUND };
-            })
-          : [];
 
       // Return the MetadataResponse object containing the extracted metadata.
       return {
@@ -67,7 +51,10 @@ export class LSP0 {
           symbol: null,
           isNFT: null,
         },
-        images: formattedProfileImages.concat(formattedBackgroundImages),
+        images: [
+          ...formatMetadataImages(lsp3Profile.profileImage, METADATA_IMAGE_TYPE.PROFILE),
+          ...formatMetadataImages(lsp3Profile.backgroundImage, METADATA_IMAGE_TYPE.BACKGROUND),
+        ],
         tags: lsp3Profile.tags || [],
         links: lsp3Profile.links || [],
         assets: [],

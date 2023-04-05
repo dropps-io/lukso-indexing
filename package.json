@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@erc725/erc725.js": "^0.15.0",
+    "@erc725/erc725.js": "^0.17.2",
     "@lukso/lsp-factory.js": "^2.5.1",
     "@lukso/lsp-smart-contracts": "^0.7.0",
     "@nestjs/common": "^9.0.0",

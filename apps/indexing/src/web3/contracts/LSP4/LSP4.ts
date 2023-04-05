@@ -8,8 +8,9 @@ import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table
 import { Web3Service } from '../../web3.service';
 import { MetadataResponse } from '../../types/contract-metadata';
 import { IPFS_GATEWAY } from '../../../globals';
-import { LSP4_METADATA, LSP4_TOKEN_NAME, LSP4_TOKEN_SYMBOL } from '../config';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
+import { ERC725Y_KEY } from '../config';
+import { formatMetadataImages } from '../utils/format-metadata-images';
 
 export class LSP4 {
   constructor(private web3Service: Web3Service, private logger: winston.Logger) {}
@@ -32,7 +33,7 @@ export class LSP4 {
       // each of these fetchData can fail, so we need to catch them separately
 
       try {
-        const fetchData = (await erc725.fetchData(LSP4_TOKEN_NAME)).value;
+        const fetchData = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_NAME)).value;
         assertNonEmptyString(fetchData, 'Invalid token name format');
         name = fetchData;
       } catch (e) {
@@ -40,7 +41,7 @@ export class LSP4 {
       }
 
       try {
-        const fetchData = (await erc725.fetchData(LSP4_TOKEN_SYMBOL)).value;
+        const fetchData = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_SYMBOL)).value;
         assertNonEmptyString(fetchData, 'Invalid token symbol format');
         symbol = fetchData;
       } catch (e) {
@@ -49,24 +50,15 @@ export class LSP4 {
 
       try {
         lsp4DigitalAsset = (
-          (await erc725.fetchData(LSP4_METADATA)).value as unknown as {
+          (await erc725.fetchData(ERC725Y_KEY.LSP4_METADATA)).value as unknown as {
             LSP4Metadata: LSP4DigitalAsset;
           }
         )?.LSP4Metadata;
 
-        const formattedImages: Omit<MetadataImageTable, 'metadataId'>[] = lsp4DigitalAsset?.images
-          ? lsp4DigitalAsset.images.flat().map((image) => {
-              return { ...image, type: null };
-            })
-          : [];
-
-        const formattedIcons: Omit<MetadataImageTable, 'metadataId'>[] = lsp4DigitalAsset?.icon
-          ? lsp4DigitalAsset.icon.flat().map((image) => {
-              return { ...image, type: METADATA_IMAGE_TYPE.ICON };
-            })
-          : [];
-
-        images = [...formattedImages, ...formattedIcons];
+        images = [
+          ...formatMetadataImages(lsp4DigitalAsset.images, null),
+          ...formatMetadataImages(lsp4DigitalAsset.icon, METADATA_IMAGE_TYPE.ICON),
+        ];
       } catch (e) {
         this.logger.warn(`Failed to fetch lsp4 metadata: ${e.message}`, { address });
       }
