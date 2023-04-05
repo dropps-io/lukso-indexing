@@ -64,6 +64,7 @@ export class DecodingService {
     } catch (e) {
       this.logger.error(`Error decoding transaction input: ${e.message}`, {
         input,
+        stack: e.stack,
       });
       return methodName ? { methodName, parameters: [] } : null;
     }

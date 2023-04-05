@@ -4,11 +4,14 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { TransactionTable } from '@db/lukso-data/entities/tx.table';
 import { LoggerService } from '@libs/logger/logger.service';
+import { ContractTable } from '@db/lukso-data/entities/contract.table';
 
-import { NODE_ENV } from './globals';
+import { CONTRACTS_PROCESSING_INTERVAL, NODE_ENV } from './globals';
 import { Web3Service } from './web3/web3.service';
 import { DecodingService } from './decoding/decoding.service';
 import { DecodedParameter } from './decoding/types/decoded-parameter';
+import { MetadataResponse } from './web3/types/metadata-response';
+import { defaultMetadata } from './web3/utils/default-metadata-response';
 
 /**
  * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
@@ -29,6 +32,7 @@ export class IndexingService implements OnModuleInit {
   onModuleInit() {
     if (NODE_ENV !== 'test') {
       this.indexByBlock().then();
+      this.processContractsToIndex().then();
     }
   }
 
@@ -36,36 +40,72 @@ export class IndexingService implements OnModuleInit {
    * Recursively indexes transactions from the blockchain by blocks.
    */
   protected async indexByBlock() {
-    const startTime = new Date();
+    try {
+      const startTime = new Date();
 
-    const config = await this.structureDB.getConfig();
-    const lastBlock = await this.web3Service.getLastBlock();
+      const config = await this.structureDB.getConfig();
+      const lastBlock = await this.web3Service.getLastBlock();
 
-    this.logger.setLastBlock(lastBlock);
-    this.logger.setLatestIndexedBlock(config.latestIndexedBlock);
+      this.logger.setLastBlock(lastBlock);
+      this.logger.setLatestIndexedBlock(config.latestIndexedBlock);
 
-    const blockToIndex =
-      config.latestIndexedBlock + 1 > lastBlock ? lastBlock : config.latestIndexedBlock + 1;
+      const blockToIndex =
+        config.latestIndexedBlock + 1 > lastBlock ? lastBlock : config.latestIndexedBlock + 1;
 
-    this.fileLogger.info(`Indexing data from block ${blockToIndex}`, { block: blockToIndex });
+      this.fileLogger.info(`Indexing data from block ${blockToIndex}`, { block: blockToIndex });
 
-    const transactionsHashes = await this.web3Service.getBlockTransactions(blockToIndex);
+      const transactionsHashes = await this.web3Service.getBlockTransactions(blockToIndex);
 
-    for (const transactionHash of transactionsHashes) await this.indexTransaction(transactionHash);
+      for (const transactionHash of transactionsHashes)
+        await this.indexTransaction(transactionHash);
 
-    await this.structureDB.updateLatestIndexedBlock(blockToIndex);
-    this.logger.setLatestIndexedBlock(blockToIndex);
+      await this.structureDB.updateLatestIndexedBlock(blockToIndex);
+      this.logger.setLatestIndexedBlock(blockToIndex);
 
-    // Recursively call this function after a timeout
-    const timeout =
-      lastBlock === blockToIndex
-        ? Math.max(
-            0,
-            config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
-          )
-        : 0;
+      // Recursively call this function after a timeout
+      const timeout =
+        lastBlock === blockToIndex
+          ? Math.max(
+              0,
+              config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
+            )
+          : 0;
 
-    setTimeout(this.indexByBlock.bind(this), timeout);
+      setTimeout(this.indexByBlock.bind(this), timeout);
+    } catch (e) {
+      this.fileLogger.error(`Error while indexing data: ${e.message}`);
+    }
+  }
+
+  protected async processContractsToIndex() {
+    try {
+      const startTime = new Date();
+
+      const contractsToIndex = await this.dataDB.getContractsToIndex();
+      for (const contract of contractsToIndex) {
+        this.fileLogger.info('Indexing contract', { contractAddress: contract });
+        const contractRow = await this.indexContract(contract);
+        if (contractRow) {
+          this.fileLogger.info(`Fetching contract metadata for ${contract}`, { contract });
+          const metadata = await this.web3Service.fetchContractMetadata(
+            contract,
+            contractRow.interfaceCode || undefined,
+          );
+
+          if (!metadata) this.fileLogger.info(`No metadata found for ${contract}`, { contract });
+          await this.indexMetadata(metadata || defaultMetadata(contract));
+        }
+      }
+
+      // Recursively call this function after a timeout
+      const timeout = Math.max(
+        0,
+        CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
+      );
+      setTimeout(this.processContractsToIndex.bind(this), timeout);
+    } catch (e) {
+      this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
+    }
   }
 
   /**
@@ -94,6 +134,17 @@ export class IndexingService implements OnModuleInit {
         to: transaction.to ?? '',
         methodName: decodedTxInput?.methodName || null,
       };
+
+      // Insert the contracts if they don't exist without an interface, so they will be treated by the other recursive process
+      await this.dataDB.insertContract(
+        { address: transaction.from, interfaceVersion: null, interfaceCode: null },
+        'do nothing',
+      );
+      if (transaction.to)
+        await this.dataDB.insertContract(
+          { address: transaction.to, interfaceVersion: null, interfaceCode: null },
+          'do nothing',
+        );
 
       await this.dataDB.insertTransaction(transactionRow);
       this.logger.incrementIndexedCount('transaction');
@@ -156,6 +207,12 @@ export class IndexingService implements OnModuleInit {
             methodName: unwrappedTransaction.methodName,
           });
 
+          // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
+          await this.dataDB.insertContract(
+            { address: unwrappedTransaction.to, interfaceVersion: null, interfaceCode: null },
+            'do nothing',
+          );
+
           await this.dataDB.insertWrappedTxInput({
             wrappedTransactionId: row.id,
             input: unwrappedTransaction.input,
@@ -188,19 +245,49 @@ export class IndexingService implements OnModuleInit {
     }
   }
 
-  async indexContract(address: string) {
-    // Check if the contract have already been indexed (contract indexed only if interfaceCode is set)
-    const contractAlreadyIndexed = await this.dataDB.getContractByAddress(address);
-    if (contractAlreadyIndexed && contractAlreadyIndexed?.interfaceCode) return;
+  protected async indexContract(address: string): Promise<ContractTable | undefined> {
+    try {
+      // Check if the contract have already been indexed (contract indexed only if interfaceCode is set)
+      const contractAlreadyIndexed = await this.dataDB.getContractByAddress(address);
+      if (contractAlreadyIndexed && contractAlreadyIndexed?.interfaceCode) return;
 
-    this.fileLogger.info('Indexing contract', { address });
+      this.fileLogger.info('Indexing contract', { address });
 
-    const contractInterface = await this.web3Service.identifyContractInterface(address);
-    await this.dataDB.insertContract({
-      address,
-      interfaceCode: contractInterface?.code ?? 'unknown',
-      interfaceVersion: contractInterface?.version ?? null,
-    });
-    this.logger.incrementIndexedCount('contract');
+      const contractInterface = await this.web3Service.identifyContractInterface(address);
+
+      this.fileLogger.info(
+        `Contract interface identified: ${contractInterface?.code ?? 'unknown'}`,
+        { address },
+      );
+
+      const contractRow: ContractTable = {
+        address,
+        interfaceCode: contractInterface?.code ?? 'unknown',
+        interfaceVersion: contractInterface?.version ?? null,
+      };
+
+      // Insert contract, and update on conflict
+      await this.dataDB.insertContract(contractRow, 'update');
+      this.logger.incrementIndexedCount('contract');
+
+      return contractRow;
+    } catch (e) {
+      this.fileLogger.error(`Error while indexing contract: ${e.message}`, { address });
+    }
+  }
+
+  protected async indexMetadata(metadata: MetadataResponse): Promise<void> {
+    try {
+      const { id } = await this.dataDB.insertMetadata(metadata.metadata);
+      await this.dataDB.insertMetadataImages(id, metadata.images, 'do nothing');
+      await this.dataDB.insertMetadataTags(id, metadata.tags, 'do nothing');
+      await this.dataDB.insertMetadataLinks(id, metadata.links, 'do nothing');
+      await this.dataDB.insertMetadataAssets(id, metadata.assets, 'do nothing');
+    } catch (e) {
+      this.fileLogger.error(`Error while indexing metadata: ${e.message}`, {
+        address: metadata.metadata.address,
+        tokenId: metadata.metadata.tokenId,
+      });
+    }
   }
 }

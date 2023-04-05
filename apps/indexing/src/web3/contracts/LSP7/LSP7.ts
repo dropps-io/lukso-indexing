@@ -3,7 +3,7 @@ import { AbiItem } from 'web3-utils';
 import LSP7DigitalAsset from '@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json';
 
 import { Web3Service } from '../../web3.service';
-import { MetadataResponse } from '../../types/contract-metadata';
+import { MetadataResponse } from '../../types/metadata-response';
 import { LSP4 } from '../LSP4/LSP4';
 export class LSP7 {
   private readonly lsp4: LSP4;

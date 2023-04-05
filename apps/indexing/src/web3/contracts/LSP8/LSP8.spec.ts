@@ -6,7 +6,7 @@ import winston from 'winston';
 import { LSP8 } from './LSP8';
 import { Web3Service } from '../../web3.service';
 import { ADDRESS1, HASH1 } from '../../../../../../test/utils/test-values';
-import { MetadataResponse } from '../../types/contract-metadata';
+import { MetadataResponse } from '../../types/metadata-response';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
 
 jest.setTimeout(15_000);

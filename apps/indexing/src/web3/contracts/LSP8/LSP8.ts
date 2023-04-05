@@ -5,7 +5,7 @@ import { GetDataDynamicKey } from '@erc725/erc725.js/build/main/src/types/GetDat
 import { hexToString } from 'web3-utils';
 
 import { Web3Service } from '../../web3.service';
-import { MetadataResponse } from '../../types/contract-metadata';
+import { MetadataResponse } from '../../types/metadata-response';
 import { IPFS_GATEWAY } from '../../../globals';
 import LSP8IdentifiableDigitalAssetSchema from '../schemas/LSP8IdentifiableDigitalAssetSchema.json';
 import { LSP8_TOKEN_ID_TYPE } from './enums';

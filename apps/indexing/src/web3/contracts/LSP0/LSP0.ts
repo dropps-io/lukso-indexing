@@ -4,7 +4,7 @@ import { LSP3Profile } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces
 import winston from 'winston';
 
 import { Web3Service } from '../../web3.service';
-import { MetadataResponse } from '../../types/contract-metadata';
+import { MetadataResponse } from '../../types/metadata-response';
 import { IPFS_GATEWAY } from '../../../globals';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';

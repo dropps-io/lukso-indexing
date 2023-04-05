@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
+import format from 'pg-format';
 
 import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
@@ -36,15 +37,28 @@ export class LuksoDataDbService {
   }
 
   // Contract table functions
-  public async insertContract(contract: ContractTable): Promise<void> {
-    await this.executeQuery(
-      `
-      INSERT INTO ${DB_DATA_TABLE.CONTRACT}
-      ("address", "interfaceCode", "interfaceVersion")
-      VALUES ($1, $2, $3)
-    `,
-      [contract.address, contract.interfaceCode, contract.interfaceVersion],
-    );
+  public async insertContract(
+    contract: ContractTable,
+    onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    let query = `
+    INSERT INTO ${DB_DATA_TABLE.CONTRACT}
+    ("address", "interfaceCode", "interfaceVersion")
+    VALUES ($1, $2, $3)
+  `;
+
+    if (onConflict === 'do nothing') query += ' ON CONFLICT DO NOTHING';
+    else if (onConflict === 'update')
+      query += ` ON CONFLICT ("address") DO UPDATE SET
+        "interfaceCode" = EXCLUDED."interfaceCode",
+        "interfaceVersion" = EXCLUDED."interfaceVersion"
+    `;
+
+    await this.executeQuery(query, [
+      contract.address,
+      contract.interfaceCode,
+      contract.interfaceVersion,
+    ]);
   }
 
   public async getContractByAddress(address: string): Promise<ContractTable | null> {
@@ -53,6 +67,13 @@ export class LuksoDataDbService {
       [address],
     );
     return rows.length > 0 ? rows[0] : null;
+  }
+
+  public async getContractsToIndex(): Promise<string[]> {
+    const rows = await this.executeQuery<ContractTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.CONTRACT} WHERE "interfaceCode" IS NULL`,
+    );
+    return rows.map((row) => row.address);
   }
 
   // ContractToken table functions
@@ -112,46 +133,95 @@ export class LuksoDataDbService {
   }
 
   // MetadataImage table functions
-  public async insertMetadataImage(metadataImage: MetadataImageTable): Promise<void> {
-    await this.executeQuery(
+  public async insertMetadataImages(
+    metadataId: number,
+    metadataImages: Omit<MetadataImageTable, 'metadataId'>[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    if (metadataImages.length === 0) return;
+
+    const values = metadataImages.map((metadataImage) => [
+      metadataId,
+      metadataImage.url,
+      metadataImage.width,
+      metadataImage.height,
+      metadataImage.type,
+      metadataImage.hash,
+    ]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
       `
-      INSERT INTO ${DB_DATA_TABLE.METADATA_IMAGE}
-      ("metadataId", "url", "width", "height", "type", "hash")
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `,
-      [
-        metadataImage.metadataId,
-        metadataImage.url,
-        metadataImage.width,
-        metadataImage.height,
-        metadataImage.type,
-        metadataImage.hash,
-      ],
+    INSERT INTO %I
+    ("metadataId", "url", "width", "height", "type", "hash")
+    VALUES %L
+    %s
+  `,
+      DB_DATA_TABLE.METADATA_IMAGE,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   // MetadataLink table functions
-  public async insertMetadataLink(metadataLink: MetadataLinkTable): Promise<void> {
-    await this.executeQuery(
+  public async insertMetadataLinks(
+    metadataId: number,
+    metadataLinks: Omit<MetadataLinkTable, 'metadataId'>[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    if (metadataLinks.length === 0) return;
+
+    const values = metadataLinks.map((metadataLink) => [
+      metadataId,
+      metadataLink.title,
+      metadataLink.url,
+    ]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
       `
-      INSERT INTO ${DB_DATA_TABLE.METADATA_LINK}
+      INSERT INTO %I
       ("metadataId", "title", "url")
-      VALUES ($1, $2, $3)
+      VALUES %L
+      %s
     `,
-      [metadataLink.metadataId, metadataLink.title, metadataLink.url],
+      DB_DATA_TABLE.METADATA_LINK,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   // MetadataTag table functions
-  public async insertMetadataTag(metadataTag: MetadataTagTable): Promise<void> {
-    await this.executeQuery(
+  public async insertMetadataTags(
+    metadataId: number,
+    metadataTags: string[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    if (metadataTags.length === 0) return;
+
+    const values = metadataTags.map((metadataTag) => [metadataId, metadataTag]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
       `
-      INSERT INTO ${DB_DATA_TABLE.METADATA_TAG}
+      INSERT INTO %I
       ("metadataId", "title")
-      VALUES ($1, $2)
+      VALUES %L
+      %s
     `,
-      [metadataTag.metadataId, metadataTag.title],
+      DB_DATA_TABLE.METADATA_TAG,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   public async getMetadataTagsByMetadataId(metadataId: number): Promise<string[]> {
@@ -163,15 +233,35 @@ export class LuksoDataDbService {
   }
 
   // MetadataAsset table functions
-  public async insertMetadataAsset(metadataAsset: MetadataAssetTable): Promise<void> {
-    await this.executeQuery(
+  public async insertMetadataAssets(
+    metadataId: number,
+    metadataAssets: Omit<MetadataAssetTable, 'metadataId'>[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    if (metadataAssets.length === 0) return;
+
+    const values = metadataAssets.map((metadataAsset) => [
+      metadataId,
+      metadataAsset.url,
+      metadataAsset.fileType,
+      metadataAsset.hash,
+    ]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
       `
-      INSERT INTO ${DB_DATA_TABLE.METADATA_ASSET}
+      INSERT INTO %I
       ("metadataId", "url", "fileType", "hash")
-      VALUES ($1, $2, $3, $4)
+      VALUES %L
+      %s
     `,
-      [metadataAsset.metadataId, metadataAsset.url, metadataAsset.fileType, metadataAsset.hash],
+      DB_DATA_TABLE.METADATA_ASSET,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   public async getMetadataAssetsByMetadataId(metadataId: number): Promise<MetadataAssetTable[]> {
@@ -422,7 +512,7 @@ export class LuksoDataDbService {
     } catch (error) {
       // Log the error and rethrow a custom error with a more specific message
       this.logger.error('Error executing a query', { query, values, error });
-      throw new Error(`Error executing query: ${query}`);
+      throw new Error(`Error executing query: ${query}\n\nError details: ${error.message}`);
     }
   }
 }

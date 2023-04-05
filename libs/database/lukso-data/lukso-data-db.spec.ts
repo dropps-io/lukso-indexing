@@ -15,7 +15,7 @@ import { MetadataTable } from './entities/metadata.table';
 import { TxInputTable } from './entities/tx-input.table';
 import { LuksoDataDbService } from './lukso-data-db.service';
 import { MetadataImageTable } from './entities/metadata-image.table';
-import { ADDRESS1, ADDRESS2, HASH1, HASH2, HASH3 } from '../../../test/utils/test-values';
+import { ADDRESS1, ADDRESS2, ADDRESS3, HASH1, HASH2, HASH3 } from '../../../test/utils/test-values';
 import { executeQuery } from '../../../test/utils/db-helpers';
 import { DB_DATA_TABLE } from './config';
 import { WrappedTxTable } from './entities/wrapped-tx.table';
@@ -118,9 +118,83 @@ describe('LuksoDataDbService', () => {
       expect(res).toEqual(contract1);
     });
 
+    it('should throw by default if inserting on existing contract', async () => {
+      await service.insertContract(contract1);
+      await expect(service.insertContract(contract1)).rejects.toThrow();
+    });
+
+    it('should not throw if inserting on existing contract when do nothing on conflict', async () => {
+      await service.insertContract(contract1);
+      await expect(service.insertContract(contract1, 'do nothing')).resolves.not.toThrow();
+    });
+
+    it('should update if inserting on existing contract when update on conflict', async () => {
+      await service.insertContract(contract1);
+      await service.insertContract(
+        { ...contract1, interfaceCode: 'NEW_CODE', interfaceVersion: 'NEW_VERSION' },
+        'update',
+      );
+      const res = await service.getContractByAddress(contract1.address);
+
+      expect(res).toEqual({
+        ...contract1,
+        interfaceCode: 'NEW_CODE',
+        interfaceVersion: 'NEW_VERSION',
+      });
+    });
+
     it('should return null if query a non-existing contract', async () => {
       const res = await service.getContractByAddress(contract1.address);
       expect(res).toBeNull();
+    });
+
+    describe('getContractsToIndex', () => {
+      it('should return an array of contract addresses with null interfaceCode', async () => {
+        // insert contracts with null interfaceCode
+        await service.insertContract({
+          address: ADDRESS1,
+          interfaceCode: null,
+          interfaceVersion: '1.0',
+        });
+        await service.insertContract({
+          address: ADDRESS2,
+          interfaceCode: null,
+          interfaceVersion: '1.0',
+        });
+
+        // insert contracts with non-null interfaceCode
+        await service.insertContract({
+          address: ADDRESS3,
+          interfaceCode: 'LSP1',
+          interfaceVersion: '1.0',
+        });
+
+        const result = await service.getContractsToIndex();
+
+        expect(result).toEqual([ADDRESS1, ADDRESS2]);
+      });
+
+      it('should return an empty array when there are no contracts with null interfaceCode', async () => {
+        await service.insertContract({
+          address: ADDRESS1,
+          interfaceCode: 'LSP0',
+          interfaceVersion: '1.0',
+        });
+        await service.insertContract({
+          address: ADDRESS2,
+          interfaceCode: 'LSP1',
+          interfaceVersion: '1.0',
+        });
+
+        const result = await service.getContractsToIndex();
+
+        expect(result).toEqual([]);
+      });
+
+      it('should return an empty array when there are no contracts', async () => {
+        const result = await service.getContractsToIndex();
+        expect(result).toEqual([]);
+      });
     });
   });
 
@@ -203,11 +277,40 @@ describe('LuksoDataDbService', () => {
     });
 
     it('should be able to insert a metadata image', async () => {
-      await service.insertMetadataImage(metadataImage);
+      await service.insertMetadataImages(metadataImage.metadataId, [metadataImage]);
 
       const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_IMAGE}`, 'DATA');
       expect(res.rows.length).toEqual(1);
       expect(res.rows[0]).toEqual(metadataImage);
+    });
+
+    it('should be able to insert multiple metadata images', async () => {
+      await service.insertMetadataImages(metadataImage.metadataId, [
+        metadataImage,
+        { ...metadataImage, url: 'url1' },
+      ]);
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_IMAGE}`, 'DATA');
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([metadataImage, { ...metadataImage, url: 'url1' }]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertMetadataImages(metadataImage.metadataId, [metadataImage, metadataImage]),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non conflict rows on conflict do nothing', async () => {
+      await service.insertMetadataImages(
+        metadataImage.metadataId,
+        [metadataImage, metadataImage],
+        'do nothing',
+      );
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_IMAGE}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([metadataImage]);
     });
   });
 
@@ -223,12 +326,42 @@ describe('LuksoDataDbService', () => {
       metadataLink.metadataId = (await service.insertMetadata(contractMetadata)).id;
     });
 
-    it('should insert a metadata link', async () => {
-      await service.insertMetadataLink(metadataLink);
+    it('should be able to insert a metadata link', async () => {
+      await service.insertMetadataLinks(metadataLink.metadataId, [metadataLink]);
 
       const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_LINK}`, 'DATA');
       expect(res.rows.length).toEqual(1);
       expect(res.rows[0]).toEqual(metadataLink);
+    });
+
+    it('should be able to insert multiple metadata links', async () => {
+      await service.insertMetadataLinks(metadataLink.metadataId, [
+        metadataLink,
+        { ...metadataLink, url: 'https://example.com/url2' },
+      ]);
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_LINK}`, 'DATA');
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([
+        metadataLink,
+        { ...metadataLink, url: 'https://example.com/url2' },
+      ]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertMetadataLinks(metadataLink.metadataId, [metadataLink, metadataLink]),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non conflict rows on conflict do nothing', async () => {
+      await service.insertMetadataLinks(
+        metadataLink.metadataId,
+        [metadataLink, metadataLink],
+        'do nothing',
+      );
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_LINK}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([metadataLink]);
     });
   });
 
@@ -243,21 +376,41 @@ describe('LuksoDataDbService', () => {
       metadataTag.metadataId = (await service.insertMetadata(contractMetadata)).id;
     });
 
-    it('should insert and retrieve a metadata tag', async () => {
-      await service.insertMetadataTag(metadataTag);
+    it('should be able to insert a metadata tag', async () => {
+      await service.insertMetadataTags(metadataTag.metadataId, ['Test Tag']);
 
       const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG}`, 'DATA');
       expect(res.rows.length).toEqual(1);
       expect(res.rows[0]).toEqual(metadataTag);
     });
 
+    it('should be able to insert multiple metadata tags', async () => {
+      await service.insertMetadataTags(metadataTag.metadataId, ['Test Tag', 'Test Tag2']);
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG}`, 'DATA');
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([metadataTag, { ...metadataTag, title: 'Test Tag2' }]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertMetadataTags(metadataTag.metadataId, ['TAG', 'TAG']),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non conflict rows on conflict do nothing', async () => {
+      await service.insertMetadataTags(metadataTag.metadataId, ['TAG', 'TAG'], 'do nothing');
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_TAG}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([{ ...metadataTag, title: 'TAG' }]);
+    });
+
     it('should be able to query metadata tags by id', async () => {
-      await service.insertMetadataTag(metadataTag);
-      await service.insertMetadataTag({ ...metadataTag, title: 'tag1' });
-      await service.insertMetadataTag({ ...metadataTag, title: 'tag2' });
+      await service.insertMetadataTags(metadataTag.metadataId, ['TAG', 'TAG1', 'TAG2']);
 
       const res = await service.getMetadataTagsByMetadataId(metadataTag.metadataId);
-      expect(res).toEqual([metadataTag.title, 'tag1', 'tag2']);
+      expect(res).toEqual(['TAG', 'TAG1', 'TAG2']);
     });
   });
 
@@ -274,25 +427,58 @@ describe('LuksoDataDbService', () => {
       metadataAsset.metadataId = (await service.insertMetadata(contractMetadata)).id;
     });
 
-    it('should insert a metadata asset', async () => {
-      await service.insertMetadataAsset(metadataAsset);
+    it('should be able to insert a metadata asset', async () => {
+      await service.insertMetadataAssets(metadataAsset.metadataId, [metadataAsset]);
 
       const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET}`, 'DATA');
       expect(res.rows.length).toEqual(1);
       expect(res.rows[0]).toEqual(metadataAsset);
     });
 
+    it('should be able to insert multiple metadata assets', async () => {
+      await service.insertMetadataAssets(metadataAsset.metadataId, [
+        metadataAsset,
+        { ...metadataAsset, url: 'https://example.com/asset2.txt' },
+      ]);
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET}`, 'DATA');
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([
+        metadataAsset,
+        { ...metadataAsset, url: 'https://example.com/asset2.txt' },
+      ]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertMetadataAssets(metadataAsset.metadataId, [metadataAsset, metadataAsset]),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non conflict rows on conflict do nothing', async () => {
+      await service.insertMetadataAssets(
+        metadataAsset.metadataId,
+        [metadataAsset, metadataAsset],
+        'do nothing',
+      );
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([metadataAsset]);
+    });
+
     it('should query metadata assets', async () => {
-      await service.insertMetadataAsset(metadataAsset);
-      await service.insertMetadataAsset({ ...metadataAsset, hash: HASH2 });
-      await service.insertMetadataAsset({ ...metadataAsset, hash: HASH3 });
+      await service.insertMetadataAssets(metadataAsset.metadataId, [
+        metadataAsset,
+        { ...metadataAsset, url: 'url1' },
+        { ...metadataAsset, url: 'url2' },
+      ]);
 
       const res = await service.getMetadataAssetsByMetadataId(metadataAsset.metadataId);
       expect(res.length).toEqual(3);
       expect(res).toEqual([
         metadataAsset,
-        { ...metadataAsset, hash: HASH2 },
-        { ...metadataAsset, hash: HASH3 },
+        { ...metadataAsset, url: 'url1' },
+        { ...metadataAsset, url: 'url2' },
       ]);
     });
   });

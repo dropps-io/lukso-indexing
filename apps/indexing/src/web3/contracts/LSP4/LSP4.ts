@@ -6,7 +6,7 @@ import { assertNonEmptyString } from '@utils/validators';
 import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 
 import { Web3Service } from '../../web3.service';
-import { MetadataResponse } from '../../types/contract-metadata';
+import { MetadataResponse } from '../../types/metadata-response';
 import { IPFS_GATEWAY } from '../../../globals';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';

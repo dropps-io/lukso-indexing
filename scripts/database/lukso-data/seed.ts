@@ -22,8 +22,8 @@ export const seedLuksoData = async (dropTables?: boolean) => {
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT} (
 	"address" CHAR(42) NOT NULL,
-  "interfaceCode" VARCHAR(10),
-  "interfaceVersion" VARCHAR(10),
+  "interfaceCode" VARCHAR(20),
+  "interfaceVersion" VARCHAR(20),
 	PRIMARY KEY ("address")
 )`);
 
@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_IMAGE} (
   "height" SMALLINT NOT NULL,
   "type" VARCHAR(40),
   "hash" CHAR(66) NOT NULL,
-  FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
+  FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE,
+  UNIQUE ("metadataId", "url")
 )`);
 
   await client.query(`
@@ -68,14 +69,16 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_LINK} (
   "metadataId" INTEGER NOT NULL,
   "title" VARCHAR(30) NOT NULL,
   "url" VARCHAR(2048) NOT NULL,
-  FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
+  FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE,
+  UNIQUE ("metadataId", "url")
 )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_TAG} (
   "metadataId" INTEGER NOT NULL,
   "title" VARCHAR(40) NOT NULL,
-   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
+   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE,
+   UNIQUE ("metadataId", "title")
 )`);
 
   await client.query(`
@@ -84,7 +87,8 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_ASSET} (
   "url" VARCHAR(2048) NOT NULL,
   "fileType" VARCHAR(10) NOT NULL,
   "hash" CHAR(66) NOT NULL,
-   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE
+   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE,
+   UNIQUE ("metadataId", "url")
 )`);
 
   await client.query(`

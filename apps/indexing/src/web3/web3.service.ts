@@ -9,11 +9,20 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import LSP0ERC725Account from '@lukso/lsp-smart-contracts/artifacts/LSP0ERC725Account.json';
 
 import { RPC_URL } from '../globals';
+import { SUPPORTED_STANDARD } from './types/enums';
+import { MetadataResponse } from './types/metadata-response';
+import { LSP0 } from './contracts/LSP0/LSP0';
+import { LSP7 } from './contracts/LSP7/LSP7';
+import { LSP4 } from './contracts/LSP4/LSP4';
 
 @Injectable()
 export class Web3Service {
   private readonly web3: Web3;
   private readonly logger: winston.Logger;
+
+  private readonly lsp0: LSP0;
+  private readonly lsp4: LSP4;
+  private readonly lsp7: LSP7;
 
   constructor(
     protected readonly loggerService: LoggerService,
@@ -21,6 +30,10 @@ export class Web3Service {
   ) {
     this.web3 = new Web3(RPC_URL);
     this.logger = loggerService.getChildLogger('Web3');
+
+    this.lsp0 = new LSP0(this, this.logger);
+    this.lsp4 = new LSP4(this, this.logger);
+    this.lsp7 = new LSP7(this, this.logger);
   }
 
   public getWeb3(): Web3 {
@@ -80,10 +93,29 @@ export class Web3Service {
         }
       }
     } catch (e) {
-      this.logger.error(`Error while finding contract interface`, { address, e });
+      this.logger.error(`Error while finding contract interface: ${e.message}`, { address });
       return null;
     }
 
     return null;
+  }
+
+  public async fetchContractMetadata(
+    address: string,
+    interfaceCode?: string,
+  ): Promise<MetadataResponse | null> {
+    const interfaceCodeToUse =
+      interfaceCode || (await this.identifyContractInterface(address))?.code;
+
+    switch (interfaceCodeToUse) {
+      case SUPPORTED_STANDARD.LSP0:
+        return await this.lsp0.fetchData(address);
+      case SUPPORTED_STANDARD.LSP7:
+        return await this.lsp7.fetchData(address);
+      case SUPPORTED_STANDARD.LSP8:
+        return await this.lsp4.fetchData(address);
+      default:
+        return null;
+    }
   }
 }
