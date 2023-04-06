@@ -170,6 +170,8 @@ export class IndexingService implements OnModuleInit {
       this.fileLogger.info('Indexing transaction', { transactionHash });
 
       const transaction = await this.web3Service.getTransaction(transactionHash);
+      if (!transaction) return;
+
       const methodId = transaction.input.slice(0, 10);
       const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
 
@@ -200,8 +202,11 @@ export class IndexingService implements OnModuleInit {
       await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.input });
 
       if (decodedTxInput?.parameters) {
-        for (const parameter of decodedTxInput.parameters)
-          await this.dataDB.insertTransactionParameter({ ...parameter, transactionHash });
+        await this.dataDB.insertTransactionParameters(
+          transactionHash,
+          decodedTxInput.parameters,
+          'do nothing',
+        );
 
         await this.indexWrappedTransactions(
           transaction.input,
@@ -212,7 +217,10 @@ export class IndexingService implements OnModuleInit {
         );
       }
     } catch (e) {
-      this.fileLogger.error(`Error while indexing transaction: ${e.message}`, { transactionHash });
+      this.fileLogger.error(`Error while indexing transaction: ${e.message}`, {
+        transactionHash,
+        stack: e.stack,
+      });
     }
   }
 
@@ -259,6 +267,8 @@ export class IndexingService implements OnModuleInit {
 
       if (decodedParameters)
         await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
+
+      await this.indexTransaction(log.transactionHash);
     } catch (e) {
       this.fileLogger.error(`Error while indexing log: ${e.message}`, { ...log });
     }
@@ -314,11 +324,11 @@ export class IndexingService implements OnModuleInit {
             input: unwrappedTransaction.input,
           });
 
-          for (const parameter of unwrappedTransaction.parameters)
-            await this.dataDB.insertWrappedTxParameter({
-              ...parameter,
-              wrappedTransactionId: row.id,
-            });
+          await this.dataDB.insertWrappedTxParameters(
+            row.id,
+            unwrappedTransaction.parameters,
+            'do nothing',
+          );
 
           // Index the wrapped transaction's wrapped transactions as well
           await this.indexWrappedTransactions(

@@ -586,8 +586,8 @@ describe('LuksoDataDbService', () => {
       await service.insertTransaction(transaction);
     });
 
-    it('should insert a transaction parameter', async () => {
-      await service.insertTransactionParameter(txParameter);
+    it('should be able to insert a transaction parameter', async () => {
+      await service.insertTransactionParameters(txParameter.transactionHash, [txParameter]);
 
       const res = await executeQuery(
         `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_PARAMETER}`,
@@ -597,10 +597,53 @@ describe('LuksoDataDbService', () => {
       expect(res.rows[0]).toEqual(txParameter);
     });
 
+    it('should be able to insert multiple transaction parameters', async () => {
+      await service.insertTransactionParameters(txParameter.transactionHash, [
+        txParameter,
+        { ...txParameter, value: 'value1', name: 'name1', position: 1 },
+      ]);
+
+      const res = await executeQuery(
+        `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_PARAMETER}`,
+        'DATA',
+      );
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([
+        txParameter,
+        { ...txParameter, value: 'value1', name: 'name1', position: 1 },
+      ]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertTransactionParameters(txParameter.transactionHash, [
+          txParameter,
+          txParameter,
+        ]),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non-conflict rows on conflict do nothing', async () => {
+      await service.insertTransactionParameters(
+        txParameter.transactionHash,
+        [txParameter, txParameter],
+        'do nothing',
+      );
+
+      const res = await executeQuery(
+        `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_PARAMETER}`,
+        'DATA',
+      );
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([txParameter]);
+    });
+
     it('should fetch the transaction parameters', async () => {
-      await service.insertTransactionParameter(txParameter);
-      await service.insertTransactionParameter({ ...txParameter, value: 'value1', position: 1 });
-      await service.insertTransactionParameter({ ...txParameter, value: 'value2', position: 2 });
+      await service.insertTransactionParameters(txParameter.transactionHash, [
+        txParameter,
+        { ...txParameter, value: 'value1', position: 1 },
+        { ...txParameter, value: 'value2', position: 2 },
+      ]);
 
       const res = await service.getTransactionParameters(transaction.hash);
       expect(res).toEqual([
@@ -796,28 +839,73 @@ describe('LuksoDataDbService', () => {
     });
 
     it('should be able to insert a wrapped transaction parameter', async () => {
-      await service.insertWrappedTxParameter(wrappedTxParameter);
+      await service.insertWrappedTxParameters(wrappedTxParameter.wrappedTransactionId, [
+        wrappedTxParameter,
+      ]);
 
       const res = await executeQuery(
         `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}`,
         'DATA',
       );
       expect(res.rows.length).toEqual(1);
-      expect(res.rows[0]).toMatchObject(wrappedTxParameter);
+      expect(res.rows[0]).toEqual(wrappedTxParameter);
+    });
+
+    it('should be able to insert multiple wrapped transaction parameters', async () => {
+      await service.insertWrappedTxParameters(wrappedTxParameter.wrappedTransactionId, [
+        wrappedTxParameter,
+        { ...wrappedTxParameter, value: 'value1', name: 'name1', position: 2 },
+      ]);
+
+      const res = await executeQuery(
+        `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}`,
+        'DATA',
+      );
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([
+        wrappedTxParameter,
+        { ...wrappedTxParameter, value: 'value1', name: 'name1', position: 2 },
+      ]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertWrappedTxParameters(wrappedTxParameter.wrappedTransactionId, [
+          wrappedTxParameter,
+          wrappedTxParameter,
+        ]),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non-conflict rows on conflict do nothing', async () => {
+      await service.insertWrappedTxParameters(
+        wrappedTxParameter.wrappedTransactionId,
+        [wrappedTxParameter, wrappedTxParameter],
+        'do nothing',
+      );
+
+      const res = await executeQuery(
+        `SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}`,
+        'DATA',
+      );
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([wrappedTxParameter]);
     });
 
     it('should be able to query wrapped transaction parameters by wrapped transaction id', async () => {
-      await service.insertWrappedTxParameter(wrappedTxParameter);
-      await service.insertWrappedTxParameter({
-        ...wrappedTxParameter,
-        value: 'value1',
-        position: 2,
-      });
-      await service.insertWrappedTxParameter({
-        ...wrappedTxParameter,
-        value: 'value2',
-        position: 3,
-      });
+      await service.insertWrappedTxParameters(wrappedTxParameter.wrappedTransactionId, [
+        wrappedTxParameter,
+        {
+          ...wrappedTxParameter,
+          value: 'value1',
+          position: 2,
+        },
+        {
+          ...wrappedTxParameter,
+          value: 'value2',
+          position: 3,
+        },
+      ]);
 
       const res = await service.getWrappedTxParameters(wrappedTxParameter.wrappedTransactionId);
       expect(res.length).toEqual(3);

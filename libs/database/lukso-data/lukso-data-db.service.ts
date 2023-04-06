@@ -347,20 +347,36 @@ export class LuksoDataDbService {
   }
 
   // TransactionParameter table functions
-  public async insertTransactionParameter(transactionParameter: TxParameterTable): Promise<void> {
-    await this.executeQuery(
+  public async insertTransactionParameters(
+    transactionHash: string,
+    transactionParameters: Omit<TxParameterTable, 'transactionHash'>[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    if (transactionParameters.length === 0) return;
+
+    const values = transactionParameters.map((transactionParameter) => [
+      transactionHash,
+      transactionParameter.value,
+      transactionParameter.name,
+      transactionParameter.type,
+      transactionParameter.position,
+    ]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
       `
-      INSERT INTO ${DB_DATA_TABLE.TRANSACTION_PARAMETER}
-      VALUES ($1, $2, $3, $4, $5)
-    `,
-      [
-        transactionParameter.transactionHash,
-        transactionParameter.value,
-        transactionParameter.name,
-        transactionParameter.type,
-        transactionParameter.position,
-      ],
+    INSERT INTO %I
+    ("transactionHash", "value", "name", "type", "position")
+    VALUES %L
+    %s
+  `,
+      DB_DATA_TABLE.TRANSACTION_PARAMETER,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   public async getTransactionParameters(transactionHash: string): Promise<TxParameterTable[]> {
@@ -424,23 +440,36 @@ export class LuksoDataDbService {
   }
 
   // Wrapped Transaction Parameter table functions
-  public async insertWrappedTxParameter(
-    wrappedTransactionParameter: WrappedTxParameterTable,
+  public async insertWrappedTxParameters(
+    wrappedTransactionId: number,
+    wrappedTransactionParameters: Omit<WrappedTxParameterTable, 'wrappedTransactionId'>[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
   ): Promise<void> {
-    await this.executeQuery(
+    if (wrappedTransactionParameters.length === 0) return;
+
+    const values = wrappedTransactionParameters.map((wrappedTransactionParameter) => [
+      wrappedTransactionId,
+      wrappedTransactionParameter.value,
+      wrappedTransactionParameter.name,
+      wrappedTransactionParameter.type,
+      wrappedTransactionParameter.position,
+    ]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
       `
-    INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER}
+    INSERT INTO %I
     ("wrappedTransactionId", "value", "name", "type", "position")
-    VALUES ($1, $2, $3, $4, $5)
+    VALUES %L
+    %s
   `,
-      [
-        wrappedTransactionParameter.wrappedTransactionId,
-        wrappedTransactionParameter.value,
-        wrappedTransactionParameter.name,
-        wrappedTransactionParameter.type,
-        wrappedTransactionParameter.position,
-      ],
+      DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   public async getWrappedTxParameters(
