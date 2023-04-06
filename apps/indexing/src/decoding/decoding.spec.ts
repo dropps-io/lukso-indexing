@@ -72,6 +72,32 @@ const setDataDecodedInput = {
   ],
 };
 
+// Add test data for decodeLogParameters
+const transferEventSignature = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const transferEventParameters = [
+  {
+    methodId: transferEventSignature.slice(0, 10),
+    name: 'from',
+    type: 'address',
+    indexed: true,
+    position: 0,
+  },
+  {
+    methodId: transferEventSignature.slice(0, 10),
+    name: 'to',
+    type: 'address',
+    indexed: true,
+    position: 1,
+  },
+  {
+    methodId: transferEventSignature.slice(0, 10),
+    name: 'value',
+    type: 'uint256',
+    indexed: false,
+    position: 2,
+  },
+];
+
 describe('DecodingService', () => {
   let service: TestDecodingService;
   const logger = new LoggerService();
@@ -195,6 +221,98 @@ describe('DecodingService', () => {
           type: 'bytes',
         },
       ]);
+    });
+  });
+
+  describe('decodeLogParameters', () => {
+    beforeEach(async () => {
+      await db.insertMethodInterface({
+        id: transferEventSignature.slice(0, 10),
+        hash: transferEventSignature,
+        name: 'Transfer',
+        type: 'event',
+      });
+      await db.insertMethodParameter(transferEventParameters[0]);
+      await db.insertMethodParameter(transferEventParameters[1]);
+      await db.insertMethodParameter(transferEventParameters[2]);
+    });
+
+    it('should decode log parameters correctly', async () => {
+      const topics = [
+        transferEventSignature,
+        '0x0000000000000000000000000000000000000000000000000000000000000000',
+        '0x000000000000000000000000506fb98634903caac59e2e02b955e13cac0e3cbf',
+      ];
+      const data = '0x000000000000000000000000000000000000000000000000002386f26fc10000';
+
+      const result = await service.decodeLogParameters(data, topics);
+
+      expect(result).toEqual([
+        {
+          value: '0x0000000000000000000000000000000000000000',
+          position: 0,
+          name: 'from',
+          type: 'address',
+        },
+        {
+          value: '0x506Fb98634903CaaC59E2e02b955E13CaC0E3cBF',
+          position: 1,
+          name: 'to',
+          type: 'address',
+        },
+        {
+          value: '10000000000000000',
+          position: 2,
+          name: 'value',
+          type: 'uint256',
+        },
+      ]);
+    });
+
+    it('should return an empty array if event signature is not found', async () => {
+      const invalidTopics = [
+        '0x0000000000000000000000000000000000000000000000000000000000000000',
+        '0x00000000000000000000000036ec763516259d4be9ede7cc2969969f201139dd',
+        '0x000000000000000000000000a735b516259d4be9ede7cc2969969f201139dd',
+      ];
+      const data = '0x0000000000000000000000000000000000000000000000004563918244f40000';
+      const result = await service.decodeLogParameters(data, invalidTopics);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return an empty array if no method parameters are found', async () => {
+      const otherEventSignature =
+        '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
+      const topics = [
+        otherEventSignature,
+        '0x00000000000000000000000036ec763516259d4be9ede7cc2969969f201139dd',
+        '0x000000000000000000000000a735b516259d4be9ede7cc2969969f201139dd',
+      ];
+      const data = '0x0000000000000000000000000000000000000000000000004563918244f40000';
+
+      await db.insertMethodInterface({
+        id: otherEventSignature.slice(0, 10),
+        hash: otherEventSignature,
+        name: 'OtherEvent',
+        type: 'event',
+      });
+
+      const result = await service.decodeLogParameters(data, topics);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return null if data length is less than required for non-indexed parameters', async () => {
+      const topics = [
+        transferEventSignature,
+        '0x00000000000000000000000036ec763516259d4be9ede7cc2969969f201139dd',
+        '0x000000000000000000000000a735b516259d4be9ede7cc2969969f201139dd',
+      ];
+      const invalidData = '0x0000000000000000000000000000000000000000000000004563918244';
+
+      const res = await service.decodeLogParameters(invalidData, topics);
+      await expect(res).toBeNull();
     });
   });
 

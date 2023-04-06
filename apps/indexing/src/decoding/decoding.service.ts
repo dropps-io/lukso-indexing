@@ -71,6 +71,48 @@ export class DecodingService {
   }
 
   /**
+   * Decodes log parameters from the provided data and topics.
+   *
+   * @param {string} data - The encoded data string.
+   * @param {string[]} topics - An array of topics, where the first element is the method hash (containing the methodId).
+   *
+   * @returns {Promise<DecodedParameter[] | null>} A Promise that resolves to an array of DecodedParameter objects,
+   *          containing the decoded parameter values, positions, names, and types, or null if an error occurs.
+   */
+  public async decodeLogParameters(
+    data: string,
+    topics: string[],
+  ): Promise<DecodedParameter[] | null> {
+    try {
+      const methodId = topics[0].slice(0, 10);
+      const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
+      if (!methodParameters) return null;
+
+      // Decode the parameters using the Web3 library.
+      const decodedParameters = this.web3.eth.abi.decodeLog(
+        methodParameters,
+        data,
+        topics.filter((x, i) => i !== 0),
+      );
+
+      // Map the decoded parameters to the DecodedParameter[] format and return.
+      return methodParameters.map((parameter) => ({
+        value: (decodedParameters[parameter.name] as string) || '',
+        position: parameter.position,
+        name: parameter.name,
+        type: parameter.type,
+      }));
+    } catch (e) {
+      this.logger.error(`Error decoding log parameters: ${e.message}`, {
+        data,
+        topics,
+        stack: e.stack,
+      });
+      return null;
+    }
+  }
+
+  /**
    * Unwraps the wrapped transactions based on the provided method ID and decoded parameters.
    *
    * @param {string} methodId - Method ID of the transaction.

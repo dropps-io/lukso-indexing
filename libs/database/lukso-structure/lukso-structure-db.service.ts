@@ -33,7 +33,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   };
 
   constructor(protected readonly loggerService: LoggerService) {
-    this.loggerService.getChildLogger('LuksoStructureDb');
+    this.logger = this.loggerService.getChildLogger('LuksoStructureDb');
     this.client = new Pool({
       connectionString: LUKSO_STRUCTURE_CONNECTION_STRING,
     });
@@ -177,7 +177,6 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       const result = await this.client.query(query, values);
       return result.rows as T[];
     } catch (error) {
-      // Log the error and rethrow a custom error with a more specific message
       this.logger.error('Error executing a query', { query, values, error });
       throw new Error(`Error executing query: ${query}`);
     }
