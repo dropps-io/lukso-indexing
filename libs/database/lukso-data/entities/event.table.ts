@@ -5,6 +5,7 @@ export interface EventTable {
   logIndex: number;
   address: string;
   eventName: string | null;
+  methodId: string;
   topic0: string;
   topic1: string | null;
   topic2: string | null;

@@ -72,6 +72,7 @@ describe('LuksoDataDbService', () => {
     logIndex: 0,
     address: ADDRESS1,
     eventName: 'TestEvent',
+    methodId: HASH2.slice(0, 10),
     topic0: HASH1,
     topic1: HASH2,
     topic2: HASH3,
@@ -598,14 +599,14 @@ describe('LuksoDataDbService', () => {
 
     it('should fetch the transaction parameters', async () => {
       await service.insertTransactionParameter(txParameter);
-      await service.insertTransactionParameter({ ...txParameter, value: 'value1' });
-      await service.insertTransactionParameter({ ...txParameter, value: 'value2' });
+      await service.insertTransactionParameter({ ...txParameter, value: 'value1', position: 1 });
+      await service.insertTransactionParameter({ ...txParameter, value: 'value2', position: 2 });
 
       const res = await service.getTransactionParameters(transaction.hash);
       expect(res).toEqual([
         txParameter,
-        { ...txParameter, value: 'value1' },
-        { ...txParameter, value: 'value2' },
+        { ...txParameter, value: 'value1', position: 1 },
+        { ...txParameter, value: 'value2', position: 2 },
       ]);
     });
 
@@ -650,18 +651,52 @@ describe('LuksoDataDbService', () => {
       await service.insertEvent(event);
     });
 
-    it('should insert an event parameter', async () => {
-      await service.insertEventParameter(eventParameter);
+    it('should be able to insert an event parameter', async () => {
+      await service.insertEventParameters(eventParameter.eventId, [eventParameter]);
 
       const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER}`, 'DATA');
       expect(res.rows.length).toEqual(1);
       expect(res.rows[0]).toEqual(eventParameter);
     });
 
-    it('should fetch an event parameters', async () => {
-      await service.insertEventParameter(eventParameter);
-      await service.insertEventParameter({ ...eventParameter, position: 1 });
-      await service.insertEventParameter({ ...eventParameter, position: 2 });
+    it('should be able to insert multiple event parameters', async () => {
+      await service.insertEventParameters(eventParameter.eventId, [
+        eventParameter,
+        { ...eventParameter, value: 'value1', name: 'name1', position: 1 },
+      ]);
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER}`, 'DATA');
+      expect(res.rows.length).toEqual(2);
+      expect(res.rows).toEqual([
+        eventParameter,
+        { ...eventParameter, value: 'value1', name: 'name1', position: 1 },
+      ]);
+    });
+
+    it('should throw by default if conflict on insert', async () => {
+      await expect(
+        service.insertEventParameters(eventParameter.eventId, [eventParameter, eventParameter]),
+      ).rejects.toThrow();
+    });
+
+    it('should not throw and insert non-conflict rows on conflict do nothing', async () => {
+      await service.insertEventParameters(
+        eventParameter.eventId,
+        [eventParameter, eventParameter],
+        'do nothing',
+      );
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows).toEqual([eventParameter]);
+    });
+
+    it('should fetch event parameters', async () => {
+      await service.insertEventParameters(eventParameter.eventId, [
+        eventParameter,
+        { ...eventParameter, position: 1 },
+        { ...eventParameter, position: 2 },
+      ]);
 
       const res = await service.getEventParameters(event.id);
       expect(res).toEqual([
@@ -776,10 +811,12 @@ describe('LuksoDataDbService', () => {
       await service.insertWrappedTxParameter({
         ...wrappedTxParameter,
         value: 'value1',
+        position: 2,
       });
       await service.insertWrappedTxParameter({
         ...wrappedTxParameter,
         value: 'value2',
+        position: 3,
       });
 
       const res = await service.getWrappedTxParameters(wrappedTxParameter.wrappedTransactionId);
@@ -789,10 +826,12 @@ describe('LuksoDataDbService', () => {
         {
           ...wrappedTxParameter,
           value: 'value1',
+          position: 2,
         },
         {
           ...wrappedTxParameter,
           value: 'value2',
+          position: 3,
         },
       ]);
     });

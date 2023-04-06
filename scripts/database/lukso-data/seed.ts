@@ -131,7 +131,8 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TRANSACTION_PARAMETER} (
   "name" VARCHAR(40) NOT NULL,
   "type" VARCHAR(20) NOT NULL,
     "position" SMALLINT NOT NULL,
-  FOREIGN KEY ("transactionHash") REFERENCES transaction("hash") ON DELETE CASCADE
+  FOREIGN KEY ("transactionHash") REFERENCES transaction("hash") ON DELETE CASCADE,
+  UNIQUE ("transactionHash", "position")
 )`);
 
   await client.query(`
@@ -163,7 +164,8 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER} (
   "name" VARCHAR(40) NOT NULL,
   "type" VARCHAR(20) NOT NULL,
   "position" SMALLINT NOT NULL,
-  FOREIGN KEY ("wrappedTransactionId") REFERENCES ${DB_DATA_TABLE.WRAPPED_TRANSACTION}("id") ON DELETE CASCADE
+  FOREIGN KEY ("wrappedTransactionId") REFERENCES ${DB_DATA_TABLE.WRAPPED_TRANSACTION}("id") ON DELETE CASCADE,
+  UNIQUE ("wrappedTransactionId", "position")
 )`);
 
   await client.query(`
@@ -174,11 +176,12 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT} (
     "logIndex" INTEGER NOT NULL, 
     "address" CHAR(42) NOT NULL, 
     "eventName" VARCHAR(40), 
+    "methodId" CHAR(10) NOT NULL, 
     "topic0" CHAR(66) NOT NULL, 
     "topic1" CHAR(66), 
     "topic2" CHAR(66), 
     "topic3" CHAR(66), 
-    "data" VARCHAR(512), 
+    "data" VARCHAR(16384), 
     PRIMARY KEY ("id")
     )`);
 
@@ -189,7 +192,8 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT_PARAMETER} (
   "name" VARCHAR(40) NOT NULL,
   "type" VARCHAR(20) NOT NULL,
     "position" SMALLINT NOT NULL,
-    FOREIGN KEY ("eventId") REFERENCES event("id") ON DELETE CASCADE 
+    FOREIGN KEY ("eventId") REFERENCES event("id") ON DELETE CASCADE,
+    UNIQUE ("eventId", "position")
   )`);
 
   await client.end();

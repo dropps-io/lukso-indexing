@@ -5,6 +5,7 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { TransactionTable } from '@db/lukso-data/entities/tx.table';
 import { LoggerService } from '@libs/logger/logger.service';
 import { ContractTable } from '@db/lukso-data/entities/contract.table';
+import { Log } from 'web3-core';
 
 import { CONTRACTS_PROCESSING_INTERVAL, NODE_ENV } from './globals';
 import { Web3Service } from './web3/web3.service';
@@ -12,6 +13,7 @@ import { DecodingService } from './decoding/decoding.service';
 import { DecodedParameter } from './decoding/types/decoded-parameter';
 import { MetadataResponse } from './web3/types/metadata-response';
 import { defaultMetadata } from './web3/utils/default-metadata-response';
+import { buildLogId } from './utils/build-log-id';
 
 /**
  * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
@@ -33,6 +35,7 @@ export class IndexingService implements OnModuleInit {
     if (NODE_ENV !== 'test') {
       this.indexByBlock().then();
       this.processContractsToIndex().then();
+      this.indexByEvents().then();
     }
   }
 
@@ -70,13 +73,58 @@ export class IndexingService implements OnModuleInit {
               config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
             )
           : 0;
-
-      setTimeout(this.indexByBlock.bind(this), timeout);
+      this.setRecursiveTimeout(this.indexByBlock.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while indexing data: ${e.message}`);
     }
   }
 
+  /**
+   * Indexes events by retrieving past logs from the latest indexed event block up to a specified block.
+   * Recursively calls itself after a timeout based on the block iteration or sleepBetweenIteration configuration.
+   */
+  protected async indexByEvents() {
+    try {
+      const startTime = new Date();
+
+      const config = await this.structureDB.getConfig();
+      this.logger.setLatestIndexedEventBlock(config.latestIndexedEventBlock);
+
+      const lastBlock = await this.web3Service.getLastBlock();
+      const toBlock =
+        config.latestIndexedEventBlock + config.blockIteration < lastBlock
+          ? config.latestIndexedEventBlock + config.blockIteration
+          : lastBlock;
+
+      this.fileLogger.info(`Indexing from blocks ${config.latestIndexedEventBlock} to ${toBlock}`);
+
+      const logs = await this.web3Service.getPastLogs(config.latestIndexedEventBlock, toBlock);
+
+      for (const log of logs) await this.indexEvent(log);
+
+      await this.structureDB.updateLatestIndexedEventBlock(toBlock);
+      this.logger.setLatestIndexedEventBlock(toBlock);
+
+      // Recursively call this function after a timeout
+      const timeout =
+        lastBlock === toBlock
+          ? Math.max(
+              0,
+              config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
+            )
+          : 0;
+      this.setRecursiveTimeout(this.indexByEvents.bind(this), timeout);
+    } catch (e) {
+      this.fileLogger.error(`Error while indexing data: ${e.message}`);
+    }
+  }
+
+  /**
+   * Processes and indexes contracts from the list of contracts to be indexed.
+   * Recursively calls itself after a timeout based on the CONTRACTS_PROCESSING_INTERVAL.
+   *
+   * @throws {Error} If there is an error while processing and indexing contracts.
+   */
   protected async processContractsToIndex() {
     try {
       const startTime = new Date();
@@ -102,7 +150,7 @@ export class IndexingService implements OnModuleInit {
         0,
         CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
       );
-      setTimeout(this.processContractsToIndex.bind(this), timeout);
+      this.setRecursiveTimeout(this.processContractsToIndex.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
     }
@@ -114,13 +162,13 @@ export class IndexingService implements OnModuleInit {
    * @param {string} transactionHash - The transaction hash to index.
    */
   protected async indexTransaction(transactionHash: string) {
-    // Check if the transaction have already been indexed
-    const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
-    if (transactionAlreadyIndexed) return;
-
-    this.fileLogger.info('Indexing transaction', { transactionHash });
-
     try {
+      // Check if the transaction have already been indexed
+      const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
+      if (transactionAlreadyIndexed) return;
+
+      this.fileLogger.info('Indexing transaction', { transactionHash });
+
       const transaction = await this.web3Service.getTransaction(transactionHash);
       const methodId = transaction.input.slice(0, 10);
       const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
@@ -165,6 +213,54 @@ export class IndexingService implements OnModuleInit {
       }
     } catch (e) {
       this.fileLogger.error(`Error while indexing transaction: ${e.message}`, { transactionHash });
+    }
+  }
+
+  /**
+   * Indexes a single event log entry.
+   *
+   * @param {Log} log - The log object containing event data.
+   */
+  protected async indexEvent(log: Log) {
+    try {
+      const logId = buildLogId(log.transactionHash, log.logIndex);
+      const methodId = log.topics[0].slice(0, 10);
+
+      // Check if the transaction have already been indexed
+      const eventAlreadyIndexed = await this.dataDB.getEventById(logId);
+      if (eventAlreadyIndexed) return;
+
+      this.fileLogger.info('Indexing log', { ...log });
+
+      const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
+      await this.dataDB.insertEvent({
+        ...log,
+        id: logId,
+        eventName: eventInterface?.name || null,
+        methodId,
+        topic0: log.topics[0],
+        topic1: log.topics.length > 1 ? log.topics[1] : null,
+        topic2: log.topics.length > 2 ? log.topics[2] : null,
+        topic3: log.topics.length > 3 ? log.topics[3] : null,
+      });
+
+      this.logger.incrementIndexedCount('event');
+
+      // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
+      await this.dataDB.insertContract(
+        { address: log.address, interfaceVersion: null, interfaceCode: null },
+        'do nothing',
+      );
+
+      const decodedParameters = await this.decodingService.decodeLogParameters(
+        log.data,
+        log.topics,
+      );
+
+      if (decodedParameters)
+        await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
+    } catch (e) {
+      this.fileLogger.error(`Error while indexing log: ${e.message}`, { ...log });
     }
   }
 
@@ -289,5 +385,12 @@ export class IndexingService implements OnModuleInit {
         tokenId: metadata.metadata.tokenId,
       });
     }
+  }
+
+  private setRecursiveTimeout(func: () => void, timeout: number) {
+    if (NODE_ENV === 'test') return;
+    setTimeout(() => {
+      func();
+    }, timeout);
   }
 }

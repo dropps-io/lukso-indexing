@@ -457,8 +457,8 @@ export class LuksoDataDbService {
     await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.EVENT}
-      ("id", "blockNumber", "transactionHash", "logIndex", "address", "eventName", "topic0", "topic1", "topic2", "topic3", "data")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ("id", "blockNumber", "transactionHash", "logIndex", "address", "eventName", "methodId", "topic0", "topic1", "topic2", "topic3", "data")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     `,
       [
         event.id,
@@ -467,6 +467,7 @@ export class LuksoDataDbService {
         event.logIndex,
         event.address,
         event.eventName,
+        event.methodId,
         event.topic0,
         event.topic1,
         event.topic2,
@@ -485,17 +486,36 @@ export class LuksoDataDbService {
   }
 
   // EventParameter table functions
-  public async insertEventParameter(eventParameter: EventParameterTable): Promise<void> {
-    await this.executeQuery(
-      `INSERT INTO ${DB_DATA_TABLE.EVENT_PARAMETER} VALUES ($1, $2, $3, $4, $5)`,
-      [
-        eventParameter.eventId,
-        eventParameter.value,
-        eventParameter.name,
-        eventParameter.type,
-        eventParameter.position,
-      ],
+  public async insertEventParameters(
+    eventId: string,
+    eventParameters: Omit<EventParameterTable, 'eventId'>[],
+    onConflict: 'throw' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    if (eventParameters.length === 0) return;
+
+    const values = eventParameters.map((eventParameter) => [
+      eventId,
+      eventParameter.value,
+      eventParameter.name,
+      eventParameter.type,
+      eventParameter.position,
+    ]);
+
+    const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
+
+    const query = format(
+      `
+        INSERT INTO %I
+        ("eventId", "value", "name", "type", "position")
+        VALUES %L
+        %s
+      `,
+      DB_DATA_TABLE.EVENT_PARAMETER,
+      values,
+      conflictAction,
     );
+
+    await this.executeQuery(query);
   }
 
   public async getEventParameters(eventId: string): Promise<EventParameterTable[]> {
