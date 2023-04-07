@@ -356,7 +356,7 @@ export class LuksoDataDbService {
 
     const values = transactionParameters.map((transactionParameter) => [
       transactionHash,
-      transactionParameter.value,
+      JSON.stringify(transactionParameter.value),
       transactionParameter.name,
       transactionParameter.type,
       transactionParameter.position,
@@ -449,7 +449,7 @@ export class LuksoDataDbService {
 
     const values = wrappedTransactionParameters.map((wrappedTransactionParameter) => [
       wrappedTransactionId,
-      wrappedTransactionParameter.value,
+      JSON.stringify(wrappedTransactionParameter.value),
       wrappedTransactionParameter.name,
       wrappedTransactionParameter.type,
       wrappedTransactionParameter.position,
@@ -524,7 +524,7 @@ export class LuksoDataDbService {
 
     const values = eventParameters.map((eventParameter) => [
       eventId,
-      eventParameter.value,
+      JSON.stringify(eventParameter.value),
       eventParameter.name,
       eventParameter.type,
       eventParameter.position,

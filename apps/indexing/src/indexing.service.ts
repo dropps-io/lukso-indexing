@@ -14,6 +14,7 @@ import { DecodedParameter } from './decoding/types/decoded-parameter';
 import { MetadataResponse } from './web3/types/metadata-response';
 import { defaultMetadata } from './web3/utils/default-metadata-response';
 import { buildLogId } from './utils/build-log-id';
+import { splitIntoChunks } from './utils/split-into-chunks';
 
 /**
  * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
@@ -52,22 +53,38 @@ export class IndexingService implements OnModuleInit {
       this.logger.setLastBlock(lastBlock);
       this.logger.setLatestIndexedBlock(config.latestIndexedBlock);
 
-      const blockToIndex =
-        config.latestIndexedBlock + 1 > lastBlock ? lastBlock : config.latestIndexedBlock + 1;
+      const indexBlock = async (blockNumber: number) => {
+        this.fileLogger.info(`Indexing data of block ${blockNumber}`, { block: blockNumber });
 
-      this.fileLogger.info(`Indexing data from block ${blockToIndex}`, { block: blockToIndex });
+        const transactionsHashes = await this.web3Service.getBlockTransactions(blockNumber);
 
-      const transactionsHashes = await this.web3Service.getBlockTransactions(blockToIndex);
+        const indexBatchTransactions = async (txHashes: string[]) => {
+          for (const txHash of txHashes) await this.indexTransaction(txHash);
+        };
 
-      for (const transactionHash of transactionsHashes)
-        await this.indexTransaction(transactionHash);
+        const transactionHashesChunks = splitIntoChunks(transactionsHashes, 10);
+        await Promise.all(transactionHashesChunks.map(indexBatchTransactions));
+      };
 
-      await this.structureDB.updateLatestIndexedBlock(blockToIndex);
-      this.logger.setLatestIndexedBlock(blockToIndex);
+      const indexUntilBlock =
+        config.latestIndexedBlock + 101 > lastBlock ? lastBlock : config.latestIndexedBlock + 101;
+
+      const promises: Promise<void>[] = [];
+      for (
+        let blockToIndex = config.latestIndexedBlock + 1;
+        blockToIndex <= indexUntilBlock;
+        blockToIndex++
+      ) {
+        promises.push(indexBlock(blockToIndex));
+      }
+      await Promise.all(promises);
+
+      await this.structureDB.updateLatestIndexedBlock(indexUntilBlock);
+      this.logger.setLatestIndexedBlock(indexUntilBlock);
 
       // Recursively call this function after a timeout
       const timeout =
-        lastBlock === blockToIndex
+        lastBlock === indexUntilBlock
           ? Math.max(
               0,
               config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
@@ -75,7 +92,7 @@ export class IndexingService implements OnModuleInit {
           : 0;
       this.setRecursiveTimeout(this.indexByBlock.bind(this), timeout);
     } catch (e) {
-      this.fileLogger.error(`Error while indexing data: ${e.message}`);
+      this.fileLogger.error(`Error while indexing data from blocks: ${e.message}`);
     }
   }
 
@@ -100,7 +117,25 @@ export class IndexingService implements OnModuleInit {
 
       const logs = await this.web3Service.getPastLogs(config.latestIndexedEventBlock, toBlock);
 
-      for (const log of logs) await this.indexEvent(log);
+      const txHashesChunks = splitIntoChunks(
+        logs
+          .map((log) => log.transactionHash)
+          .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index),
+        20,
+      );
+      const logsChunks = splitIntoChunks(logs, 20);
+
+      const indexBatchTransactions = async (txHashes: string[]) => {
+        for (const txHash of txHashes) await this.indexTransaction(txHash);
+      };
+      const indexBatchEvents = async (logs: Log[]) => {
+        for (const log of logs) await this.indexEvent(log);
+      };
+
+      await Promise.all([
+        Promise.all(logsChunks.map(indexBatchEvents)),
+        Promise.all(txHashesChunks.map(indexBatchTransactions)),
+      ]);
 
       await this.structureDB.updateLatestIndexedEventBlock(toBlock);
       this.logger.setLatestIndexedEventBlock(toBlock);
@@ -129,21 +164,27 @@ export class IndexingService implements OnModuleInit {
     try {
       const startTime = new Date();
 
-      const contractsToIndex = await this.dataDB.getContractsToIndex();
-      for (const contract of contractsToIndex) {
-        this.fileLogger.info('Indexing contract', { contractAddress: contract });
-        const contractRow = await this.indexContract(contract);
-        if (contractRow) {
-          this.fileLogger.info(`Fetching contract metadata for ${contract}`, { contract });
-          const metadata = await this.web3Service.fetchContractMetadata(
-            contract,
-            contractRow.interfaceCode || undefined,
-          );
+      const indexBatchContracts = async (contractsToIndex: string[]) => {
+        for (const contract of contractsToIndex) {
+          this.fileLogger.info('Indexing contract', { contractAddress: contract });
+          const contractRow = await this.indexContract(contract);
+          if (contractRow) {
+            this.fileLogger.info(`Fetching contract metadata for ${contract}`, { contract });
+            const metadata = await this.web3Service.fetchContractMetadata(
+              contract,
+              contractRow.interfaceCode || undefined,
+            );
 
-          if (!metadata) this.fileLogger.info(`No metadata found for ${contract}`, { contract });
-          await this.indexMetadata(metadata || defaultMetadata(contract));
+            if (!metadata) this.fileLogger.info(`No metadata found for ${contract}`, { contract });
+            await this.indexMetadata(metadata || defaultMetadata(contract));
+          }
         }
-      }
+      };
+
+      const contractsToIndex = await this.dataDB.getContractsToIndex();
+
+      const logsChunks = splitIntoChunks(contractsToIndex, 10);
+      await Promise.all(logsChunks.map(indexBatchContracts));
 
       // Recursively call this function after a timeout
       const timeout = Math.max(
@@ -267,8 +308,6 @@ export class IndexingService implements OnModuleInit {
 
       if (decodedParameters)
         await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
-
-      await this.indexTransaction(log.transactionHash);
     } catch (e) {
       this.fileLogger.error(`Error while indexing log: ${e.message}`, { ...log });
     }
