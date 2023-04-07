@@ -8,6 +8,7 @@ import { Web3Module } from './web3/web3.module';
 import { DecodingModule } from './decoding/decoding.module';
 import { UpdateModule } from './update/update.module';
 import { IndexingService } from './indexing.service';
+import { BlockchainActionRouterModule } from './blockchain-action-router/blockchain-action-router.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { IndexingService } from './indexing.service';
     LuksoStructureDbModule,
     LoggerModule,
     UpdateModule,
+    BlockchainActionRouterModule,
   ],
   providers: [IndexingService],
 })

@@ -32,12 +32,36 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT_TOKEN} (
   "id" CHAR(66) NOT NULL,
   "address" CHAR(42) NOT NULL,
   "index" INTEGER NOT NULL,
-  "decodedTokenId" VARCHAR(66) NOT NULL,
+  "decodedTokenId" VARCHAR(66),
   "tokenId" CHAR(66) NOT NULL,
+  "interfaceCode" VARCHAR(20) NOT NULL,
   PRIMARY KEY ("id"),
   UNIQUE ("address", "tokenId"),
   FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
 )`);
+
+  await client.query(`
+    CREATE SEQUENCE IF NOT EXISTS contract_token_index_seq;
+  `);
+
+  await client.query(`CREATE OR REPLACE FUNCTION update_contract_token_index()
+RETURNS TRIGGER AS $$
+BEGIN
+  SELECT COALESCE(MAX(index), 0) + 1
+  INTO NEW.index
+  FROM contract_token
+  WHERE address = NEW.address;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql`);
+
+  await client.query(`
+      CREATE TRIGGER contract_token_before_insert
+BEFORE INSERT ON contract_token
+FOR EACH ROW
+EXECUTE FUNCTION update_contract_token_index();
+  `);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
@@ -46,7 +70,7 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
   "tokenId" VARCHAR(66),
   "name" VARCHAR(256),
   "symbol" VARCHAR(50),
-  "description" VARCHAR(512),
+  "description" VARCHAR(4096),
   "isNFT" BOOLEAN,
   FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
   FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "tokenId") ON DELETE CASCADE
@@ -96,6 +120,7 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.DATA_CHANGED} (
   "address" CHAR(42) NOT NULL,
   "key" CHAR(66) NOT NULL,
   "value" VARCHAR(2048) NOT NULL,
+  "decodedValue" VARCHAR(2048),
   "blockNumber" INTEGER NOT NULL
   )`);
 

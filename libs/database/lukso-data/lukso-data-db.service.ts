@@ -76,21 +76,34 @@ export class LuksoDataDbService {
     return rows.map((row) => row.address);
   }
 
-  // ContractToken table functions
-  public async insertContractToken(contractToken: ContractTokenTable): Promise<void> {
-    await this.executeQuery(
-      `
-          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN}
-          VALUES ($1, $2, $3, $4, $5)
-        `,
-      [
-        contractToken.id,
-        contractToken.address,
-        contractToken.index,
-        contractToken.decodedTokenId,
-        contractToken.tokenId,
-      ],
+  public async getTokensToIndex(): Promise<ContractTokenTable[]> {
+    return await this.executeQuery<ContractTokenTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "decodedTokenId" IS NULL`,
     );
+  }
+
+  // ContractToken table functions
+  public async insertContractToken(
+    contractToken: Omit<ContractTokenTable, 'index'>,
+    onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    let query = `
+          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN} (id, address, "decodedTokenId", "tokenId", "interfaceCode")
+          VALUES ($1, $2, $3, $4, $5)
+        `;
+    if (onConflict === 'do nothing') query += ' ON CONFLICT DO NOTHING';
+    else if (onConflict === 'update')
+      query += ` ON CONFLICT ("id") DO UPDATE SET
+        "interfaceCode" = EXCLUDED."interfaceCode",
+        "decodedTokenId" = EXCLUDED."decodedTokenId"`;
+
+    await this.executeQuery(query, [
+      contractToken.id,
+      contractToken.address,
+      contractToken.decodedTokenId,
+      contractToken.tokenId,
+      contractToken.interfaceCode,
+    ]);
   }
 
   public async getContractTokenById(id: string): Promise<ContractTokenTable | null> {

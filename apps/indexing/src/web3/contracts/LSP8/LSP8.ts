@@ -2,7 +2,7 @@ import winston from 'winston';
 import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
 import { GetDataDynamicKey } from '@erc725/erc725.js/build/main/src/types/GetData';
-import { hexToString } from 'web3-utils';
+import { hexToNumberString, hexToString, toChecksumAddress } from 'web3-utils';
 
 import { Web3Service } from '../../web3.service';
 import { MetadataResponse } from '../../types/metadata-response';
@@ -26,7 +26,10 @@ export class LSP8 {
    *
    * @returns {Promise<MetadataResponse | null>} - The metadata and images associated with the LSP8 token or null if an error occurs.
    */
-  public async fetchTokenData(address: string, tokenId: string): Promise<MetadataResponse | null> {
+  public async fetchTokenData(
+    address: string,
+    tokenId: string,
+  ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
     try {
       const erc725 = this.getErc725(address);
 
@@ -42,7 +45,10 @@ export class LSP8 {
         }
       )?.LSP4Metadata;
 
-      return this.buildMetadataResponse(metadata, address, tokenId);
+      return {
+        metadata: this.buildMetadataResponse(metadata, address, tokenId),
+        decodedTokenId: tokenMetadataKey.dynamicKeyParts as string,
+      };
     } catch (error) {
       this.logger.warn(`Failed to fetch lsp8 token metadata: ${error.message}`, { address });
       return null;
@@ -89,11 +95,11 @@ export class LSP8 {
     switch (tokenIdType) {
       case LSP8_TOKEN_ID_TYPE.address:
         keyName = 'LSP8MetadataJSON:<address>';
-        dynamicKeyParts = tokenId.slice(0, 42);
+        dynamicKeyParts = toChecksumAddress(tokenId.slice(0, 42));
         break;
       case LSP8_TOKEN_ID_TYPE.uint256:
         keyName = 'LSP8MetadataJSON:<uint256>';
-        dynamicKeyParts = parseInt(tokenId.slice(2), 16).toString();
+        dynamicKeyParts = hexToNumberString(tokenId);
         break;
       case LSP8_TOKEN_ID_TYPE.string:
         keyName = 'LSP8MetadataJSON:<string>';

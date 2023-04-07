@@ -34,9 +34,10 @@ describe('LuksoDataDbService', () => {
   const contractToken1: ContractTokenTable = {
     id: HASH1,
     address: ADDRESS1,
-    index: 0,
+    index: 1,
     decodedTokenId: 'Hello Test',
     tokenId: '0x0000000000000000000000000000000000000000000048656c6c6f2054657374',
+    interfaceCode: 'LSP8',
   };
 
   const contractMetadata: Omit<MetadataTable, 'id'> = {
@@ -211,6 +212,33 @@ describe('LuksoDataDbService', () => {
       expect(res.rows[0]).toEqual(contractToken1);
     });
 
+    it('should throw by default if inserting on existing token', async () => {
+      await service.insertContractToken(contractToken1);
+      await expect(service.insertContractToken(contractToken1)).rejects.toThrow();
+    });
+
+    it('should not throw if inserting on existing token when do nothing on conflict', async () => {
+      await service.insertContractToken(contractToken1);
+      await expect(
+        service.insertContractToken(contractToken1, 'do nothing'),
+      ).resolves.not.toThrow();
+    });
+
+    it('should be able to update on conflict', async () => {
+      await service.insertContractToken(contractToken1);
+      await service.insertContractToken(
+        { ...contractToken1, interfaceCode: 'NEW_CODE', decodedTokenId: 'TOKEN_ID' },
+        'update',
+      );
+      const res = await service.getContractTokenById(contractToken1.id);
+
+      expect(res).toEqual({
+        ...contractToken1,
+        interfaceCode: 'NEW_CODE',
+        decodedTokenId: 'TOKEN_ID',
+      });
+    });
+
     it('should be able to query a contract token by id', async () => {
       await service.insertContractToken(contractToken1);
 
@@ -221,6 +249,98 @@ describe('LuksoDataDbService', () => {
     it('should return null if query an unknown id', async () => {
       const res = await service.getContractTokenById(contractToken1.id);
       expect(res).toBeNull();
+    });
+
+    it('should increment index automatically for each contract address', async () => {
+      await service.insertContract({ ...contract1, address: ADDRESS2 });
+
+      await service.insertContractToken(contractToken1);
+      await service.insertContractToken({ ...contractToken1, id: HASH2, tokenId: HASH2 });
+      await service.insertContractToken({ ...contractToken1, id: HASH3, address: ADDRESS2 });
+
+      const res1 = await service.getContractTokenById(HASH1);
+      const res2 = await service.getContractTokenById(HASH2);
+      const res3 = await service.getContractTokenById(HASH3);
+
+      expect(res1?.index).toEqual(1);
+      expect(res2?.index).toEqual(2);
+      expect(res3?.index).toEqual(1);
+    });
+
+    describe('getTokensToIndex', () => {
+      it('should return an array of contract tokens with null decodedTokenId', async () => {
+        // Insert tokens with null decodedTokenId
+        await service.insertContractToken({
+          id: HASH1,
+          address: ADDRESS1,
+          decodedTokenId: null,
+          tokenId: HASH1,
+          interfaceCode: 'LSP8',
+        });
+        await service.insertContractToken({
+          id: HASH2,
+          address: ADDRESS1,
+          decodedTokenId: null,
+          tokenId: HASH2,
+          interfaceCode: 'LSP8',
+        });
+
+        // Insert tokens with non-null decodedTokenId
+        await service.insertContractToken({
+          id: HASH3,
+          address: ADDRESS1,
+          decodedTokenId: '3',
+          tokenId: '3',
+          interfaceCode: 'LSP8',
+        });
+
+        const result = await service.getTokensToIndex();
+
+        expect(result).toEqual([
+          {
+            id: HASH1,
+            address: ADDRESS1,
+            index: 1,
+            decodedTokenId: null,
+            tokenId: HASH1,
+            interfaceCode: 'LSP8',
+          },
+          {
+            id: HASH2,
+            address: ADDRESS1,
+            index: 2,
+            decodedTokenId: null,
+            tokenId: HASH2,
+            interfaceCode: 'LSP8',
+          },
+        ]);
+      });
+
+      it('should return an empty array when there are no tokens with null decodedTokenId', async () => {
+        await service.insertContractToken({
+          id: HASH1,
+          address: ADDRESS1,
+          decodedTokenId: '1',
+          tokenId: '1',
+          interfaceCode: 'LSP8',
+        });
+        await service.insertContractToken({
+          id: HASH2,
+          address: ADDRESS1,
+          decodedTokenId: '2',
+          tokenId: '2',
+          interfaceCode: 'LSP8',
+        });
+
+        const result = await service.getTokensToIndex();
+
+        expect(result).toEqual([]);
+      });
+
+      it('should return an empty array when there are no tokens', async () => {
+        const result = await service.getTokensToIndex();
+        expect(result).toEqual([]);
+      });
     });
   });
 
@@ -489,6 +609,7 @@ describe('LuksoDataDbService', () => {
       address: ADDRESS1,
       key: HASH1,
       value: 'testValue',
+      decodedValue: null,
       blockNumber: 42,
     };
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import Web3 from 'web3';
 import winston from 'winston';
-import { AbiItem, toChecksumAddress } from 'web3-utils';
+import { AbiItem, hexToNumberString, hexToString, toChecksumAddress } from 'web3-utils';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import LSP6KeyManager from '@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json';
@@ -10,6 +10,7 @@ import { WRAPPING_METHOD } from './types/enums';
 import { Web3Service } from '../web3/web3.service';
 import { WrappedTransaction } from './types/wrapped-tx';
 import { DecodedParameter } from './types/decoded-parameter';
+import { LSP8_TOKEN_ID_TYPE } from '../web3/contracts/LSP8/enums';
 
 @Injectable()
 export class DecodingService {
@@ -162,6 +163,22 @@ export class DecodingService {
         contractAddress,
       });
       return null;
+    }
+  }
+
+  public decodeLsp8TokenId(tokenId: string, tokenIdType?: LSP8_TOKEN_ID_TYPE): string {
+    if (!tokenIdType) return tokenId;
+
+    switch (tokenIdType) {
+      case LSP8_TOKEN_ID_TYPE.address:
+        return toChecksumAddress(tokenId.slice(0, 42));
+      case LSP8_TOKEN_ID_TYPE.uint256:
+        return hexToNumberString(tokenId);
+      case LSP8_TOKEN_ID_TYPE.string:
+        return hexToString(tokenId);
+      case LSP8_TOKEN_ID_TYPE.bytes32:
+      default: // When no tokenIdType, we assume it's a bytes32 type
+        return tokenId;
     }
   }
 

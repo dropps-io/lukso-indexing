@@ -69,7 +69,7 @@ describe('LSP8', () => {
         lsp8ContractTypeUint.tokenId,
       );
 
-      expect(res).toMatchObject({
+      expect(res?.metadata).toMatchObject({
         ...expectedMetadata,
         metadata: {
           ...expectedMetadata.metadata,
@@ -85,7 +85,7 @@ describe('LSP8', () => {
         lsp8ContractTypeBytes.tokenId,
       );
 
-      expect(res).toMatchObject({
+      expect(res?.metadata).toMatchObject({
         ...expectedMetadata,
         metadata: {
           ...expectedMetadata.metadata,
@@ -101,7 +101,7 @@ describe('LSP8', () => {
         lsp8ContractTypeNotSet.tokenId,
       );
 
-      expect(res).toMatchObject({
+      expect(res?.metadata).toMatchObject({
         ...expectedMetadata,
         metadata: {
           ...expectedMetadata.metadata,

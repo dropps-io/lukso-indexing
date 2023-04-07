@@ -14,6 +14,7 @@ import { MetadataResponse } from './types/metadata-response';
 import { LSP0 } from './contracts/LSP0/LSP0';
 import { LSP7 } from './contracts/LSP7/LSP7';
 import { LSP4 } from './contracts/LSP4/LSP4';
+import { LSP8 } from './contracts/LSP8/LSP8';
 
 @Injectable()
 export class Web3Service {
@@ -23,6 +24,7 @@ export class Web3Service {
   private readonly lsp0: LSP0;
   private readonly lsp4: LSP4;
   private readonly lsp7: LSP7;
+  private readonly lsp8: LSP8;
 
   constructor(
     protected readonly loggerService: LoggerService,
@@ -34,6 +36,7 @@ export class Web3Service {
     this.lsp0 = new LSP0(this, this.logger);
     this.lsp4 = new LSP4(this, this.logger);
     this.lsp7 = new LSP7(this, this.logger);
+    this.lsp8 = new LSP8(this, this.logger);
   }
 
   public getWeb3(): Web3 {
@@ -114,6 +117,22 @@ export class Web3Service {
         return await this.lsp7.fetchData(address);
       case SUPPORTED_STANDARD.LSP8:
         return await this.lsp4.fetchData(address);
+      default:
+        return null;
+    }
+  }
+
+  public async fetchContractTokenMetadata(
+    address: string,
+    tokenId: string,
+    interfaceCode?: string,
+  ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
+    const interfaceCodeToUse =
+      interfaceCode || (await this.identifyContractInterface(address))?.code;
+
+    switch (interfaceCodeToUse) {
+      case SUPPORTED_STANDARD.LSP8:
+        return await this.lsp8.fetchTokenData(address, tokenId);
       default:
         return null;
     }

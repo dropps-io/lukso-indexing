@@ -7,6 +7,7 @@ import { LoggerService } from '@libs/logger/logger.service';
 import { Web3Service } from '../web3/web3.service';
 import { DecodingService } from './decoding.service';
 import { ADDRESS1 } from '../../../../test/utils/test-values';
+import { LSP8_TOKEN_ID_TYPE } from '../web3/contracts/LSP8/enums';
 
 class TestDecodingService extends DecodingService {
   constructor(
@@ -409,6 +410,38 @@ describe('DecodingService', () => {
         value: '3',
         input: setDataInputToDecode,
       });
+    });
+  });
+
+  describe('decodeLsp8TokenId', () => {
+    it('should decode LSP8 token ID of type address correctly', () => {
+      const tokenId = '0x36eC763516259D4bE9EDe7cC2969969f201139dd000000000000000000000000';
+      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.address);
+      expect(decodedTokenId).toEqual('0x36eC763516259D4bE9EDe7cC2969969f201139dd');
+    });
+
+    it('should decode LSP8 token ID of type uint256 correctly', () => {
+      const tokenId = '0x0000000000000000000000000000000000000000000000004563918244F40000';
+      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.uint256);
+      expect(decodedTokenId).toEqual('5000000000000000000');
+    });
+
+    it('should decode LSP8 token ID of type string correctly', () => {
+      const tokenId = '0x68656c6c6f20776f726c64';
+      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.string);
+      expect(decodedTokenId).toEqual('hello world');
+    });
+
+    it('should decode LSP8 token ID of type bytes32 correctly', () => {
+      const tokenId = '0x4b80742de2bf82acb3630000254bfe7e25184f72df435b5a9da39db6089dcaf5';
+      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.bytes32);
+      expect(decodedTokenId).toEqual(tokenId);
+    });
+
+    it('should assume LSP8 token ID type as bytes32 if no type is provided', () => {
+      const tokenId = '0x4b80742de2bf82acb3630000254bfe7e25184f72df435b5a9da39db6089dcaf5';
+      const decodedTokenId = service.decodeLsp8TokenId(tokenId);
+      expect(decodedTokenId).toEqual(tokenId);
     });
   });
 });

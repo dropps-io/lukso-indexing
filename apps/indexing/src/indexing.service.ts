@@ -6,6 +6,8 @@ import { TransactionTable } from '@db/lukso-data/entities/tx.table';
 import { LoggerService } from '@libs/logger/logger.service';
 import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { Log } from 'web3-core';
+import { EventTable } from '@db/lukso-data/entities/event.table';
+import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
 
 import {
   BLOCKS_INDEXING_BATCH_SIZE,
@@ -13,6 +15,7 @@ import {
   CONTRACTS_PROCESSING_INTERVAL,
   EVENTS_INDEXING_BATCH_SIZE,
   NODE_ENV,
+  TOKENS_INDEXING_BATCH_SIZE,
   TX_INDEXING_BATCH_SIZE,
 } from './globals';
 import { Web3Service } from './web3/web3.service';
@@ -22,6 +25,7 @@ import { MetadataResponse } from './web3/types/metadata-response';
 import { defaultMetadata } from './web3/utils/default-metadata-response';
 import { buildLogId } from './utils/build-log-id';
 import { splitIntoChunks } from './utils/split-into-chunks';
+import { BlockchainActionRouterService } from './blockchain-action-router/blockchain-action-router.service';
 
 /**
  * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
@@ -36,14 +40,16 @@ export class IndexingService implements OnModuleInit {
     private readonly web3Service: Web3Service,
     private readonly decodingService: DecodingService,
     private readonly logger: LoggerService,
+    private readonly actionRouter: BlockchainActionRouterService,
   ) {
     this.fileLogger = logger.getChildLogger('Indexing');
   }
   onModuleInit() {
     if (NODE_ENV !== 'test') {
       this.indexByBlock().then();
-      this.processContractsToIndex().then();
       this.indexByEvents().then();
+      this.processContractsToIndex().then();
+      this.processContractTokensToIndex().then();
     }
   }
 
@@ -201,7 +207,7 @@ export class IndexingService implements OnModuleInit {
       // Function to index contracts and their metadata in batches
       const indexBatchContracts = async (contractsToIndex: string[]) => {
         for (const contract of contractsToIndex) {
-          this.fileLogger.info('Indexing contract', { contractAddress: contract });
+          this.fileLogger.info('Indexing contract', { address: contract });
           // Index the contract and retrieve its row
           const contractRow = await this.indexContract(contract);
           if (contractRow) {
@@ -224,9 +230,9 @@ export class IndexingService implements OnModuleInit {
       const contractsToIndex = await this.dataDB.getContractsToIndex();
 
       // Split contracts into chunks for batch processing
-      const logsChunks = splitIntoChunks(contractsToIndex, CONTRACTS_INDEXING_BATCH_SIZE);
+      const contractsChunks = splitIntoChunks(contractsToIndex, CONTRACTS_INDEXING_BATCH_SIZE);
       // Process contract chunks concurrently
-      await Promise.all(logsChunks.map(indexBatchContracts));
+      await Promise.all(contractsChunks.map(indexBatchContracts));
 
       // Calculate the timeout for the next recursive call based on the current processing progress
       const timeout = Math.max(
@@ -235,6 +241,61 @@ export class IndexingService implements OnModuleInit {
       );
       // Recursively call this function after the calculated timeout
       this.setRecursiveTimeout(this.processContractsToIndex.bind(this), timeout);
+    } catch (e) {
+      this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
+    }
+  }
+
+  /**
+   * Processes contract tokens to be indexed in batches. The function retrieves the list of contract tokens,
+   * splits them into chunks, and indexes each chunk concurrently. After the process is completed, it schedules
+   * the next execution of the function based on a calculated timeout.
+   */
+  protected async processContractTokensToIndex() {
+    try {
+      const startTime = new Date();
+
+      // Function to index a batch of contracts and their metadata
+      const indexBatchTokens = async (tokensToIndex: ContractTokenTable[]) => {
+        // Loop through each contract token in the batch
+        for (const token of tokensToIndex) {
+          this.fileLogger.info('Indexing token', { ...token });
+
+          // Fetch the metadata of the contract token
+          const tokenData = await this.web3Service.fetchContractTokenMetadata(
+            token.address,
+            token.tokenId,
+          );
+
+          // If metadata is available, insert or update the token in the database
+          // and index the metadata
+          if (tokenData) {
+            await this.dataDB.insertContractToken(
+              {
+                ...token,
+                decodedTokenId: tokenData.decodedTokenId,
+              },
+              'update',
+            );
+            await this.indexMetadata(tokenData.metadata);
+          }
+        }
+      };
+
+      // Retrieve the list of contract tokens to be indexed
+      const tokensToIndex = await this.dataDB.getTokensToIndex();
+
+      // Split the list of contract tokens into chunks for batch processing
+      const tokensChunks = splitIntoChunks(tokensToIndex, TOKENS_INDEXING_BATCH_SIZE);
+      await Promise.all(tokensChunks.map(indexBatchTokens));
+
+      // Calculate the timeout for the next recursive call based on the current processing progress
+      const timeout = Math.max(
+        0,
+        CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
+      );
+      // Recursively call this function after the calculated timeout
+      this.setRecursiveTimeout(this.processContractTokensToIndex.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
     }
@@ -342,8 +403,8 @@ export class IndexingService implements OnModuleInit {
 
       // Retrieve the event interface using the method ID
       const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
-      // Insert the event data into the database
-      await this.dataDB.insertEvent({
+
+      const event: EventTable = {
         ...log,
         id: logId,
         eventName: eventInterface?.name || null,
@@ -352,7 +413,10 @@ export class IndexingService implements OnModuleInit {
         topic1: log.topics.length > 1 ? log.topics[1] : null,
         topic2: log.topics.length > 2 ? log.topics[2] : null,
         topic3: log.topics.length > 3 ? log.topics[3] : null,
-      });
+      };
+
+      // Insert the event data into the database
+      await this.dataDB.insertEvent(event);
 
       // Update the logger with the indexed event count
       this.logger.incrementIndexedCount('event');
@@ -370,8 +434,10 @@ export class IndexingService implements OnModuleInit {
       );
 
       // If decoded parameters are present, insert them into the database
-      if (decodedParameters)
+      if (decodedParameters) {
         await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
+        await this.actionRouter.routeEvent(event, decodedParameters);
+      }
     } catch (e) {
       this.fileLogger.error(`Error while indexing log: ${e.message}`, { ...log });
     }
