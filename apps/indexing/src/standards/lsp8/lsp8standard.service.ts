@@ -27,13 +27,16 @@ export class Lsp8standardService {
 
       if (!tokenId) return;
       else
-        await this.dataDB.insertContractToken({
-          address: event.address,
-          tokenId,
-          id: buildTokenUniqueId(event.address, tokenId),
-          decodedTokenId: null,
-          interfaceCode: SUPPORTED_STANDARD.LSP8,
-        });
+        await this.dataDB.insertContractToken(
+          {
+            address: event.address,
+            tokenId,
+            id: buildTokenUniqueId(event.address, tokenId),
+            decodedTokenId: null,
+            interfaceCode: SUPPORTED_STANDARD.LSP8,
+          },
+          'do nothing',
+        );
       this.loggerService.incrementIndexedCount('token');
     } catch (e) {
       this.logger.error(`Error while processing token related event: ${e.message}`, {
