@@ -617,7 +617,7 @@ describe('LuksoDataDbService', () => {
     it('should insert a data changed record', async () => {
       await service.insertDataChanged(dataChanged);
 
-      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED}`, 'DATA');
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.ERC725Y_DATA_CHANGED}`, 'DATA');
       expect(res.rows.length).toEqual(1);
       expect(res.rows[0]).toEqual(dataChanged);
     });

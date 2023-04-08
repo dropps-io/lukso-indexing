@@ -23,7 +23,7 @@ export const seedLuksoStructure = async (dropTables?: boolean) => {
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA} (
-	"key" CHAR(66) NOT NULL,
+	"key" VARCHAR(66) NOT NULL,
   "name" VARCHAR(66) NOT NULL,
 	"keyType" VARCHAR(20) NOT NULL,
 	"valueType" VARCHAR(20) NOT NULL,

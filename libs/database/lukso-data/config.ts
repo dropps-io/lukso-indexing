@@ -1,4 +1,4 @@
-import { setupEnv } from '../../../utils/setup-env';
+import { setupEnv } from '@utils/setup-env';
 
 setupEnv();
 
@@ -10,7 +10,7 @@ export enum DB_DATA_TABLE {
   METADATA_TAG = 'metadata_tag',
   METADATA_ASSET = 'metadata_asset',
   CONTRACT_TOKEN = 'contract_token',
-  DATA_CHANGED = 'data_changed',
+  ERC725Y_DATA_CHANGED = 'erc725y_data_changed',
   TRANSACTION = 'transaction',
   TRANSACTION_INPUT = 'transaction_input',
   TRANSACTION_PARAMETER = 'transaction_parameter',

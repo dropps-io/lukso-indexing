@@ -116,12 +116,13 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_ASSET} (
 )`);
 
   await client.query(`
-CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.DATA_CHANGED} (
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.ERC725Y_DATA_CHANGED} (
   "address" CHAR(42) NOT NULL,
   "key" CHAR(66) NOT NULL,
   "value" VARCHAR(2048) NOT NULL,
   "decodedValue" VARCHAR(2048),
-  "blockNumber" INTEGER NOT NULL
+  "blockNumber" INTEGER NOT NULL,
+  UNIQUE("address", "key", "blockNumber")
   )`);
 
   await client.query(`

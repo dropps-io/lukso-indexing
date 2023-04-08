@@ -210,7 +210,7 @@ describe('Erc725StandardService', () => {
 
       await service.processSetDataTx(ADDRESS1, 2345, parameters);
 
-      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED}`, 'DATA');
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.ERC725Y_DATA_CHANGED}`, 'DATA');
 
       expect(res.rows).toHaveLength(1);
       expect(res.rows).toEqual([
@@ -268,7 +268,7 @@ describe('Erc725StandardService', () => {
 
       await service.processSetDataBatchTx(ADDRESS1, 2345, parameters);
 
-      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED}`, 'DATA');
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.ERC725Y_DATA_CHANGED}`, 'DATA');
 
       expect(res.rows).toHaveLength(4);
       expect(res.rows).toEqual([

@@ -288,7 +288,7 @@ export class LuksoDataDbService {
   public async insertDataChanged(dataChanged: DataChangedTable): Promise<void> {
     await this.executeQuery(
       `
-      INSERT INTO ${DB_DATA_TABLE.DATA_CHANGED}
+      INSERT INTO ${DB_DATA_TABLE.ERC725Y_DATA_CHANGED}
       ("address", "key", "value", "decodedValue", "blockNumber")
       VALUES ($1, $2, $3, $4, $5)
     `,
@@ -307,7 +307,7 @@ export class LuksoDataDbService {
     key: string,
   ): Promise<DataChangedTable[]> {
     return await this.executeQuery<DataChangedTable>(
-      `SELECT * FROM ${DB_DATA_TABLE.DATA_CHANGED} WHERE "address" = $1 AND "key" = $2`,
+      `SELECT * FROM ${DB_DATA_TABLE.ERC725Y_DATA_CHANGED} WHERE "address" = $1 AND "key" = $2`,
       [address, key],
     );
   }
