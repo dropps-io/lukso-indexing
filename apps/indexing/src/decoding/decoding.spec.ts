@@ -3,6 +3,7 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 import { LoggerService } from '@libs/logger/logger.service';
+import { toChecksumAddress } from 'web3-utils';
 
 import { Web3Service } from '../web3/web3.service';
 import { DecodingService } from './decoding.service';
@@ -442,6 +443,85 @@ describe('DecodingService', () => {
       const tokenId = '0x4b80742de2bf82acb3630000254bfe7e25184f72df435b5a9da39db6089dcaf5';
       const decodedTokenId = service.decodeLsp8TokenId(tokenId);
       expect(decodedTokenId).toEqual(tokenId);
+    });
+  });
+
+  describe('decodeErc725YKeyValuePair', () => {
+    it('should decode ERC725Y value correctly for LSP1UniversalReceiverDelegate', async () => {
+      await db.insertErc725ySchema({
+        name: 'LSP1UniversalReceiverDelegate',
+        key: '0x0cfc51aec37c55a4d0b1a65c6255c4bf2fbdf6277f3cc0730c45b828b6db8b47',
+        keyType: 'Singleton',
+        valueType: 'address',
+        valueContent: 'Address',
+      });
+
+      const res = await service.decodeErc725YKeyValuePair(
+        '0x0cfc51aec37c55a4d0b1a65c6255c4bf2fbdf6277f3cc0730c45b828b6db8b47',
+        '0x76aeb1274d6486be066e653605b25ddccf0e2f18',
+      );
+
+      expect(res?.value).toEqual(toChecksumAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'));
+      expect(res?.keyParameters).toEqual([]);
+      expect(res?.keyIndex).toEqual(null);
+    });
+
+    it('should decode ERC725Y value correctly for UP Permissions', async () => {
+      await db.insertErc725ySchema({
+        name: 'AddressPermissions:Permissions:<address>',
+        key: '0x4b80742de2bf82acb3630000<address>                               ',
+        keyType: 'MappingWithGrouping',
+        valueType: 'bytes32',
+        valueContent: 'BitArray',
+      });
+
+      const res = await service.decodeErc725YKeyValuePair(
+        '0x4b80742de2bf82acb3630000d0a434abaa20e8f9627ab2afac944a1264f264d6',
+        '0x0000000000000000000000000000000000000000000000000000000000000a11',
+      );
+
+      expect(res?.value).toEqual('CHANGEOWNER,CHANGEEXTENSIONS,TRANSFERVALUE,CALL');
+      expect(res?.keyParameters).toEqual([
+        toChecksumAddress('0xd0a434abaa20e8f9627ab2afac944a1264f264d6'),
+      ]);
+    });
+
+    it('should decode ERC725Y value correctly for LSP5ReceivedAssets[3]', async () => {
+      await db.insertErc725ySchema({
+        name: 'LSP5ReceivedAssets[]',
+        key: '0x6460ee3c0aac563ccbf76d6e1d07bada78e3a9514e6382b736ed3f478ab7b90b',
+        keyType: 'Array',
+        valueType: 'address',
+        valueContent: 'Address',
+      });
+
+      const res = await service.decodeErc725YKeyValuePair(
+        '0x6460ee3c0aac563ccbf76d6e1d07bada00000000000000000000000000000003',
+        '0x21d69022dfa30d8e1388388798b28386b2dd9a78',
+      );
+
+      expect(res?.value).toEqual(toChecksumAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'));
+      expect(res?.keyParameters).toEqual([]);
+      expect(res?.keyIndex).toEqual(3);
+    });
+
+    it('should decode ERC725Y value correctly for LSP5ReceivedAssets[] root length', async () => {
+      await db.insertErc725ySchema({
+        name: 'LSP5ReceivedAssets[]',
+        key: '0x6460ee3c0aac563ccbf76d6e1d07bada78e3a9514e6382b736ed3f478ab7b90b',
+        keyType: 'Array',
+        valueType: 'address',
+        valueContent: 'Address',
+      });
+
+      const res = await service.decodeErc725YKeyValuePair(
+        '0x6460ee3c0aac563ccbf76d6e1d07bada78e3a9514e6382b736ed3f478ab7b90b',
+        '0x0000000000000000000000000000000000000000000000000000000000000003',
+      );
+
+      expect(res?.value).toEqual('3');
+      expect(res?.keyParameters).toEqual([]);
+      expect(res?.keyIndex).toEqual(null);
     });
   });
 });

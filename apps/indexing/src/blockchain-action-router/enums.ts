@@ -2,3 +2,8 @@ export enum EVENTS_TO_ROUTE {
   'DATA_CHANGED' = '0xece574603820d07bc9b91f2a932baadf4628aabcb8afba49776529c14a6104b2',
   'LSP8_TRANSFER' = '0xb333c813a7426a7a11e2b190cad52c44119421594b47f6f32ace6d8c7207b2bf',
 }
+
+export enum TX_TO_ROUTE {
+  'SET_DATA' = '0x7f23690c',
+  'SET_DATA_BATCH' = '0x14a6e293',
+}

@@ -8,6 +8,7 @@ import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { Log } from 'web3-core';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
+import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 
 import {
   BLOCKS_INDEXING_BATCH_SIZE,
@@ -364,9 +365,18 @@ export class IndexingService implements OnModuleInit {
           'do nothing',
         );
 
+        await this.actionRouter.routeTransaction(
+          transactionRow.from,
+          transactionRow.to,
+          transactionRow.blockNumber,
+          transactionRow.methodId,
+          decodedTxInput.parameters,
+        );
+
         // Index wrapped transactions based on the input parameters
         await this.indexWrappedTransactions(
           transaction.input,
+          transactionRow.blockNumber,
           decodedTxInput.parameters,
           transactionRow.to,
           null,
@@ -449,6 +459,7 @@ export class IndexingService implements OnModuleInit {
    * into the database, and recursively indexing any nested wrapped transactions.
    *
    * @param {string} input - The input data of the transaction.
+   * @param blockNumber
    * @param {DecodedParameter[]} decodedParams - The decoded input parameters of the transaction.
    * @param {string} contractAddress - The contract address of the transaction where the transaction was executed.
    * @param {number|null} parentId - The parent ID of the wrapped transaction.
@@ -456,6 +467,7 @@ export class IndexingService implements OnModuleInit {
    */
   protected async indexWrappedTransactions(
     input: string,
+    blockNumber: number,
     decodedParams: DecodedParameter[],
     contractAddress: string,
     parentId: number | null,
@@ -475,7 +487,9 @@ export class IndexingService implements OnModuleInit {
       if (unwrappedTransactions) {
         for (const unwrappedTransaction of unwrappedTransactions) {
           // Insert the wrapped transaction data into the database
-          const row = await this.dataDB.insertWrappedTx({
+
+          const wrappedTxRow: Omit<WrappedTxTable, 'id'> = {
+            blockNumber,
             from: contractAddress,
             to: unwrappedTransaction.to,
             value: unwrappedTransaction.value,
@@ -483,7 +497,8 @@ export class IndexingService implements OnModuleInit {
             parentTransactionHash: parentTxHash,
             methodId: unwrappedTransaction.input.slice(0, 10),
             methodName: unwrappedTransaction.methodName,
-          });
+          };
+          const { id } = await this.dataDB.insertWrappedTx(wrappedTxRow);
 
           // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
           await this.dataDB.insertContract(
@@ -493,23 +508,32 @@ export class IndexingService implements OnModuleInit {
 
           // Insert the wrapped transaction input data into the database
           await this.dataDB.insertWrappedTxInput({
-            wrappedTransactionId: row.id,
+            wrappedTransactionId: id,
             input: unwrappedTransaction.input,
           });
 
           // Insert the wrapped transaction parameters into the database
           await this.dataDB.insertWrappedTxParameters(
-            row.id,
+            id,
             unwrappedTransaction.parameters,
             'do nothing',
+          );
+
+          await this.actionRouter.routeTransaction(
+            wrappedTxRow.from,
+            wrappedTxRow.to,
+            wrappedTxRow.blockNumber,
+            wrappedTxRow.methodId,
+            unwrappedTransaction.parameters,
           );
 
           // Recursively index any nested wrapped transactions within the current wrapped transaction
           await this.indexWrappedTransactions(
             unwrappedTransaction.input,
+            wrappedTxRow.blockNumber,
             unwrappedTransaction.parameters,
             unwrappedTransaction.to,
-            row.id,
+            id,
             null,
           );
         }

@@ -86,8 +86,8 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
   async getErc725ySchemaByKey(key: string): Promise<ERC725YSchemaTable | null> {
     const rows = await this.executeQuery<ERC725YSchemaTable>(
-      `SELECT * FROM ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA} WHERE "key" = $1`,
-      [key],
+      'SELECT * FROM "erc725y_schema" WHERE LOWER(key) LIKE LOWER($1)',
+      [`%${key.slice(0, 26)}%`],
     );
     return rows.length > 0 ? rows[0] : null;
   }

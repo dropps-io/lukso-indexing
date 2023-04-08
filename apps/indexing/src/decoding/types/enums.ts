@@ -6,3 +6,7 @@ export enum WRAPPING_METHOD {
   ERC725X_EXECUTE_V3 = '0x44c028fe',
   ERC725X_EXECUTE_BATCH_V4_2 = '0x13ced88d',
 }
+
+export enum ERC725Y_SUPPORTED_KEYS {
+  ADDRESS_PERMISSIONS = 'AddressPermissions:Permissions:<address>',
+}

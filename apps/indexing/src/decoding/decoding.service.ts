@@ -1,16 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import Web3 from 'web3';
 import winston from 'winston';
-import { AbiItem, hexToNumberString, hexToString, toChecksumAddress } from 'web3-utils';
+import {
+  AbiItem,
+  hexToNumber,
+  hexToNumberString,
+  hexToString,
+  toChecksumAddress,
+} from 'web3-utils';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import LSP6KeyManager from '@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json';
+import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 
-import { WRAPPING_METHOD } from './types/enums';
+import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { Web3Service } from '../web3/web3.service';
 import { WrappedTransaction } from './types/wrapped-tx';
 import { DecodedParameter } from './types/decoded-parameter';
 import { LSP8_TOKEN_ID_TYPE } from '../web3/contracts/LSP8/enums';
+import { permissionsToString } from './utils/permissions-to-string';
+import { parseDecodedParameter } from './utils/parse-decoded-parameter';
 
 @Injectable()
 export class DecodingService {
@@ -55,7 +64,7 @@ export class DecodingService {
 
       // Map the decoded parameters to the DecodedParameter[] format.
       const parameters: DecodedParameter[] = methodParameters.map((parameter) => ({
-        value: (decodedParameters[parameter.name] as string) || '',
+        value: parseDecodedParameter(decodedParameters[parameter.name]),
         position: parameter.position,
         name: parameter.name,
         type: parameter.type,
@@ -98,7 +107,7 @@ export class DecodingService {
 
       // Map the decoded parameters to the DecodedParameter[] format and return.
       return methodParameters.map((parameter) => ({
-        value: (decodedParameters[parameter.name] as string) || '',
+        value: parseDecodedParameter(decodedParameters[parameter.name]),
         position: parameter.position,
         name: parameter.name,
         type: parameter.type,
@@ -180,6 +189,111 @@ export class DecodingService {
       default: // When no tokenIdType, we assume it's a bytes32 type
         return tokenId;
     }
+  }
+
+  /**
+   * Decodes an ERC725Y key-value pair based on the provided key and value.
+   *
+   * @param {string} key - The key associated with the value to decode.
+   * @param {string} value - The value to decode.
+   * @returns {Promise<{ value: string; keyParameters: string[]; keyIndex: number | null } | null>} A Promise that resolves to an object containing the decoded value, key parameters, and key index. If the value cannot be decoded, it resolves to null.
+   */
+  public async decodeErc725YKeyValuePair(
+    key: string,
+    value: string,
+  ): Promise<{ value: string; keyParameters: string[]; keyIndex: number | null } | null> {
+    try {
+      // Get the schema for the provided key
+      const schema = await this.structureDB.getErc725ySchemaByKey(key);
+      if (!schema) return null;
+
+      // Decode the key and obtain key parameters and index
+      const decodedKey = this.decodeErc725YKey(key, schema as ERC725JSONSchema);
+
+      // Decode the value and handle array length case
+      const decodedValue = this.decodeErc725YValue(value, decodedKey.keyParameters, {
+        ...schema,
+        valueContent:
+          key === schema.key && schema.keyType === 'Array' ? 'Number' : schema.valueContent,
+      } as ERC725JSONSchema);
+
+      if (!decodedValue) return null;
+
+      // Return the decoded value and key parameters, if applicable
+      return { value: decodedValue, ...decodedKey };
+    } catch (e) {
+      this.logger.error(`Error decoding ERC725Y value: ${e.message}`, {
+        stack: e.stack,
+        key,
+        value,
+      });
+
+      return null;
+    }
+  }
+
+  /**
+   * Decodes an ERC725Y key and returns key parameters and key index.
+   *
+   * @param {string} key - The key to decode.
+   * @param {ERC725JSONSchema} schema - The schema associated with the key.
+   * @returns {{ keyParameters: string[]; keyIndex: number | null }} An object containing the key parameters and key index.
+   */
+  protected decodeErc725YKey(
+    key: string,
+    schema: ERC725JSONSchema,
+  ): { keyParameters: string[]; keyIndex: number | null } {
+    if (schema.keyType === 'Array') {
+      if (schema.key !== key)
+        return { keyParameters: [], keyIndex: hexToNumber('0x' + key.slice(34)) };
+    }
+
+    // Decode the dynamic key parts
+    const dynamicKeyParts = ERC725.decodeMappingKey(key, schema as ERC725JSONSchema);
+    return {
+      keyParameters: dynamicKeyParts ? dynamicKeyParts.map((p) => p.value.toString()) : [],
+      keyIndex: null,
+    };
+  }
+
+  /**
+   * Decodes an ERC725Y value based on the provided value, dynamic key parts, and schema.
+   *
+   * @param {string} value - The value to decode.
+   * @param {string[]} dynamicKeyParts - The dynamic key parts.
+   * @param {ERC725JSONSchema} schema - The schema associated with the value.
+   * @returns {string | null} The decoded value or null if the value cannot be decoded.
+   */
+  protected decodeErc725YValue(
+    value: string,
+    dynamicKeyParts: string[],
+    schema: ERC725JSONSchema,
+  ): string | null {
+    // Decode the value based on the dynamic key parts and schema
+    const decodedValue = ERC725.decodeData(
+      [
+        {
+          value,
+          keyName: schema.name,
+          dynamicKeyParts,
+        },
+      ],
+      [
+        {
+          ...schema,
+          keyType: schema.keyType === 'Array' ? 'Singleton' : schema.keyType,
+        },
+      ],
+    );
+
+    // Special handling for ADDRESS_PERMISSIONS
+    if (schema.name === ERC725Y_SUPPORTED_KEYS.ADDRESS_PERMISSIONS) {
+      const permissions = ERC725.decodePermissions(value);
+      return permissionsToString(permissions);
+    }
+
+    if (decodedValue.length === 0) return null;
+    return decodedValue[0].value;
   }
 
   /**
