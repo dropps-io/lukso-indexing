@@ -9,6 +9,7 @@ import { DecodingModule } from './decoding/decoding.module';
 import { UpdateModule } from './update/update.module';
 import { IndexingService } from './indexing.service';
 import { BlockchainActionRouterModule } from './blockchain-action-router/blockchain-action-router.module';
+import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
 
 @Module({
   imports: [
@@ -21,6 +22,6 @@ import { BlockchainActionRouterModule } from './blockchain-action-router/blockch
     UpdateModule,
     BlockchainActionRouterModule,
   ],
-  providers: [IndexingService],
+  providers: [IndexingService, IndexingWsGateway],
 })
 export class IndexingModule {}
