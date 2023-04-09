@@ -624,8 +624,8 @@ describe('LuksoDataDbService', () => {
 
     it('should fetch a data changed record', async () => {
       await service.insertDataChanged(dataChanged);
-      await service.insertDataChanged({ ...dataChanged, value: 'value1' });
-      await service.insertDataChanged({ ...dataChanged, value: 'value2' });
+      await service.insertDataChanged({ ...dataChanged, value: 'value1', blockNumber: 1234 });
+      await service.insertDataChanged({ ...dataChanged, value: 'value2', blockNumber: 12345 });
 
       const result = await service.getDataChangedHistoryByAddressAndKey(
         dataChanged.address,
@@ -633,8 +633,8 @@ describe('LuksoDataDbService', () => {
       );
       expect(result).toEqual([
         dataChanged,
-        { ...dataChanged, value: 'value1' },
-        { ...dataChanged, value: 'value2' },
+        { ...dataChanged, value: 'value1', blockNumber: 1234 },
+        { ...dataChanged, value: 'value2', blockNumber: 12345 },
       ]);
     });
 

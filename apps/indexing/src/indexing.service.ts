@@ -27,6 +27,7 @@ import { defaultMetadata } from './web3/utils/default-metadata-response';
 import { buildLogId } from './utils/build-log-id';
 import { splitIntoChunks } from './utils/split-into-chunks';
 import { BlockchainActionRouterService } from './blockchain-action-router/blockchain-action-router.service';
+import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
 
 /**
  * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
@@ -42,6 +43,7 @@ export class IndexingService implements OnModuleInit {
     private readonly decodingService: DecodingService,
     private readonly logger: LoggerService,
     private readonly actionRouter: BlockchainActionRouterService,
+    private readonly indexingWebSocket: IndexingWsGateway,
   ) {
     this.fileLogger = logger.getChildLogger('Indexing');
   }
@@ -414,7 +416,7 @@ export class IndexingService implements OnModuleInit {
       // Retrieve the event interface using the method ID
       const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
 
-      const event: EventTable = {
+      const eventRow: EventTable = {
         ...log,
         id: logId,
         eventName: eventInterface?.name || null,
@@ -426,7 +428,7 @@ export class IndexingService implements OnModuleInit {
       };
 
       // Insert the event data into the database
-      await this.dataDB.insertEvent(event);
+      await this.dataDB.insertEvent(eventRow);
 
       // Update the logger with the indexed event count
       this.logger.incrementIndexedCount('event');
@@ -443,10 +445,12 @@ export class IndexingService implements OnModuleInit {
         log.topics,
       );
 
+      this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
+
       // If decoded parameters are present, insert them into the database
       if (decodedParameters) {
         await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
-        await this.actionRouter.routeEvent(event, decodedParameters);
+        await this.actionRouter.routeEvent(eventRow, decodedParameters);
       }
     } catch (e) {
       this.fileLogger.error(`Error while indexing log: ${e.message}`, { ...log });
