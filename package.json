@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "indexing": "nest start indexing",
-    "build": "nest build indexing",
+    "api": "nest start api",
+    "build": "nest build indexing&& nest build api",
     "compile": "tsc",
     "seed-lukso-structure-db": "ts-node -r tsconfig-paths/register scripts/database/lukso-structure/index.ts",
     "seed-lukso-data-db": "ts-node -r tsconfig-paths/register scripts/database/lukso-data/index.ts",
@@ -32,6 +33,7 @@
     "@nestjs/swagger": "^6.1.4",
     "@nestjs/websockets": "^9.4.0",
     "@openzeppelin/contracts": "^4.8.2",
+    "class-validator": "^0.14.0",
     "dotenv": "^16.0.3",
     "pg": "^8.10.0",
     "pg-format": "^1.0.4",
