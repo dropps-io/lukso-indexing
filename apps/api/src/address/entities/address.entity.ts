@@ -68,4 +68,7 @@ export class AddressEntity {
     description: 'An array of assets associated with the entity.',
   })
   assets?: MetadataAsset[];
+
+  // Metadata ID
+  id: number;
 }
