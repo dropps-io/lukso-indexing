@@ -127,7 +127,7 @@ export class DecodingService {
    *
    * @param {string} methodId - Method ID of the transaction.
    * @param {DecodedParameter[]} decodedParameters - Decoded parameters of the transaction.
-   * @param {string} contractAddress - Address of the contract where the transaction was executed
+   * @param {string} contractAddress - AddressEntity of the contract where the transaction was executed
    *
    * @returns {Promise<WrappedTransaction[] | null>} - An array containing the wrapped transaction object(s), or null if the method ID is not recognized.
    */
@@ -324,7 +324,7 @@ export class DecodingService {
   /**
    * Unwraps an LSP6 execute or execute relay transaction.
    *
-   * @param {string} contractAddress - Address of the contract which executed the wrapped transaction.
+   * @param {string} contractAddress - AddressEntity of the contract which executed the wrapped transaction.
    * @param {Record<string, string>} parametersMap - Map of parameter names to values.
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.

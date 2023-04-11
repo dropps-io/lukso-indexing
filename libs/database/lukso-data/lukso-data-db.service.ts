@@ -24,12 +24,12 @@ import { WrappedTxInputTable } from './entities/wrapped-tx-input.table';
 
 @Injectable()
 export class LuksoDataDbService {
-  private readonly client: Pool & {
+  protected readonly client: Pool & {
     query: (query: string, values?: any[]) => Promise<QueryResult<any>>;
   };
-  private readonly logger: winston.Logger;
+  protected readonly logger: winston.Logger;
 
-  constructor(private readonly loggerService: LoggerService) {
+  constructor(protected readonly loggerService: LoggerService) {
     this.logger = this.loggerService.getChildLogger('LuksoDataDb');
     this.client = new Pool({
       connectionString: LUKSO_DATA_CONNECTION_STRING,
@@ -576,7 +576,7 @@ export class LuksoDataDbService {
     );
   }
 
-  private async executeQuery<T>(query: string, values?: any[]): Promise<T[]> {
+  protected async executeQuery<T>(query: string, values?: any[]): Promise<T[]> {
     try {
       const result = await this.client.query(query, values);
       return result.rows as T[];
