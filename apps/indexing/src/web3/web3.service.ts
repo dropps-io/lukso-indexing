@@ -48,6 +48,11 @@ export class Web3Service {
     return block.transactions;
   }
 
+  public async getBlockTimestamp(blockNumber: number): Promise<number> {
+    const block = await this.web3.eth.getBlock(blockNumber);
+    return (block.timestamp as number) * 1000;
+  }
+
   public async getTransaction(transactionHash: string): Promise<Transaction> {
     return await this.web3.eth.getTransaction(transactionHash);
   }

@@ -317,14 +317,15 @@ export class LuksoDataDbService {
     await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.TRANSACTION}
-      ("hash", "nonce", "blockHash", "blockNumber", "transactionIndex", "methodId", "methodName", "from", "to", "value", "gasPrice", "gas") VALUES
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ("hash", "nonce", "blockHash", "blockNumber", "date", "transactionIndex", "methodId", "methodName", "from", "to", "value", "gasPrice", "gas") VALUES
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `,
       [
         transaction.hash,
         transaction.nonce,
         transaction.blockHash,
         transaction.blockNumber,
+        transaction.date,
         transaction.transactionIndex,
         transaction.methodId,
         transaction.methodName,
@@ -506,12 +507,13 @@ export class LuksoDataDbService {
     await this.executeQuery(
       `
       INSERT INTO ${DB_DATA_TABLE.EVENT}
-      ("id", "blockNumber", "transactionHash", "logIndex", "address", "eventName", "methodId", "topic0", "topic1", "topic2", "topic3", "data")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ("id", "blockNumber", "date", "transactionHash", "logIndex", "address", "eventName", "methodId", "topic0", "topic1", "topic2", "topic3", "data")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `,
       [
         event.id,
         event.blockNumber,
+        event.date,
         event.transactionHash,
         event.logIndex,
         event.address,

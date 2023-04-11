@@ -328,12 +328,16 @@ export class IndexingService implements OnModuleInit {
       // Decode the transaction input using DecodingService
       const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
 
+      const blockNumber = transaction.blockNumber ?? 0;
+      const timestamp = await this.web3Service.getBlockTimestamp(blockNumber);
+
       // Create a transaction row object with the retrieved and decoded data
       const transactionRow: TransactionTable = {
         ...transaction,
         methodId,
         blockHash: transaction.blockHash ?? '',
-        blockNumber: transaction.blockNumber ?? 0,
+        blockNumber,
+        date: new Date(timestamp),
         transactionIndex: transaction.transactionIndex ?? 0,
         to: transaction.to ?? '',
         methodName: decodedTxInput?.methodName || null,
@@ -416,8 +420,11 @@ export class IndexingService implements OnModuleInit {
       // Retrieve the event interface using the method ID
       const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
 
+      const timestamp = await this.web3Service.getBlockTimestamp(log.blockNumber);
+
       const eventRow: EventTable = {
         ...log,
+        date: new Date(timestamp),
         id: logId,
         eventName: eventInterface?.name || null,
         methodId,

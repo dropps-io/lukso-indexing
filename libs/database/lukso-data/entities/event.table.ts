@@ -1,6 +1,7 @@
 export interface EventTable {
   id: string;
   blockNumber: number;
+  date: Date;
   transactionHash: string;
   logIndex: number;
   address: string;

@@ -3,6 +3,7 @@ export interface TransactionTable {
   nonce: number;
   blockHash: string;
   blockNumber: number;
+  date: Date;
   transactionIndex: number;
   methodId: string;
   methodName: string | null;

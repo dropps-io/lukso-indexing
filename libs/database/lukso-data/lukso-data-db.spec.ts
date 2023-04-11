@@ -56,6 +56,7 @@ describe('LuksoDataDbService', () => {
     nonce: 1,
     blockHash: HASH1,
     blockNumber: 42,
+    date: new Date(),
     transactionIndex: 0,
     methodId: '0x12345678',
     methodName: null,
@@ -69,6 +70,7 @@ describe('LuksoDataDbService', () => {
   const event: EventTable = {
     id: HASH2,
     blockNumber: 42,
+    date: new Date(),
     transactionHash: HASH1,
     logIndex: 0,
     address: ADDRESS1,
