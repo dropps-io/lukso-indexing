@@ -1,18 +1,20 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { LuksoDataDbModule } from '@db/lukso-data/lukso-data-db.module';
-import { LuksoStructureDbModule } from '@db/lukso-structure/lukso-structure-db.module';
-import { LoggerModule } from '@libs/logger/logger.module';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { join } from 'path';
 
-import { ApiService } from './api.service';
+import { AddressModule } from './address/address.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    LuksoDataDbModule,
-    LuksoStructureDbModule,
-    LoggerModule,
+    AddressModule,
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      driver: ApolloDriver,
+      playground: process.env.NODE_ENV !== 'production',
+      introspection: process.env.NODE_ENV !== 'production',
+    }),
   ],
-  providers: [ApiService],
+  providers: [],
 })
 export class ApiModule {}
