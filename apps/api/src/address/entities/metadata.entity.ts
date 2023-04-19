@@ -15,7 +15,7 @@ export class MetadataImage {
     nullable: true,
     description: 'The type of the image: profile, background, etc.',
   })
-  type?: string;
+  type: string | null;
 
   @Field({
     description: 'The unique keccak hash of the image content.',
