@@ -4,7 +4,7 @@ import { LoggerService } from '@libs/logger/logger.service';
 
 import { AddressEntity } from './entities/address.entity';
 import { ExtendedDataDbService } from '../libs/extended-data-db/extended-data-db.service';
-import { MetadataImage } from './entities/metadata.entity';
+import { MetadataImageEntity } from './entities/metadata.entity';
 
 @Injectable()
 export class AddressService {
@@ -21,7 +21,7 @@ export class AddressService {
     return await this.dataDB.getContractWithMetadata(address);
   }
 
-  async findImages(metadataId: number, type?: string | null): Promise<MetadataImage[]> {
+  async findImages(metadataId: number, type?: string | null): Promise<MetadataImageEntity[]> {
     return await this.dataDB.getMetadataImages(metadataId, type);
   }
 }

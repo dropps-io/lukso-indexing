@@ -2,7 +2,7 @@ import { Resolver, Query, Args, ResolveField, Parent } from '@nestjs/graphql';
 
 import { AddressService } from './address.service';
 import { AddressEntity } from './entities/address.entity';
-import { MetadataImage } from './entities/metadata.entity';
+import { MetadataImageEntity } from './entities/metadata.entity';
 
 @Resolver(() => AddressEntity)
 export class AddressResolver {
@@ -13,11 +13,11 @@ export class AddressResolver {
     return this.addressService.findByAddress(address);
   }
 
-  @ResolveField(() => [MetadataImage], { nullable: 'items' })
+  @ResolveField(() => [MetadataImageEntity], { nullable: 'items' })
   async images(
     @Parent() address: AddressEntity,
     @Args('type', { nullable: true, type: () => String }) type?: string | null,
-  ): Promise<MetadataImage[] | null> {
+  ): Promise<MetadataImageEntity[] | null> {
     return this.addressService.findImages(address.id, type);
   }
 }
