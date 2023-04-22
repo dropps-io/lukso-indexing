@@ -1,6 +1,6 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 
-import { MetadataAsset, MetadataImage, MetadataLink } from './metadata.entity';
+import { MetadataAssetEntity, MetadataImageEntity, MetadataLinkEntity } from './metadata.entity';
 
 @ObjectType()
 export class AddressEntity {
@@ -45,11 +45,11 @@ export class AddressEntity {
   })
   isNFT: boolean | null;
 
-  @Field(() => [MetadataImage], {
+  @Field(() => [MetadataImageEntity], {
     nullable: 'items',
     description: 'An array of images associated with the entity.',
   })
-  images?: MetadataImage[];
+  images?: MetadataImageEntity[];
 
   @Field(() => [String], {
     nullable: 'items',
@@ -57,17 +57,17 @@ export class AddressEntity {
   })
   tags?: string[];
 
-  @Field(() => [MetadataLink], {
+  @Field(() => [MetadataLinkEntity], {
     nullable: 'items',
     description: 'An array of related links with titles and URLs.',
   })
-  links?: MetadataLink[];
+  links?: MetadataLinkEntity[];
 
-  @Field(() => [MetadataAsset], {
+  @Field(() => [MetadataAssetEntity], {
     nullable: 'items',
     description: 'An array of assets associated with the entity.',
   })
-  assets?: MetadataAsset[];
+  assets?: MetadataAssetEntity[];
 
   // Metadata ID
   id: number;

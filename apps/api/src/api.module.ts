@@ -4,10 +4,12 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 
 import { AddressModule } from './address/address.module';
+import { MethodModule } from './method/method.module';
 
 @Module({
   imports: [
     AddressModule,
+    MethodModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       driver: ApolloDriver,

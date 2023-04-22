@@ -3,8 +3,7 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { DB_DATA_TABLE } from '@db/lukso-data/config';
 import { MetadataTable } from '@db/lukso-data/entities/metadata.table';
-
-import { MetadataImage } from '../../address/entities/metadata.entity';
+import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 
 export class ExtendedDataDbService extends LuksoDataDbService {
   constructor(protected readonly loggerService: LoggerService) {
@@ -27,12 +26,12 @@ export class ExtendedDataDbService extends LuksoDataDbService {
   public async getMetadataImages(
     metadataId: number,
     type?: string | null,
-  ): Promise<MetadataImage[]> {
+  ): Promise<MetadataImageTable[]> {
     let whereClause = '';
     if (type) whereClause = 'AND type = $2';
     else if (type === null) whereClause = 'AND type IS NULL';
 
-    return await this.executeQuery<MetadataImage>(
+    return await this.executeQuery<MetadataImageTable>(
       `
       SELECT * FROM ${DB_DATA_TABLE.METADATA_IMAGE}
       WHERE "metadataId" = $1 ${whereClause}

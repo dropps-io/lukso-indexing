@@ -1,30 +1,30 @@
 import { ObjectType, Field } from '@nestjs/graphql';
 
 @ObjectType()
-export class MetadataImage {
-  @Field({ description: 'The URL of the image.' })
+export class MetadataImageEntity {
+  @Field(() => String, { description: 'The URL of the image.' })
   url: string;
 
-  @Field({ description: 'The width of the image in pixels.' })
+  @Field(() => Number, { description: 'The width of the image in pixels.' })
   width: number;
 
-  @Field({ description: 'The height of the image in pixels.' })
+  @Field(() => Number, { description: 'The height of the image in pixels.' })
   height: number;
 
-  @Field({
+  @Field(() => String, {
     nullable: true,
     description: 'The type of the image: profile, background, etc.',
   })
-  type?: string;
+  type: string | null;
 
-  @Field({
+  @Field(() => String, {
     description: 'The unique keccak hash of the image content.',
   })
   hash: string;
 }
 
 @ObjectType()
-export class MetadataAsset {
+export class MetadataAssetEntity {
   @Field({ description: 'The URL of the asset.' })
   url: string;
 
@@ -38,7 +38,7 @@ export class MetadataAsset {
 }
 
 @ObjectType()
-export class MetadataLink {
+export class MetadataLinkEntity {
   @Field({ description: 'The title of the related link.' })
   title: string;
 
