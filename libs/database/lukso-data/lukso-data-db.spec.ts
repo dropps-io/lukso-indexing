@@ -84,7 +84,7 @@ describe('LuksoDataDbService', () => {
   };
 
   const wrappedTransaction: Omit<WrappedTxTable, 'id'> = {
-    parentTransactionHash: HASH1,
+    transactionHash: HASH1,
     parentId: null,
     blockNumber: 1234,
     from: ADDRESS1,

@@ -5,11 +5,13 @@ import { join } from 'path';
 
 import { AddressModule } from './address/address.module';
 import { MethodModule } from './method/method.module';
+import { WrappedTxModule } from './wrapped-tx/wrapped-tx.module';
 
 @Module({
   imports: [
     AddressModule,
     MethodModule,
+    WrappedTxModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       driver: ApolloDriver,

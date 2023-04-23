@@ -9,6 +9,7 @@ import { Log } from 'web3-core';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
+import { ConfigTable } from '@db/lukso-structure/entities/config.table';
 
 import {
   BLOCKS_INDEXING_BATCH_SIZE,
@@ -63,12 +64,15 @@ export class IndexingService implements OnModuleInit {
    * The method will recursively call itself after a specified timeout.
    */
   protected async indexByBlock() {
-    try {
-      const startTime = new Date();
+    const startTime = new Date();
+    let lastBlock = 0;
+    let indexUntilBlock = 0;
+    let config: ConfigTable | null = null;
 
+    try {
       // Retrieve configuration and block data
-      const config = await this.structureDB.getConfig();
-      const lastBlock = await this.web3Service.getLastBlock();
+      config = await this.structureDB.getConfig();
+      lastBlock = await this.web3Service.getLastBlock();
 
       // Set logger values
       this.logger.setLastBlock(lastBlock);
@@ -92,7 +96,7 @@ export class IndexingService implements OnModuleInit {
       };
 
       // Determine the block number until which we should index in this iteration
-      const indexUntilBlock =
+      indexUntilBlock =
         config.latestIndexedBlock + BLOCKS_INDEXING_BATCH_SIZE + 1 > lastBlock
           ? lastBlock
           : config.latestIndexedBlock + BLOCKS_INDEXING_BATCH_SIZE + 1;
@@ -111,20 +115,21 @@ export class IndexingService implements OnModuleInit {
       // Update the latest indexed block in the database and logger
       await this.structureDB.updateLatestIndexedBlock(indexUntilBlock);
       this.logger.setLatestIndexedBlock(indexUntilBlock);
-
-      // Calculate the timeout for the next recursive call based on the current indexing progress
-      const timeout =
-        lastBlock === indexUntilBlock
-          ? Math.max(
-              0,
-              config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
-            )
-          : 0;
-      // Recursively call this function after the calculated timeout
-      this.setRecursiveTimeout(this.indexByBlock.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while indexing data from blocks: ${e.message}`);
     }
+
+    // Calculate the timeout for the next recursive call based on the current indexing progress
+    const timeout =
+      lastBlock === indexUntilBlock && config
+        ? Math.max(
+            0,
+            config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
+          )
+        : 0;
+
+    // Recursively call this function after the calculated timeout
+    this.setRecursiveTimeout(this.indexByBlock.bind(this), timeout);
   }
 
   /**
@@ -134,16 +139,19 @@ export class IndexingService implements OnModuleInit {
    * The method will recursively call itself after a specified timeout.
    */
   protected async indexByEvents() {
-    try {
-      const startTime = new Date();
+    const startTime = new Date();
+    let config: ConfigTable | null = null;
+    let lastBlock = 0;
+    let toBlock = 0;
 
+    try {
       // Retrieve configuration and block data
-      const config = await this.structureDB.getConfig();
+      config = await this.structureDB.getConfig();
       this.logger.setLatestIndexedEventBlock(config.latestIndexedEventBlock);
 
-      const lastBlock = await this.web3Service.getLastBlock();
+      lastBlock = await this.web3Service.getLastBlock();
       // Determine the block number until which we should index in this iteration
-      const toBlock =
+      toBlock =
         config.latestIndexedEventBlock + config.blockIteration < lastBlock
           ? config.latestIndexedEventBlock + config.blockIteration
           : lastBlock;
@@ -179,20 +187,20 @@ export class IndexingService implements OnModuleInit {
       // Update the latest indexed event block in the database and logger
       await this.structureDB.updateLatestIndexedEventBlock(toBlock);
       this.logger.setLatestIndexedEventBlock(toBlock);
-
-      // Calculate the timeout for the next recursive call based on the current indexing progress
-      const timeout =
-        lastBlock === toBlock
-          ? Math.max(
-              0,
-              config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
-            )
-          : 0;
-      // Recursively call this function after the calculated timeout
-      this.setRecursiveTimeout(this.indexByEvents.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while indexing data: ${e.message}`);
     }
+
+    // Calculate the timeout for the next recursive call based on the current indexing progress
+    const timeout =
+      lastBlock === toBlock && config
+        ? Math.max(
+            0,
+            config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
+          )
+        : 0;
+    // Recursively call this function after the calculated timeout
+    this.setRecursiveTimeout(this.indexByEvents.bind(this), timeout);
   }
 
   /**
@@ -204,9 +212,9 @@ export class IndexingService implements OnModuleInit {
    * @throws {Error} If there is an error while processing and indexing contracts.
    */
   protected async processContractsToIndex() {
-    try {
-      const startTime = new Date();
+    const startTime = new Date();
 
+    try {
       // Function to index contracts and their metadata in batches
       const indexBatchContracts = async (contractsToIndex: string[]) => {
         for (const contract of contractsToIndex) {
@@ -236,17 +244,17 @@ export class IndexingService implements OnModuleInit {
       const contractsChunks = splitIntoChunks(contractsToIndex, CONTRACTS_INDEXING_BATCH_SIZE);
       // Process contract chunks concurrently
       await Promise.all(contractsChunks.map(indexBatchContracts));
-
-      // Calculate the timeout for the next recursive call based on the current processing progress
-      const timeout = Math.max(
-        0,
-        CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
-      );
-      // Recursively call this function after the calculated timeout
-      this.setRecursiveTimeout(this.processContractsToIndex.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
     }
+
+    // Calculate the timeout for the next recursive call based on the current processing progress
+    const timeout = Math.max(
+      0,
+      CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
+    );
+    // Recursively call this function after the calculated timeout
+    this.setRecursiveTimeout(this.processContractsToIndex.bind(this), timeout);
   }
 
   /**
@@ -255,9 +263,9 @@ export class IndexingService implements OnModuleInit {
    * the next execution of the function based on a calculated timeout.
    */
   protected async processContractTokensToIndex() {
-    try {
-      const startTime = new Date();
+    const startTime = new Date();
 
+    try {
       // Function to index a batch of contracts and their metadata
       const indexBatchTokens = async (tokensToIndex: ContractTokenTable[]) => {
         // Loop through each contract token in the batch
@@ -291,17 +299,17 @@ export class IndexingService implements OnModuleInit {
       // Split the list of contract tokens into chunks for batch processing
       const tokensChunks = splitIntoChunks(tokensToIndex, TOKENS_INDEXING_BATCH_SIZE);
       await Promise.all(tokensChunks.map(indexBatchTokens));
-
-      // Calculate the timeout for the next recursive call based on the current processing progress
-      const timeout = Math.max(
-        0,
-        CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
-      );
-      // Recursively call this function after the calculated timeout
-      this.setRecursiveTimeout(this.processContractTokensToIndex.bind(this), timeout);
     } catch (e) {
       this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
     }
+
+    // Calculate the timeout for the next recursive call based on the current processing progress
+    const timeout = Math.max(
+      0,
+      CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
+    );
+    // Recursively call this function after the calculated timeout
+    this.setRecursiveTimeout(this.processContractTokensToIndex.bind(this), timeout);
   }
 
   /**
@@ -474,7 +482,7 @@ export class IndexingService implements OnModuleInit {
    * @param {DecodedParameter[]} decodedParams - The decoded input parameters of the transaction.
    * @param {string} contractAddress - The contract address of the transaction where the transaction was executed.
    * @param {number|null} parentId - The parent ID of the wrapped transaction.
-   * @param {string|null} parentTxHash - The hash of the parent transaction.
+   * @param {string} transactionHash - The hash of the parent transaction.
    */
   protected async indexWrappedTransactions(
     input: string,
@@ -482,9 +490,9 @@ export class IndexingService implements OnModuleInit {
     decodedParams: DecodedParameter[],
     contractAddress: string,
     parentId: number | null,
-    parentTxHash: string | null,
+    transactionHash: string,
   ) {
-    this.fileLogger.info('Indexing wrapped transactions', { parentId, parentTxHash });
+    this.fileLogger.info('Indexing wrapped transactions', { parentId, transactionHash });
 
     try {
       // Unwrap the transaction to identify any wrapped transactions within the current transaction
@@ -505,7 +513,7 @@ export class IndexingService implements OnModuleInit {
             to: unwrappedTransaction.to,
             value: unwrappedTransaction.value,
             parentId: parentId,
-            parentTransactionHash: parentTxHash,
+            transactionHash,
             methodId: unwrappedTransaction.input.slice(0, 10),
             methodName: unwrappedTransaction.methodName,
           };
@@ -545,7 +553,7 @@ export class IndexingService implements OnModuleInit {
             unwrappedTransaction.parameters,
             unwrappedTransaction.to,
             id,
-            null,
+            transactionHash,
           );
         }
       }
@@ -555,7 +563,7 @@ export class IndexingService implements OnModuleInit {
         decodedParams,
         contractAddress,
         parentId,
-        parentTxHash,
+        transactionHash,
       });
     }
   }

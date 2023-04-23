@@ -413,12 +413,12 @@ export class LuksoDataDbService {
     const rows = await this.executeQuery<{ id: number }>(
       `
     INSERT INTO ${DB_DATA_TABLE.WRAPPED_TRANSACTION}
-    ("parentTransactionHash", "parentId", "blockNumber", "from", "to", "value", "methodId", "methodName")
+    ("transactionHash", "parentId", "blockNumber", "from", "to", "value", "methodId", "methodName")
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING id
   `,
       [
-        wrappedTransaction.parentTransactionHash,
+        wrappedTransaction.transactionHash,
         wrappedTransaction.parentId,
         wrappedTransaction.blockNumber,
         wrappedTransaction.from,

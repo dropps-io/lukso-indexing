@@ -1,6 +1,6 @@
 export interface WrappedTxTable {
   id: number;
-  parentTransactionHash: string | null;
+  transactionHash: string;
   parentId: number | null;
   blockNumber: number;
   from: string;
