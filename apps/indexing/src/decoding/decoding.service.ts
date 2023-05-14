@@ -243,10 +243,8 @@ export class DecodingService {
     key: string,
     schema: ERC725JSONSchema,
   ): { keyParameters: string[]; keyIndex: number | null } {
-    if (schema.keyType === 'Array') {
-      if (schema.key !== key)
-        return { keyParameters: [], keyIndex: hexToNumber('0x' + key.slice(34)) };
-    }
+    if (schema.keyType === 'Array' && schema.key !== key)
+      return { keyParameters: [], keyIndex: hexToNumber('0x' + key.slice(34)) };
 
     // Decode the dynamic key parts
     const dynamicKeyParts = ERC725.decodeMappingKey(key, schema as ERC725JSONSchema);
