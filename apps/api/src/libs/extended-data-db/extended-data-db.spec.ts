@@ -5,6 +5,7 @@ import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 import { TransactionTable } from '@db/lukso-data/entities/tx.table';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
+import { CONTRACT_TYPE } from '@models/enums';
 
 import { ExtendedDataDbService } from './extended-data-db.service';
 import {
@@ -24,6 +25,7 @@ describe('ExtendedDataDbService', () => {
     address: ADDRESS1,
     interfaceCode: 'LSP0',
     interfaceVersion: '0.8.0',
+    type: CONTRACT_TYPE.PROFILE,
   };
 
   const contractMetadata: Omit<MetadataTable, 'id'> = {

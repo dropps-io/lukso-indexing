@@ -43,21 +43,23 @@ export class LuksoDataDbService {
   ): Promise<void> {
     let query = `
     INSERT INTO ${DB_DATA_TABLE.CONTRACT}
-    ("address", "interfaceCode", "interfaceVersion")
-    VALUES ($1, $2, $3)
+    ("address", "interfaceCode", "interfaceVersion", "type")
+    VALUES ($1, $2, $3, $4)
   `;
 
     if (onConflict === 'do nothing') query += ' ON CONFLICT DO NOTHING';
     else if (onConflict === 'update')
       query += ` ON CONFLICT ("address") DO UPDATE SET
         "interfaceCode" = EXCLUDED."interfaceCode",
-        "interfaceVersion" = EXCLUDED."interfaceVersion"
+        "interfaceVersion" = EXCLUDED."interfaceVersion",
+        "type" = EXCLUDED."type"
     `;
 
     await this.executeQuery(query, [
       contract.address,
       contract.interfaceCode,
       contract.interfaceVersion,
+      contract.type,
     ]);
   }
 

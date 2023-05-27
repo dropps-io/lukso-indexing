@@ -2,6 +2,10 @@ import { setupEnv } from '@utils/setup-env';
 
 setupEnv();
 
+export enum DB_DATA_TYPE {
+  CONTRACT_TYPE = 'contract_type',
+}
+
 export enum DB_DATA_TABLE {
   CONTRACT = 'contract',
   METADATA = 'metadata',

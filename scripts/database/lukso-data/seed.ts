@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
-import { DB_DATA_TABLE } from '@db/lukso-data/config';
+import { DB_DATA_TABLE, DB_DATA_TYPE } from '@db/lukso-data/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
@@ -17,13 +17,20 @@ export const seedLuksoData = async (dropTables?: boolean) => {
   if (dropTables) {
     for (const table of Object.keys(DB_DATA_TABLE).values())
       await client.query(`DROP TABLE IF EXISTS ${DB_DATA_TABLE[table]} CASCADE`);
+    for (const type of Object.keys(DB_DATA_TYPE).values())
+      await client.query(`DROP TYPE IF EXISTS ${DB_DATA_TYPE[type]}`);
   }
+
+  await client.query(
+    `CREATE TYPE ${DB_DATA_TYPE.CONTRACT_TYPE} AS ENUM ('profile', 'asset', 'collection')`,
+  );
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT} (
 	"address" CHAR(42) NOT NULL,
   "interfaceCode" VARCHAR(20),
   "interfaceVersion" VARCHAR(20),
+  "type" ${DB_DATA_TYPE.CONTRACT_TYPE},
 	PRIMARY KEY ("address")
 )`);
 

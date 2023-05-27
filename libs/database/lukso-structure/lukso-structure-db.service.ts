@@ -95,12 +95,13 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   async insertContractInterface(contractInterface: ContractInterfaceTable): Promise<void> {
     await this.executeQuery(
       `
-      INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version") VALUES ($1, $2, $3, $4)`,
+      INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version", "type") VALUES ($1, $2, $3, $4, $5)`,
       [
         contractInterface.id,
         contractInterface.code,
         contractInterface.name,
         contractInterface.version,
+        contractInterface.type,
       ],
     );
 

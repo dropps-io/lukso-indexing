@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
+import { CONTRACT_TYPE } from '@models/enums';
 
 import { ContractTokenTable } from './entities/contract-token.table';
 import { MetadataAssetTable } from './entities/metadata-asset.table';
@@ -29,6 +30,7 @@ describe('LuksoDataDbService', () => {
     address: ADDRESS1,
     interfaceCode: 'LSP0',
     interfaceVersion: '0.8.0',
+    type: CONTRACT_TYPE.PROFILE,
   };
 
   const contractToken1: ContractTokenTable = {
@@ -160,11 +162,13 @@ describe('LuksoDataDbService', () => {
           address: ADDRESS1,
           interfaceCode: null,
           interfaceVersion: '1.0',
+          type: null,
         });
         await service.insertContract({
           address: ADDRESS2,
           interfaceCode: null,
           interfaceVersion: '1.0',
+          type: null,
         });
 
         // insert contracts with non-null interfaceCode
@@ -172,6 +176,7 @@ describe('LuksoDataDbService', () => {
           address: ADDRESS3,
           interfaceCode: 'LSP1',
           interfaceVersion: '1.0',
+          type: null,
         });
 
         const result = await service.getContractsToIndex();
@@ -184,11 +189,13 @@ describe('LuksoDataDbService', () => {
           address: ADDRESS1,
           interfaceCode: 'LSP0',
           interfaceVersion: '1.0',
+          type: null,
         });
         await service.insertContract({
           address: ADDRESS2,
           interfaceCode: 'LSP1',
           interfaceVersion: '1.0',
+          type: null,
         });
 
         const result = await service.getContractsToIndex();

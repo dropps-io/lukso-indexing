@@ -28,6 +28,8 @@
       "@libs/logger/*": ["libs/logger/*"],
       "@utils": ["utils"],
       "@utils/*": ["utils/*"],
+      "@models": ["models"],
+      "@models/*": ["models/*"]
     },
   }
 }

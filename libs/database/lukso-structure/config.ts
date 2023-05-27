@@ -12,6 +12,7 @@ export enum DB_STRUCTURE_TABLE {
 
 export enum DB_STRUCTURE_TYPE {
   METHOD_TYPE = 'method_type',
+  CONTRACT_TYPE = 'contract_type',
 }
 
 export const LUKSO_STRUCTURE_CONNECTION_STRING = process.env.LUKSO_STRUCTURE_CONNECTION_STRING;

@@ -353,12 +353,12 @@ export class IndexingService implements OnModuleInit {
 
       // Insert the contracts if they don't exist without an interface, so they will be treated by the other recursive process
       await this.dataDB.insertContract(
-        { address: transaction.from, interfaceVersion: null, interfaceCode: null },
+        { address: transaction.from, interfaceVersion: null, interfaceCode: null, type: null },
         'do nothing',
       );
       if (transaction.to)
         await this.dataDB.insertContract(
-          { address: transaction.to, interfaceVersion: null, interfaceCode: null },
+          { address: transaction.to, interfaceVersion: null, interfaceCode: null, type: null },
           'do nothing',
         );
 
@@ -450,7 +450,7 @@ export class IndexingService implements OnModuleInit {
 
       // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
       await this.dataDB.insertContract(
-        { address: log.address, interfaceVersion: null, interfaceCode: null },
+        { address: log.address, interfaceVersion: null, interfaceCode: null, type: null },
         'do nothing',
       );
 
@@ -521,7 +521,12 @@ export class IndexingService implements OnModuleInit {
 
           // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
           await this.dataDB.insertContract(
-            { address: unwrappedTransaction.to, interfaceVersion: null, interfaceCode: null },
+            {
+              address: unwrappedTransaction.to,
+              interfaceVersion: null,
+              interfaceCode: null,
+              type: null,
+            },
             'do nothing',
           );
 
@@ -595,6 +600,7 @@ export class IndexingService implements OnModuleInit {
         address,
         interfaceCode: contractInterface?.code ?? 'unknown',
         interfaceVersion: contractInterface?.version ?? null,
+        type: contractInterface?.type ?? null,
       };
 
       // Insert contract, and update on conflict

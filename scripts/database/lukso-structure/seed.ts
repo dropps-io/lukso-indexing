@@ -17,9 +17,15 @@ export const seedLuksoStructure = async (dropTables?: boolean) => {
   if (dropTables) {
     for (const table of Object.keys(DB_STRUCTURE_TABLE).values())
       await client.query(`DROP TABLE IF EXISTS ${DB_STRUCTURE_TABLE[table]} CASCADE`);
-    for (const type of Object.keys(DB_STRUCTURE_TYPE).values())
+    for (const type of Object.keys(DB_STRUCTURE_TYPE).values()) {
       await client.query(`DROP TYPE IF EXISTS ${DB_STRUCTURE_TYPE[type]}`);
+    }
   }
+
+  await client.query(`CREATE TYPE ${DB_STRUCTURE_TYPE.METHOD_TYPE} AS ENUM ('event', 'function')`);
+  await client.query(
+    `CREATE TYPE ${DB_STRUCTURE_TYPE.CONTRACT_TYPE} AS ENUM ('profile', 'asset', 'collection')`,
+  );
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA} (
@@ -37,10 +43,9 @@ CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} (
   "code" VARCHAR(20) NOT NULL,
 	"name" VARCHAR(40) NOT NULL,
 	"version" VARCHAR(10),
+	"type" ${DB_STRUCTURE_TYPE.CONTRACT_TYPE},
 	PRIMARY KEY ("id")
 )`);
-
-  await client.query(`CREATE TYPE ${DB_STRUCTURE_TYPE.METHOD_TYPE} AS ENUM ('event', 'function')`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} (

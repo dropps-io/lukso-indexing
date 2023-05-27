@@ -2,6 +2,7 @@ import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterfa
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
+import { CONTRACT_TYPE } from '@models/enums';
 
 export const ADDRESS1 = '0xD692Ba892a902810a2EE3fA41C1D8DcD652D47Ab';
 export const ADDRESS2 = '0xA8f668006AeD69BB42F0A4458ced8B2ab744bfb7';
@@ -73,16 +74,64 @@ export const TEST_ERC725Y: {
 ];
 
 export const TEST_CONTRACT_INTERFACE: ContractInterfaceTable[] = [
-  { id: '0x9a3bfe88', code: 'LSP0', name: 'Universal Profile', version: '0.6' },
-  { id: '0xeb6be62e', code: 'LSP0', name: 'Universal Profile', version: '0.7' },
-  { id: '0x66767497', code: 'LSP0', name: 'Universal Profile', version: '0.8' },
-  { id: '0xc403d48f', code: 'LSP6', name: 'Key Manager', version: '0.7' },
-  { id: '0xfb437414', code: 'LSP6', name: 'Key Manager', version: '0.8' },
-  { id: '0xe33f65c3', code: 'LSP4', name: 'Digital Asset', version: '0.6' },
-  { id: '0x5fcaac27', code: 'LSP4', name: 'Digital Asset', version: '0.7' },
-  { id: '0xda1f85e4', code: 'LSP4', name: 'Digital Asset', version: '0.8' },
-  { id: '0x49399145', code: 'LSP8', name: 'Identifiable Digital Asset', version: '0.7' },
-  { id: '0x622e7a01', code: 'LSP8', name: 'Identifiable Digital Asset', version: '0.8' },
-  { id: '0xfd4d5c50', code: 'LSP9', name: 'Vault', version: '0.7' },
-  { id: '0x7050cee9', code: 'LSP9', name: 'Vault', version: '0.8' },
+  {
+    id: '0x9a3bfe88',
+    code: 'LSP0',
+    name: 'Universal Profile',
+    version: '0.6',
+    type: CONTRACT_TYPE.PROFILE,
+  },
+  {
+    id: '0xeb6be62e',
+    code: 'LSP0',
+    name: 'Universal Profile',
+    version: '0.7',
+    type: CONTRACT_TYPE.PROFILE,
+  },
+  {
+    id: '0x66767497',
+    code: 'LSP0',
+    name: 'Universal Profile',
+    version: '0.8',
+    type: CONTRACT_TYPE.PROFILE,
+  },
+  { id: '0xc403d48f', code: 'LSP6', name: 'Key Manager', version: '0.7', type: null },
+  { id: '0xfb437414', code: 'LSP6', name: 'Key Manager', version: '0.8', type: null },
+  {
+    id: '0xe33f65c3',
+    code: 'LSP7',
+    name: 'Digital Asset',
+    version: '0.6',
+    type: CONTRACT_TYPE.ASSET,
+  },
+  {
+    id: '0x5fcaac27',
+    code: 'LSP7',
+    name: 'Digital Asset',
+    version: '0.7',
+    type: CONTRACT_TYPE.ASSET,
+  },
+  {
+    id: '0xda1f85e4',
+    code: 'LSP7',
+    name: 'Digital Asset',
+    version: '0.8',
+    type: CONTRACT_TYPE.ASSET,
+  },
+  {
+    id: '0x49399145',
+    code: 'LSP8',
+    name: 'Identifiable Digital Asset',
+    version: '0.7',
+    type: CONTRACT_TYPE.COLLECTION,
+  },
+  {
+    id: '0x622e7a01',
+    code: 'LSP8',
+    name: 'Identifiable Digital Asset',
+    version: '0.8',
+    type: CONTRACT_TYPE.COLLECTION,
+  },
+  { id: '0xfd4d5c50', code: 'LSP9', name: 'Vault', version: '0.7', type: null },
+  { id: '0x7050cee9', code: 'LSP9', name: 'Vault', version: '0.8', type: null },
 ];

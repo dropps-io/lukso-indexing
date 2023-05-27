@@ -9,5 +9,6 @@ module.exports = {
     '^@db/lukso-structure(|/.*)$': '<rootDir>/libs/database/lukso-structure/$1',
     '^@libs/logger(|/.*)$': '<rootDir>/libs/logger/$1',
     '^@utils(|/.*)$': '<rootDir>/utils/$1',
+    '^@models(|/.*)$': '<rootDir>/models/$1',
   },
 };

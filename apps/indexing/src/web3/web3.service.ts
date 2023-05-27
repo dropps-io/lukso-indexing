@@ -79,7 +79,13 @@ export class Web3Service {
 
       // If mo bytecode is found, then it's an EOA.
       if (contractCode === '0x')
-        return { id: '0x00000000', code: 'EOA', name: 'Externally Owned Account', version: '0' };
+        return {
+          id: '0x00000000',
+          code: 'EOA',
+          name: 'Externally Owned Account',
+          version: '0',
+          type: null,
+        };
 
       const contractInterfaces = await this.structureDB.getContractInterfaces();
 
