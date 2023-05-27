@@ -28,6 +28,7 @@ const standardInterfaces = [
   { id: '0x9a3bfe88', code: 'LSP0', name: 'Universal Profile', version: '0.6' },
   { id: '0xeb6be62e', code: 'LSP0', name: 'Universal Profile', version: '0.7' },
   { id: '0x66767497', code: 'LSP0', name: 'Universal Profile', version: '0.8' },
+  { id: '0x0f15a0af', code: 'LSP0', name: 'Universal Profile', version: '0.9' },
   { id: '0xc403d48f', code: 'LSP6', name: 'Key Manager', version: '0.7' },
   { id: '0xfb437414', code: 'LSP6', name: 'Key Manager', version: '0.8' },
   { id: '0xe33f65c3', code: 'LSP4', name: 'Digital Asset', version: '0.6' },
@@ -37,6 +38,7 @@ const standardInterfaces = [
   { id: '0x622e7a01', code: 'LSP8', name: 'Identifiable Digital Asset', version: '0.8' },
   { id: '0xfd4d5c50', code: 'LSP9', name: 'Vault', version: '0.7' },
   { id: '0x7050cee9', code: 'LSP9', name: 'Vault', version: '0.8' },
+  { id: '0x19331ad1', code: 'LSP9', name: 'Vault', version: '0.9' },
 ];
 
 const db = new LuksoStructureDbService(new LoggerService());

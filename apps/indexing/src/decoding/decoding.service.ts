@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import Web3 from 'web3';
 import winston from 'winston';
-import {
-  AbiItem,
-  hexToNumber,
-  hexToNumberString,
-  hexToString,
-  toChecksumAddress,
-} from 'web3-utils';
+import { AbiItem, hexToNumberString, hexToString, toChecksumAddress } from 'web3-utils';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import LSP6KeyManager from '@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json';
@@ -244,7 +238,7 @@ export class DecodingService {
     schema: ERC725JSONSchema,
   ): { keyParameters: string[]; keyIndex: number | null } {
     if (schema.keyType === 'Array' && schema.key !== key)
-      return { keyParameters: [], keyIndex: hexToNumber('0x' + key.slice(34)) };
+      return { keyParameters: [], keyIndex: parseInt(hexToNumberString('0x' + key.slice(34))) };
 
     // Decode the dynamic key parts
     const dynamicKeyParts = ERC725.decodeMappingKey(key, schema as ERC725JSONSchema);

@@ -23,7 +23,7 @@
   "dependencies": {
     "@erc725/erc725.js": "^0.17.2",
     "@lukso/lsp-factory.js": "^2.5.1",
-    "@lukso/lsp-smart-contracts": "^0.7.0",
+    "@lukso/lsp-smart-contracts": "^0.8.0",
     "@nestjs/apollo": "^11.0.4",
     "@nestjs/common": "^9.0.0",
     "@nestjs/config": "^2.2.0",
