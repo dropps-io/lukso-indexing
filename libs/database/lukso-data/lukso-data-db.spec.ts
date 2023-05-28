@@ -40,6 +40,7 @@ describe('LuksoDataDbService', () => {
     decodedTokenId: 'Hello Test',
     tokenId: '0x0000000000000000000000000000000000000000000048656c6c6f2054657374',
     interfaceCode: 'LSP8',
+    latestKnownOwner: ADDRESS1,
   };
 
   const contractMetadata: Omit<MetadataTable, 'id'> = {
@@ -286,6 +287,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: null,
           tokenId: HASH1,
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
         await service.insertContractToken({
           id: HASH2,
@@ -293,6 +295,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: null,
           tokenId: HASH2,
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
 
         // Insert tokens with non-null decodedTokenId
@@ -302,6 +305,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: '3',
           tokenId: '3',
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
 
         const result = await service.getTokensToIndex();
@@ -314,6 +318,7 @@ describe('LuksoDataDbService', () => {
             decodedTokenId: null,
             tokenId: HASH1,
             interfaceCode: 'LSP8',
+            latestKnownOwner: ADDRESS2,
           },
           {
             id: HASH2,
@@ -322,6 +327,7 @@ describe('LuksoDataDbService', () => {
             decodedTokenId: null,
             tokenId: HASH2,
             interfaceCode: 'LSP8',
+            latestKnownOwner: ADDRESS2,
           },
         ]);
       });
@@ -333,6 +339,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: '1',
           tokenId: '1',
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
         await service.insertContractToken({
           id: HASH2,
@@ -340,6 +347,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: '2',
           tokenId: '2',
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
 
         const result = await service.getTokensToIndex();

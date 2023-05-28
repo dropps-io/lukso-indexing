@@ -90,14 +90,17 @@ export class LuksoDataDbService {
     onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
   ): Promise<void> {
     let query = `
-          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN} (id, address, "decodedTokenId", "tokenId", "interfaceCode")
-          VALUES ($1, $2, $3, $4, $5)
+          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN} (id, address, "decodedTokenId", "tokenId", "interfaceCode", "latestKnownOwner")
+          VALUES ($1, $2, $3, $4, $5, $6)
         `;
     if (onConflict === 'do nothing') query += ' ON CONFLICT DO NOTHING';
-    else if (onConflict === 'update')
+    else if (onConflict === 'update') {
       query += ` ON CONFLICT ("id") DO UPDATE SET
-        "interfaceCode" = EXCLUDED."interfaceCode",
-        "decodedTokenId" = EXCLUDED."decodedTokenId"`;
+        "interfaceCode" = EXCLUDED."interfaceCode"`;
+      if (contractToken.decodedTokenId) query += `,"decodedTokenId" = EXCLUDED."decodedTokenId"`;
+      if (contractToken.latestKnownOwner)
+        query += `,"latestKnownOwner" = EXCLUDED."latestKnownOwner"`;
+    }
 
     await this.executeQuery(query, [
       contractToken.id,
@@ -105,6 +108,7 @@ export class LuksoDataDbService {
       contractToken.decodedTokenId,
       contractToken.tokenId,
       contractToken.interfaceCode,
+      contractToken.latestKnownOwner,
     ]);
   }
 

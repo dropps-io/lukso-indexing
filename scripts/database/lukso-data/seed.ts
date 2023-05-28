@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT_TOKEN} (
   "decodedTokenId" VARCHAR(66),
   "tokenId" CHAR(66) NOT NULL,
   "interfaceCode" VARCHAR(20) NOT NULL,
+  "latestKnownOwner" CHAR(42),
   PRIMARY KEY ("id"),
   UNIQUE ("address", "tokenId"),
   FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE
