@@ -502,6 +502,16 @@ describe('LuksoDataDbService', () => {
       expect(res.rows.length).toEqual(1);
       expect(res.rows).toEqual([metadataLink]);
     });
+
+    it('should be able to query metadata links by id', async () => {
+      await service.insertMetadataLinks(metadataLink.metadataId, [
+        metadataLink,
+        { ...metadataLink, url: 'https://example.com/url2' },
+      ]);
+
+      const res = await service.getMetadataLinks(metadataLink.metadataId);
+      expect(res).toEqual([metadataLink, { ...metadataLink, url: 'https://example.com/url2' }]);
+    });
   });
 
   describe('MetadataTagTable', () => {
@@ -619,6 +629,18 @@ describe('LuksoDataDbService', () => {
         { ...metadataAsset, url: 'url1' },
         { ...metadataAsset, url: 'url2' },
       ]);
+    });
+
+    it('should query metadata assets with fileType filter', async () => {
+      await service.insertMetadataAssets(metadataAsset.metadataId, [
+        metadataAsset,
+        { ...metadataAsset, url: 'url1', fileType: 'type1' },
+        { ...metadataAsset, url: 'url2', fileType: 'type2' },
+      ]);
+
+      const res = await service.getMetadataAssetsByMetadataId(metadataAsset.metadataId, 'type1');
+      expect(res.length).toEqual(1);
+      expect(res).toEqual([{ ...metadataAsset, url: 'url1', fileType: 'type1' }]);
     });
   });
 

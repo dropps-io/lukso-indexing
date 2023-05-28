@@ -6,7 +6,11 @@ import { isEthereumAddress, isPartialEthereumAddress } from '@utils/is-ethereum-
 
 import { AddressEntity } from './entities/address.entity';
 import { ExtendedDataDbService } from '../libs/extended-data-db/extended-data-db.service';
-import { MetadataImageEntity } from './entities/metadata.entity';
+import {
+  MetadataAssetEntity,
+  MetadataImageEntity,
+  MetadataLinkEntity,
+} from './entities/metadata.entity';
 import { ADDRESS_PAGE_SIZE } from '../globals';
 import { FindAddressArgs } from './dto/find-address.args';
 import { Pagination } from '../utils/pagination-entity';
@@ -69,6 +73,18 @@ export class AddressService {
    */
   async findImages(metadataId: number, type?: string | null): Promise<MetadataImageEntity[]> {
     return await this.dataDB.getMetadataImages(metadataId, type);
+  }
+
+  async findAssets(metadataId: number, fileType?: string): Promise<MetadataAssetEntity[]> {
+    return await this.dataDB.getMetadataAssetsByMetadataId(metadataId, fileType);
+  }
+
+  async findLinks(metadataId: number): Promise<MetadataLinkEntity[]> {
+    return await this.dataDB.getMetadataLinks(metadataId);
+  }
+
+  async findTags(metadataId: number): Promise<string[]> {
+    return await this.dataDB.getMetadataTagsByMetadataId(metadataId);
   }
 
   async findAddressByIncompleteAddress(
