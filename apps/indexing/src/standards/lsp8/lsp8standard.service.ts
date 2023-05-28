@@ -24,6 +24,7 @@ export class Lsp8standardService {
   ): Promise<void> {
     try {
       const tokenId = parameters.tokenId.value;
+      const newOwner = parameters.to.value;
 
       if (!tokenId) return;
       else
@@ -34,8 +35,9 @@ export class Lsp8standardService {
             id: buildTokenUniqueId(event.address, tokenId),
             decodedTokenId: null,
             interfaceCode: SUPPORTED_STANDARD.LSP8,
+            latestKnownOwner: newOwner || null,
           },
-          'do nothing',
+          'update',
         );
       this.loggerService.incrementIndexedCount('token');
     } catch (e) {

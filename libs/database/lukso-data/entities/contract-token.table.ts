@@ -5,4 +5,5 @@ export interface ContractTokenTable {
   decodedTokenId: string | null;
   tokenId: string;
   interfaceCode: string;
+  latestKnownOwner: string | null;
 }

@@ -90,14 +90,17 @@ export class LuksoDataDbService {
     onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
   ): Promise<void> {
     let query = `
-          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN} (id, address, "decodedTokenId", "tokenId", "interfaceCode")
-          VALUES ($1, $2, $3, $4, $5)
+          INSERT INTO ${DB_DATA_TABLE.CONTRACT_TOKEN} (id, address, "decodedTokenId", "tokenId", "interfaceCode", "latestKnownOwner")
+          VALUES ($1, $2, $3, $4, $5, $6)
         `;
     if (onConflict === 'do nothing') query += ' ON CONFLICT DO NOTHING';
-    else if (onConflict === 'update')
+    else if (onConflict === 'update') {
       query += ` ON CONFLICT ("id") DO UPDATE SET
-        "interfaceCode" = EXCLUDED."interfaceCode",
-        "decodedTokenId" = EXCLUDED."decodedTokenId"`;
+        "interfaceCode" = EXCLUDED."interfaceCode"`;
+      if (contractToken.decodedTokenId) query += `,"decodedTokenId" = EXCLUDED."decodedTokenId"`;
+      if (contractToken.latestKnownOwner)
+        query += `,"latestKnownOwner" = EXCLUDED."latestKnownOwner"`;
+    }
 
     await this.executeQuery(query, [
       contractToken.id,
@@ -105,6 +108,7 @@ export class LuksoDataDbService {
       contractToken.decodedTokenId,
       contractToken.tokenId,
       contractToken.interfaceCode,
+      contractToken.latestKnownOwner,
     ]);
   }
 
@@ -247,6 +251,13 @@ export class LuksoDataDbService {
     return rows.map((r) => r.title);
   }
 
+  public async getMetadataLinks(metadataId: number): Promise<MetadataLinkTable[]> {
+    return await this.executeQuery<MetadataLinkTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA_LINK} WHERE "metadataId" = $1`,
+      [metadataId],
+    );
+  }
+
   // MetadataAsset table functions
   public async insertMetadataAssets(
     metadataId: number,
@@ -279,11 +290,17 @@ export class LuksoDataDbService {
     await this.executeQuery(query);
   }
 
-  public async getMetadataAssetsByMetadataId(metadataId: number): Promise<MetadataAssetTable[]> {
-    return await this.executeQuery<MetadataAssetTable>(
-      `SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET} WHERE "metadataId" = $1`,
-      [metadataId],
-    );
+  public async getMetadataAssetsByMetadataId(
+    metadataId: number,
+    fileType?: string,
+  ): Promise<MetadataAssetTable[]> {
+    let query = `SELECT * FROM ${DB_DATA_TABLE.METADATA_ASSET} WHERE "metadataId" = $1`;
+    const params: any[] = [metadataId];
+    if (fileType) {
+      params.push(fileType);
+      query += ` AND "fileType" = $2`;
+    }
+    return await this.executeQuery<MetadataAssetTable>(query, params);
   }
 
   // DataChanged table functions

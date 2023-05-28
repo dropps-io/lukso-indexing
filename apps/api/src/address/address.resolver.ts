@@ -2,7 +2,11 @@ import { Resolver, Query, Args, ResolveField, Parent, ObjectType } from '@nestjs
 
 import { AddressService } from './address.service';
 import { AddressEntity } from './entities/address.entity';
-import { MetadataImageEntity } from './entities/metadata.entity';
+import {
+  MetadataAssetEntity,
+  MetadataImageEntity,
+  MetadataLinkEntity,
+} from './entities/metadata.entity';
 import { FindAddressArgs } from './dto/find-address.args';
 import { Pagination } from '../utils/pagination-entity';
 
@@ -22,7 +26,25 @@ export class AddressResolver {
   async images(
     @Parent() address: AddressEntity,
     @Args('type', { nullable: true, type: () => String }) type?: string | null,
-  ): Promise<MetadataImageEntity[] | null> {
+  ): Promise<MetadataImageEntity[]> {
     return this.addressService.findImages(address.id, type);
+  }
+
+  @ResolveField(() => [MetadataAssetEntity], { nullable: 'items' })
+  async assets(
+    @Parent() address: AddressEntity,
+    @Args('fileType', { nullable: true, type: () => String }) fileType?: string,
+  ): Promise<MetadataAssetEntity[]> {
+    return this.addressService.findAssets(address.id, fileType);
+  }
+
+  @ResolveField(() => [MetadataLinkEntity], { nullable: 'items' })
+  async links(@Parent() address: AddressEntity): Promise<MetadataLinkEntity[]> {
+    return this.addressService.findLinks(address.id);
+  }
+
+  @ResolveField(() => [String], { nullable: 'items' })
+  async tags(@Parent() address: AddressEntity): Promise<string[]> {
+    return this.addressService.findTags(address.id);
   }
 }

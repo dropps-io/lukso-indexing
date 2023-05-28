@@ -40,6 +40,7 @@ describe('LuksoDataDbService', () => {
     decodedTokenId: 'Hello Test',
     tokenId: '0x0000000000000000000000000000000000000000000048656c6c6f2054657374',
     interfaceCode: 'LSP8',
+    latestKnownOwner: ADDRESS1,
   };
 
   const contractMetadata: Omit<MetadataTable, 'id'> = {
@@ -286,6 +287,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: null,
           tokenId: HASH1,
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
         await service.insertContractToken({
           id: HASH2,
@@ -293,6 +295,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: null,
           tokenId: HASH2,
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
 
         // Insert tokens with non-null decodedTokenId
@@ -302,6 +305,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: '3',
           tokenId: '3',
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
 
         const result = await service.getTokensToIndex();
@@ -314,6 +318,7 @@ describe('LuksoDataDbService', () => {
             decodedTokenId: null,
             tokenId: HASH1,
             interfaceCode: 'LSP8',
+            latestKnownOwner: ADDRESS2,
           },
           {
             id: HASH2,
@@ -322,6 +327,7 @@ describe('LuksoDataDbService', () => {
             decodedTokenId: null,
             tokenId: HASH2,
             interfaceCode: 'LSP8',
+            latestKnownOwner: ADDRESS2,
           },
         ]);
       });
@@ -333,6 +339,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: '1',
           tokenId: '1',
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
         await service.insertContractToken({
           id: HASH2,
@@ -340,6 +347,7 @@ describe('LuksoDataDbService', () => {
           decodedTokenId: '2',
           tokenId: '2',
           interfaceCode: 'LSP8',
+          latestKnownOwner: ADDRESS2,
         });
 
         const result = await service.getTokensToIndex();
@@ -494,6 +502,16 @@ describe('LuksoDataDbService', () => {
       expect(res.rows.length).toEqual(1);
       expect(res.rows).toEqual([metadataLink]);
     });
+
+    it('should be able to query metadata links by id', async () => {
+      await service.insertMetadataLinks(metadataLink.metadataId, [
+        metadataLink,
+        { ...metadataLink, url: 'https://example.com/url2' },
+      ]);
+
+      const res = await service.getMetadataLinks(metadataLink.metadataId);
+      expect(res).toEqual([metadataLink, { ...metadataLink, url: 'https://example.com/url2' }]);
+    });
   });
 
   describe('MetadataTagTable', () => {
@@ -611,6 +629,18 @@ describe('LuksoDataDbService', () => {
         { ...metadataAsset, url: 'url1' },
         { ...metadataAsset, url: 'url2' },
       ]);
+    });
+
+    it('should query metadata assets with fileType filter', async () => {
+      await service.insertMetadataAssets(metadataAsset.metadataId, [
+        metadataAsset,
+        { ...metadataAsset, url: 'url1', fileType: 'type1' },
+        { ...metadataAsset, url: 'url2', fileType: 'type2' },
+      ]);
+
+      const res = await service.getMetadataAssetsByMetadataId(metadataAsset.metadataId, 'type1');
+      expect(res.length).toEqual(1);
+      expect(res).toEqual([{ ...metadataAsset, url: 'url1', fileType: 'type1' }]);
     });
   });
 

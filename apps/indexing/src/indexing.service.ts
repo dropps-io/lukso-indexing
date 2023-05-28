@@ -289,6 +289,14 @@ export class IndexingService implements OnModuleInit {
               'update',
             );
             await this.indexMetadata(tokenData.metadata);
+          } else {
+            await this.dataDB.insertContractToken(
+              {
+                ...token,
+                decodedTokenId: token.tokenId,
+              },
+              'update',
+            );
           }
         }
       };
