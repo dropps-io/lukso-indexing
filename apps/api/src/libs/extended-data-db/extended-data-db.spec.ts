@@ -50,14 +50,14 @@ describe('ExtendedDataDbService', () => {
       await service.insertContract(contract);
       await service.insertMetadata(contractMetadata);
 
-      const result = await service.getContractWithMetadata(ADDRESS1);
+      const result = await service.getContractWithMetadataByAddress(ADDRESS1);
       expect(result).toMatchObject({ ...contract, ...contractMetadata });
     });
 
     it('should be null if no metadata', async () => {
       await service.insertContract(contract);
 
-      const result = await service.getContractWithMetadata(ADDRESS1);
+      const result = await service.getContractWithMetadataByAddress(ADDRESS1);
       expect(result).toBeNull();
     });
   });

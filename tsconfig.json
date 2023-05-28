@@ -24,6 +24,8 @@
       "@db/lukso-data/*": ["libs/database/lukso-data/*"],
       "@db/lukso-structure": ["libs/database/lukso-structure"],
       "@db/lukso-structure/*": ["libs/database/lukso-structure/*"],
+      "@db/utils": ["libs/database/utils"],
+      "@db/utils/*": ["libs/database/utils/*"],
       "@libs/logger": ["libs/logger"],
       "@libs/logger/*": ["libs/logger/*"],
       "@utils": ["utils"],

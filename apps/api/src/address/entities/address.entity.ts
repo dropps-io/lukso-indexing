@@ -1,4 +1,5 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
+import { CONTRACT_TYPE } from '@models/enums';
 
 import { MetadataAssetEntity, MetadataImageEntity, MetadataLinkEntity } from './metadata.entity';
 
@@ -14,6 +15,12 @@ export class AddressEntity {
     description: 'The interface code, such as ERC721, ERC1155, etc.',
   })
   interfaceCode: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'The type of the contract. E.g. asset, collection, profile, etc.',
+  })
+  type: CONTRACT_TYPE | null;
 
   @Field(() => String, {
     nullable: true,

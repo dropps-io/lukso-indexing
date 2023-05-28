@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "indexing": "nest start indexing",
-    "api": "nest start api",
+    "api": "nest start api --watch",
     "build": "nest build indexing&& nest build api",
     "compile": "tsc",
     "seed-lukso-structure-db": "ts-node -r tsconfig-paths/register scripts/database/lukso-structure/index.ts",
@@ -40,7 +40,8 @@
     "dotenv": "^16.0.3",
     "graphql": "^16.6.0",
     "graphql-tools": "^8.3.19",
-    "pg": "^8.10.0",
+    "knex": "^2.4.2",
+    "pg": "^8.11.0",
     "pg-format": "^1.0.4",
     "web3": "^1.8.2",
     "winston": "^3.8.2"
@@ -50,6 +51,7 @@
     "@nestjs/schematics": "^9.0.0",
     "@nestjs/testing": "^9.0.0",
     "@types/jest": "^29.5.0",
+    "@types/knex": "^0.16.1",
     "@types/node": "^18.15.3",
     "@types/pg": "^8.6.6",
     "@types/reflect-metadata": "^0.1.0",
