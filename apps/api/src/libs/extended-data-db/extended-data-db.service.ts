@@ -36,6 +36,7 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     type?: string,
     interfaceVersion?: string,
     interfaceCode?: string,
+    tag?: string,
   ): Promise<(ContractTable & MetadataTable)[]> {
     let query = queryBuilder
       .select('*')
@@ -45,11 +46,19 @@ export class ExtendedDataDbService extends LuksoDataDbService {
         `${DB_DATA_TABLE.CONTRACT}.address`,
         `${DB_DATA_TABLE.METADATA}.address`,
       )
-      .whereRaw('LOWER(contract.address) LIKE LOWER(?)', [`%${address}%`])
+      .whereRaw(`LOWER(${DB_DATA_TABLE.CONTRACT}.address) LIKE LOWER(?)`, [`%${address}%`])
       .orderBy('name', 'asc')
       .limit(limit)
       .offset(offset);
 
+    if (tag)
+      query = query
+        .innerJoin(
+          DB_DATA_TABLE.METADATA_TAG,
+          `${DB_DATA_TABLE.METADATA}.id`,
+          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
+        )
+        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
     if (type) query = query.andWhere({ type });
     if (interfaceVersion) query = query.andWhere({ interfaceVersion });
     if (interfaceCode) query = query.andWhere({ interfaceCode });
@@ -66,12 +75,26 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     type?: CONTRACT_TYPE,
     interfaceVersion?: string,
     interfaceCode?: string,
+    tag?: string,
   ): Promise<number> {
     let query = queryBuilder
       .count('*')
       .from(DB_DATA_TABLE.CONTRACT)
-      .whereRaw('LOWER(address) LIKE LOWER(?)', [`%${address}%`]);
+      .whereRaw(`LOWER(${DB_DATA_TABLE.CONTRACT}.address) LIKE LOWER(?)`, [`%${address}%`]);
 
+    if (tag)
+      query = query
+        .innerJoin(
+          DB_DATA_TABLE.METADATA,
+          `${DB_DATA_TABLE.CONTRACT}.address`,
+          `${DB_DATA_TABLE.METADATA}.address`,
+        )
+        .innerJoin(
+          DB_DATA_TABLE.METADATA_TAG,
+          `${DB_DATA_TABLE.METADATA}.id`,
+          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
+        )
+        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
     if (type) query = query.andWhere({ type });
     if (interfaceVersion) query = query.andWhere({ interfaceVersion });
     if (interfaceCode) query = query.andWhere({ interfaceCode });
@@ -90,6 +113,7 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     type?: string,
     interfaceVersion?: string,
     interfaceCode?: string,
+    tag?: string,
   ): Promise<(ContractTable & MetadataTable)[]> {
     let query = queryBuilder
       .select('*')
@@ -104,6 +128,14 @@ export class ExtendedDataDbService extends LuksoDataDbService {
       .limit(limit)
       .offset(offset);
 
+    if (tag)
+      query = query
+        .innerJoin(
+          DB_DATA_TABLE.METADATA_TAG,
+          `${DB_DATA_TABLE.METADATA}.id`,
+          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
+        )
+        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
     if (type) query = query.andWhere({ type });
     if (interfaceVersion) query = query.andWhere({ interfaceVersion });
     if (interfaceCode) query = query.andWhere({ interfaceCode });
@@ -119,6 +151,7 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     type?: CONTRACT_TYPE,
     interfaceVersion?: string,
     interfaceCode?: string,
+    tag?: string,
   ): Promise<number> {
     let query = queryBuilder
       .count('*')
@@ -130,6 +163,14 @@ export class ExtendedDataDbService extends LuksoDataDbService {
       )
       .whereRaw(`LOWER(name) LIKE LOWER(?)`, [`%${name}%`]);
 
+    if (tag)
+      query = query
+        .innerJoin(
+          DB_DATA_TABLE.METADATA_TAG,
+          `${DB_DATA_TABLE.METADATA}.id`,
+          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
+        )
+        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
     if (type) query = query.andWhere({ type });
     if (interfaceVersion) query = query.andWhere({ interfaceVersion });
     if (interfaceCode) query = query.andWhere({ interfaceCode });

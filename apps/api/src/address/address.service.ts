@@ -120,11 +120,11 @@ export class AddressService {
     searchMethod: string,
     countMethod: string,
   ): Promise<{ results: AddressEntity[]; count: number }> {
-    const { input, page, type, interfaceVersion, interfaceCode } = args;
+    const { input, page, type, interfaceVersion, interfaceCode, tag } = args;
 
     let count = 0;
     try {
-      count = await this.dataDB[countMethod](input, type, interfaceVersion, interfaceCode);
+      count = await this.dataDB[countMethod](input, type, interfaceVersion, interfaceCode, tag);
       if ((page - 1) * ADDRESS_PAGE_SIZE > count) return { results: [], count };
     } catch (error) {
       this.logger.error(`Error while counting addresses: ${error.message}`);
@@ -140,6 +140,7 @@ export class AddressService {
         type,
         interfaceVersion,
         interfaceCode,
+        tag,
       );
     } catch (error) {
       this.logger.error(`Error while retrieving addresses: ${error.message}`);

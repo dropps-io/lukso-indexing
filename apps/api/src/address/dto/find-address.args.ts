@@ -24,6 +24,9 @@ export class FindAddressArgs {
   @Field(() => String, { nullable: true, description: 'The version of the interface.' })
   interfaceVersion?: string;
 
+  @Field(() => String, { nullable: true, description: 'Specific tag to look for.' })
+  tag?: string;
+
   @Field(() => Int, { nullable: true, defaultValue: 1, description: 'The page number to query.' })
   page: number; // This is the page number user wants to fetch.
 }
