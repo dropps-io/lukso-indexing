@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import winston from 'winston';
 import { LoggerService } from '@libs/logger/logger.service';
 import { ObjectType } from '@nestjs/graphql';
-import { isEthereumAddress, isPartialEthereumAddress } from '@utils/is-ethereum-address';
+import { isEthereumAddress } from '@utils/is-ethereum-address';
 
 import { AddressEntity } from './entities/address.entity';
 import { ExtendedDataDbService } from '../libs/extended-data-db/extended-data-db.service';
@@ -44,7 +44,7 @@ export class AddressService {
       totalPages: 0,
       results: [],
     };
-    if (isEthereumAddress(input)) {
+    if (input && isEthereumAddress(input)) {
       try {
         const contract = await this.dataDB.getContractWithMetadataByAddress(input);
         response.results = contract ? [contract] : [];
@@ -56,9 +56,7 @@ export class AddressService {
         });
         throw e;
       }
-    } else if (isPartialEthereumAddress(input))
-      response = { ...response, ...(await this.findAddressByIncompleteAddress(args)) };
-    else response = { ...response, ...(await this.findAddressByName(args)) };
+    } else response = { ...response, ...(await this.findAddress(args)) };
 
     response.totalPages = Math.ceil(response.count / ADDRESS_PAGE_SIZE);
     return response;
@@ -87,44 +85,27 @@ export class AddressService {
     return await this.dataDB.getMetadataTagsByMetadataId(metadataId);
   }
 
-  async findAddressByIncompleteAddress(
-    args: FindAddressArgs,
-  ): Promise<{ results: AddressEntity[]; count: number }> {
-    return this.findAddress(
-      args,
-      'searchContractWithMetadataByAddress',
-      'searchContractByAddressCount',
-    );
-  }
-
-  async findAddressByName(
-    args: FindAddressArgs,
-  ): Promise<{ results: AddressEntity[]; count: number }> {
-    return this.findAddress(
-      args,
-      'searchContractWithMetadataByName',
-      'searchContractWithMetadataByNameCount',
-    );
-  }
-
   /**
    * Helper method to find address either by incomplete address or name.
    *
    * @param {FindAddressArgs} args - Arguments required to find addresses.
-   * @param {string} searchMethod - Method to search address.
-   * @param {string} countMethod - Method to count number of addresses.
    * @returns {Promise<{ results: AddressEntity[]; count: number }>} - Resulting addresses and their count.
    */
   protected async findAddress(
     args: FindAddressArgs,
-    searchMethod: string,
-    countMethod: string,
   ): Promise<{ results: AddressEntity[]; count: number }> {
-    const { input, page, type, interfaceVersion, interfaceCode, tag } = args;
+    const { input, page, type, interfaceVersion, interfaceCode, tag, havePermissions } = args;
 
     let count = 0;
     try {
-      count = await this.dataDB[countMethod](input, type, interfaceVersion, interfaceCode, tag);
+      count = await this.dataDB.searchContractCount(
+        input,
+        type,
+        interfaceVersion,
+        interfaceCode,
+        tag,
+        havePermissions,
+      );
       if ((page - 1) * ADDRESS_PAGE_SIZE > count) return { results: [], count };
     } catch (error) {
       this.logger.error(`Error while counting addresses: ${error.message}`);
@@ -133,14 +114,15 @@ export class AddressService {
 
     let results: AddressEntity[] = [];
     try {
-      results = await this.dataDB[searchMethod](
-        input,
+      results = await this.dataDB.searchContractWithMetadata(
         ADDRESS_PAGE_SIZE,
         (page - 1) * ADDRESS_PAGE_SIZE,
+        input,
         type,
         interfaceVersion,
         interfaceCode,
         tag,
+        havePermissions,
       );
     } catch (error) {
       this.logger.error(`Error while retrieving addresses: ${error.message}`);

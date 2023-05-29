@@ -4,10 +4,10 @@ import { CONTRACT_TYPE } from '@models/enums';
 @ArgsType()
 export class FindAddressArgs {
   @Field(() => String, {
-    nullable: false,
+    nullable: true,
     description: 'The search input, can be a complete or incomplete name, address',
   })
-  input: string; // This is the page number user wants to fetch.
+  input?: string; // This is the page number user wants to fetch.
 
   @Field(() => String, {
     nullable: true,
@@ -26,6 +26,12 @@ export class FindAddressArgs {
 
   @Field(() => String, { nullable: true, description: 'Specific tag to look for.' })
   tag?: string;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Address that should have permissions on that contract.',
+  })
+  havePermissions?: string;
 
   @Field(() => Int, { nullable: true, defaultValue: 1, description: 'The page number to query.' })
   page: number; // This is the page number user wants to fetch.

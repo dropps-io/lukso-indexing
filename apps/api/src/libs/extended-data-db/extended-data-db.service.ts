@@ -1,4 +1,4 @@
-import knex from 'knex';
+import knex, { Knex } from 'knex';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { ContractTable } from '@db/lukso-data/entities/contract.table';
@@ -8,6 +8,7 @@ import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 import { knexToSQL } from '@db/utils/knexToSQL';
 import { CONTRACT_TYPE } from '@models/enums';
+import { isPartialEthereumAddress } from '@utils/is-ethereum-address';
 
 const queryBuilder = knex({ client: 'pg' });
 
@@ -29,39 +30,29 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     return rows.length > 0 ? rows[0] : null;
   }
 
-  public async searchContractWithMetadataByAddress(
-    address: string,
+  public async searchContractWithMetadata(
     limit: number,
     offset: number,
-    type?: string,
+    input?: string,
+    type?: CONTRACT_TYPE,
     interfaceVersion?: string,
     interfaceCode?: string,
     tag?: string,
+    havePermissions?: string,
   ): Promise<(ContractTable & MetadataTable)[]> {
-    let query = queryBuilder
+    const query = this.buildAddressSearchQuery(
+      input,
+      type,
+      interfaceVersion,
+      interfaceCode,
+      tag,
+      havePermissions,
+    )
       .select('*')
-      .from(DB_DATA_TABLE.CONTRACT)
-      .innerJoin(
-        DB_DATA_TABLE.METADATA,
-        `${DB_DATA_TABLE.CONTRACT}.address`,
-        `${DB_DATA_TABLE.METADATA}.address`,
-      )
-      .whereRaw(`LOWER(${DB_DATA_TABLE.CONTRACT}.address) LIKE LOWER(?)`, [`%${address}%`])
-      .orderBy('name', 'asc')
+      .orderBy(`${DB_DATA_TABLE.METADATA}.name`, 'asc')
+      .orderBy(`${DB_DATA_TABLE.CONTRACT}.address`, 'asc')
       .limit(limit)
       .offset(offset);
-
-    if (tag)
-      query = query
-        .innerJoin(
-          DB_DATA_TABLE.METADATA_TAG,
-          `${DB_DATA_TABLE.METADATA}.id`,
-          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
-        )
-        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
-    if (type) query = query.andWhere({ type });
-    if (interfaceVersion) query = query.andWhere({ interfaceVersion });
-    if (interfaceCode) query = query.andWhere({ interfaceCode });
 
     // Get the SQL query string and bindings
     const { sql, bindings } = knexToSQL(query);
@@ -70,34 +61,22 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     return await this.executeQuery<ContractTable & MetadataTable>(sql, bindings as any[]);
   }
 
-  public async searchContractByAddressCount(
-    address: string,
+  public async searchContractCount(
+    input?: string,
     type?: CONTRACT_TYPE,
     interfaceVersion?: string,
     interfaceCode?: string,
     tag?: string,
+    havePermissions?: string,
   ): Promise<number> {
-    let query = queryBuilder
-      .count('*')
-      .from(DB_DATA_TABLE.CONTRACT)
-      .whereRaw(`LOWER(${DB_DATA_TABLE.CONTRACT}.address) LIKE LOWER(?)`, [`%${address}%`]);
-
-    if (tag)
-      query = query
-        .innerJoin(
-          DB_DATA_TABLE.METADATA,
-          `${DB_DATA_TABLE.CONTRACT}.address`,
-          `${DB_DATA_TABLE.METADATA}.address`,
-        )
-        .innerJoin(
-          DB_DATA_TABLE.METADATA_TAG,
-          `${DB_DATA_TABLE.METADATA}.id`,
-          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
-        )
-        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
-    if (type) query = query.andWhere({ type });
-    if (interfaceVersion) query = query.andWhere({ interfaceVersion });
-    if (interfaceCode) query = query.andWhere({ interfaceCode });
+    const query = this.buildAddressSearchQuery(
+      input,
+      type,
+      interfaceVersion,
+      interfaceCode,
+      tag,
+      havePermissions,
+    ).count('*');
 
     // Get the SQL query string and bindings
     const { sql, bindings } = knexToSQL(query);
@@ -106,79 +85,61 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     return (await this.executeQuery<{ count: number }>(sql, bindings as any[]))[0].count;
   }
 
-  public async searchContractWithMetadataByName(
-    name: string,
-    limit: number,
-    offset: number,
-    type?: string,
-    interfaceVersion?: string,
-    interfaceCode?: string,
-    tag?: string,
-  ): Promise<(ContractTable & MetadataTable)[]> {
-    let query = queryBuilder
-      .select('*')
-      .from(DB_DATA_TABLE.CONTRACT)
-      .innerJoin(
-        DB_DATA_TABLE.METADATA,
-        `${DB_DATA_TABLE.CONTRACT}.address`,
-        `${DB_DATA_TABLE.METADATA}.address`,
-      )
-      .whereRaw(`LOWER(name) LIKE LOWER(?)`, [`%${name}%`])
-      .orderBy('name', 'asc')
-      .limit(limit)
-      .offset(offset);
-
-    if (tag)
-      query = query
-        .innerJoin(
-          DB_DATA_TABLE.METADATA_TAG,
-          `${DB_DATA_TABLE.METADATA}.id`,
-          `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
-        )
-        .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
-    if (type) query = query.andWhere({ type });
-    if (interfaceVersion) query = query.andWhere({ interfaceVersion });
-    if (interfaceCode) query = query.andWhere({ interfaceCode });
-
-    // Get the SQL query string and bindings
-    const { sql, bindings } = knexToSQL(query);
-
-    return await this.executeQuery<ContractTable & MetadataTable>(sql, bindings as any[]);
-  }
-
-  public async searchContractWithMetadataByNameCount(
-    name: string,
+  private buildAddressSearchQuery(
+    input?: string,
     type?: CONTRACT_TYPE,
     interfaceVersion?: string,
     interfaceCode?: string,
     tag?: string,
-  ): Promise<number> {
-    let query = queryBuilder
-      .count('*')
+    havePermissions?: string,
+  ): Knex.QueryBuilder {
+    const query = queryBuilder
       .from(DB_DATA_TABLE.CONTRACT)
       .innerJoin(
         DB_DATA_TABLE.METADATA,
         `${DB_DATA_TABLE.CONTRACT}.address`,
         `${DB_DATA_TABLE.METADATA}.address`,
-      )
-      .whereRaw(`LOWER(name) LIKE LOWER(?)`, [`%${name}%`]);
+      );
 
+    if (input && isPartialEthereumAddress(input))
+      query.whereRaw(`LOWER(${DB_DATA_TABLE.CONTRACT}.address) LIKE LOWER(?)`, [`%${input}%`]);
+    else if (input)
+      query.whereRaw(`LOWER(${DB_DATA_TABLE.METADATA}.name) LIKE LOWER(?)`, [`%${input}%`]);
+    if (havePermissions) {
+      const subQuery = `
+      SELECT erc725y_data_changed.address, 
+             erc725y_data_changed.key,
+             erc725y_data_changed.value,
+             ROW_NUMBER() OVER (PARTITION BY erc725y_data_changed.address 
+             ORDER BY erc725y_data_changed."blockNumber" DESC) as rn
+      FROM erc725y_data_changed
+      WHERE LOWER(erc725y_data_changed.key) = LOWER(?)
+    `;
+
+      query
+        .innerJoin(
+          queryBuilder.raw(
+            `(${subQuery}) AS latest_data ON ${DB_DATA_TABLE.CONTRACT}.address = latest_data.address`,
+            [`0x4b80742de2bf82acb3630000${havePermissions.slice(2)}`],
+          ),
+        )
+        .whereRaw(
+          `latest_data.rn = 1 AND latest_data.value != '0x0000000000000000000000000000000000000000000000000000000000000000'`,
+        );
+    }
     if (tag)
-      query = query
+      query
         .innerJoin(
           DB_DATA_TABLE.METADATA_TAG,
           `${DB_DATA_TABLE.METADATA}.id`,
           `${DB_DATA_TABLE.METADATA_TAG}.metadataId`,
         )
         .whereRaw(`LOWER(${DB_DATA_TABLE.METADATA_TAG}.title) LIKE LOWER(?)`, [`%${tag}%`]);
-    if (type) query = query.andWhere({ type });
-    if (interfaceVersion) query = query.andWhere({ interfaceVersion });
-    if (interfaceCode) query = query.andWhere({ interfaceCode });
+    if (type) query.andWhere({ type });
+    if (interfaceVersion) query.andWhere({ interfaceVersion });
+    if (interfaceCode) query.andWhere({ interfaceCode });
 
-    // Get the SQL query string and bindings
-    const { sql, bindings } = knexToSQL(query);
-
-    return (await this.executeQuery<{ count: number }>(sql, bindings as any[]))[0].count;
+    return query;
   }
 
   public async getMetadataImages(
