@@ -9,8 +9,17 @@ import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 import { knexToSQL } from '@db/utils/knexToSQL';
 import { CONTRACT_TYPE } from '@models/enums';
 import { isPartialEthereumAddress } from '@utils/is-ethereum-address';
+import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
 
 const queryBuilder = knex({ client: 'pg' });
+
+type TokenWithMetadata = ContractTokenTable &
+  ContractTable &
+  MetadataTable & {
+    collectionName: string | null;
+    collectionDescription: string | null;
+    collectionSymbol: string | null;
+  };
 
 export class ExtendedDataDbService extends LuksoDataDbService {
   constructor(protected readonly loggerService: LoggerService) {
@@ -140,6 +149,60 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     if (interfaceCode) query.andWhere({ interfaceCode });
 
     return query;
+  }
+
+  public async searchTokenWithMetadata(
+    limit: number,
+    offset: number,
+    addressInput?: string,
+    collectionName?: string,
+    collectionSymbol?: string,
+    input?: string,
+    interfaceCode?: string,
+    interfaceVersion?: string,
+    owner?: string,
+  ): Promise<TokenWithMetadata[]> {
+    const query = queryBuilder
+      .select(
+        'ct.*',
+        'c.*',
+        'm1.*',
+        'm2.name as collectionName',
+        'm2.description as collectionDescription',
+        'm2.symbol as collectionSymbol',
+      )
+      .from(`${DB_DATA_TABLE.CONTRACT_TOKEN} as ct`)
+      .innerJoin(`${DB_DATA_TABLE.METADATA} as m1`, function () {
+        this.on('ct.address', 'm1.address').andOn('ct.tokenId', 'm1.tokenId');
+      })
+      .innerJoin(`${DB_DATA_TABLE.CONTRACT} as c`, 'ct.address', 'c.address')
+      .innerJoin(`${DB_DATA_TABLE.METADATA} as m2`, function () {
+        this.on('ct.address', '=', 'm2.address').andOnNull('m2.tokenId');
+      })
+      .orderBy('ct.address', 'asc')
+      .orderBy('m2.name', 'asc')
+      .orderBy('ct.tokenId', 'asc')
+      .limit(limit)
+      .offset(offset);
+
+    if (addressInput) query.whereRaw('ct.address LIKE LOWER(?)', [`%${addressInput}%`]);
+    if (input)
+      query.whereRaw(
+        'CONCAT(LOWER(m1.name), ct."tokenId", LOWER(ct."decodedTokenId")) LIKE LOWER(?)',
+        [`%${input}%`],
+      );
+    if (collectionName) query.whereRaw('LOWER(m2.name) LIKE LOWER(?)', [`%${collectionName}%`]);
+    if (collectionSymbol)
+      query.whereRaw('LOWER(m2.symbol) LIKE LOWER(?)', [`%${collectionSymbol}%`]);
+    if (interfaceVersion) query.andWhere({ interfaceVersion });
+    if (interfaceCode) query.andWhere({ interfaceCode });
+    if (owner) query.andWhere('ct.latestKnownOwner', owner);
+
+    // Get the SQL query string and bindings
+    const { sql, bindings } = knexToSQL(query);
+
+    // Execute the query
+    return await this.executeQuery<TokenWithMetadata>(sql, bindings as any[]);
   }
 
   public async getMetadataImages(
