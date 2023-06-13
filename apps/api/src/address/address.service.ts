@@ -10,10 +10,10 @@ import {
   MetadataAssetEntity,
   MetadataImageEntity,
   MetadataLinkEntity,
-} from './entities/metadata.entity';
+} from '../entities/metadata.entity';
 import { ADDRESS_PAGE_SIZE } from '../globals';
 import { FindAddressArgs } from './dto/find-address.args';
-import { Pagination } from '../utils/pagination-entity';
+import { Pagination } from '../entities/pagination.entity';
 
 @ObjectType()
 class AddressPagination extends Pagination(AddressEntity) {}

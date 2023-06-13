@@ -1,5 +1,4 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
-import { CONTRACT_TYPE } from '@models/enums';
 
 import {
   MetadataAssetEntity,
@@ -8,29 +7,42 @@ import {
 } from '../../entities/metadata.entity';
 
 @ObjectType()
-export class AddressEntity {
+export class CollectionTokenEntity {
   @Field(() => ID, {
+    nullable: false,
     description: 'The unique address associated with the entity.',
   })
   address: string;
 
   @Field(() => String, {
     nullable: true,
+    description: 'The token id associated with the entity.',
+  })
+  tokenId: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'The decoded version of the token id associated with the entity.',
+  })
+  decodedTokenId: string | null;
+
+  @Field(() => Number, {
+    nullable: true,
+    description: 'The balance owned of the entity.',
+  })
+  balance: number | null;
+
+  @Field(() => String, {
+    nullable: false,
     description: 'The interface code, such as ERC721, ERC1155, etc.',
   })
-  interfaceCode: string | null;
+  interfaceCode: string;
 
   @Field(() => String, {
     nullable: true,
     description: 'The version of the interface.',
   })
   interfaceVersion: string | null;
-
-  @Field(() => String, {
-    nullable: true,
-    description: 'The type of the contract. E.g. asset, collection, profile, etc.',
-  })
-  type: CONTRACT_TYPE | null;
 
   @Field(() => String, {
     nullable: true,
@@ -50,23 +62,41 @@ export class AddressEntity {
   })
   description: string | null;
 
-  @Field(() => Boolean, {
+  @Field(() => String, {
     nullable: true,
+    description: 'The name of the asset collection.',
+  })
+  collectionName: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'The symbol of the asset collection, typically a short-form name or abbreviation.',
+  })
+  collectionSymbol: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'A description of the asset collection.',
+  })
+  collectionDescription: string | null;
+
+  @Field(() => Boolean, {
+    nullable: false,
     description: 'Indicates whether the entity is a non-fungible token (NFT).',
   })
-  isNFT: boolean | null;
+  isNFT: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Address of the latest know token owner.',
+  })
+  latestKnownOwner: string | null;
 
   @Field(() => [MetadataImageEntity], {
     nullable: 'items',
     description: 'An array of images associated with the entity.',
   })
   images?: MetadataImageEntity[];
-
-  @Field(() => [String], {
-    nullable: 'items',
-    description: 'An array of tags that categorize or describe the entity.',
-  })
-  tags?: string[];
 
   @Field(() => [MetadataLinkEntity], {
     nullable: 'items',
