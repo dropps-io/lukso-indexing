@@ -14,6 +14,7 @@ export enum DB_DATA_TABLE {
   METADATA_TAG = 'metadata_tag',
   METADATA_ASSET = 'metadata_asset',
   CONTRACT_TOKEN = 'contract_token',
+  TOKEN_HOLDER = 'token_holder',
   ERC725Y_DATA_CHANGED = 'erc725y_data_changed',
   TRANSACTION = 'transaction',
   TRANSACTION_INPUT = 'transaction_input',

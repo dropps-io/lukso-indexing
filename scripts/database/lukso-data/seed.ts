@@ -72,10 +72,22 @@ EXECUTE FUNCTION update_contract_token_index();
   `);
 
   await client.query(`
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TOKEN_HOLDER} (
+  "address" CHAR(42) NOT NULL,
+  "tokenId" CHAR(66),
+  "balanceInWei" VARCHAR(78),
+  "balanceInEth" INTEGER,
+  "holderSinceBlock" INTEGER,
+  UNIQUE ("address", "tokenId"),
+  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "tokenId") ON DELETE CASCADE
+)`);
+
+  await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
   "id" SERIAL PRIMARY KEY,
   "address" CHAR(42) NOT NULL,
-  "tokenId" VARCHAR(66),
+  "tokenId" CHAR(66),
   "name" VARCHAR(256),
   "symbol" VARCHAR(50),
   "description" VARCHAR(4096),
