@@ -7,6 +7,7 @@ import { AddressModule } from './address/address.module';
 import { MethodModule } from './method/method.module';
 import { WrappedTxModule } from './wrapped-tx/wrapped-tx.module';
 import { CollectionTokenModule } from './collection-token/collection-token.module';
+import { TokenHolderModule } from './token-holder/token-holder.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CollectionTokenModule } from './collection-token/collection-token.modul
     MethodModule,
     WrappedTxModule,
     CollectionTokenModule,
+    TokenHolderModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       driver: ApolloDriver,

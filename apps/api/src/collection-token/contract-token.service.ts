@@ -66,6 +66,15 @@ export class ContractTokenService {
         return { ...token, balance: 0, isNFT: true };
       }),
     };
+    response.count = await this.dataDB.searchTokenWithMetadataCount(
+      addressInput,
+      collectionName,
+      collectionSymbol,
+      input,
+      interfaceVersion,
+      interfaceCode,
+      owner,
+    );
 
     response.totalPages = Math.ceil(response.count / ADDRESS_PAGE_SIZE);
     return response;

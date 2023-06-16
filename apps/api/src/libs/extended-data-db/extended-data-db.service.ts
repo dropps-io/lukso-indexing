@@ -11,6 +11,8 @@ import { CONTRACT_TYPE } from '@models/enums';
 import { isPartialEthereumAddress } from '@utils/is-ethereum-address';
 import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
 
+import { TokenHolderEntity } from '../../token-holder/entities/token-holder.entity';
+
 const queryBuilder = knex({ client: 'pg' });
 
 type TokenWithMetadata = ContractTokenTable &
@@ -162,7 +164,17 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     interfaceVersion?: string,
     owner?: string,
   ): Promise<TokenWithMetadata[]> {
-    const query = queryBuilder
+    const query = this.buildTokenSearchQuery(
+      addressInput,
+      collectionName,
+      collectionSymbol,
+      input,
+      interfaceCode,
+      interfaceVersion,
+      owner,
+    );
+
+    query
       .select(
         'ct.*',
         'c.*',
@@ -171,6 +183,55 @@ export class ExtendedDataDbService extends LuksoDataDbService {
         'm2.description as collectionDescription',
         'm2.symbol as collectionSymbol',
       )
+      .orderBy('ct.address', 'asc')
+      .orderBy('m2.name', 'asc')
+      .orderBy('ct.tokenId', 'asc')
+      .limit(limit)
+      .offset(offset);
+
+    // Get the SQL query string and bindings
+    const { sql, bindings } = knexToSQL(query);
+
+    // Execute the query
+    return await this.executeQuery<TokenWithMetadata>(sql, bindings as any[]);
+  }
+
+  public async searchTokenWithMetadataCount(
+    addressInput?: string,
+    collectionName?: string,
+    collectionSymbol?: string,
+    input?: string,
+    interfaceCode?: string,
+    interfaceVersion?: string,
+    owner?: string,
+  ): Promise<number> {
+    const query = this.buildTokenSearchQuery(
+      addressInput,
+      collectionName,
+      collectionSymbol,
+      input,
+      interfaceCode,
+      interfaceVersion,
+      owner,
+    ).count('*');
+
+    // Get the SQL query string and bindings
+    const { sql, bindings } = knexToSQL(query);
+
+    // Execute the query
+    return (await this.executeQuery<{ count: number }>(sql, bindings as any[]))[0].count;
+  }
+
+  private buildTokenSearchQuery(
+    addressInput?: string,
+    collectionName?: string,
+    collectionSymbol?: string,
+    input?: string,
+    interfaceCode?: string,
+    interfaceVersion?: string,
+    owner?: string,
+  ): Knex.QueryBuilder {
+    const query = queryBuilder
       .from(`${DB_DATA_TABLE.CONTRACT_TOKEN} as ct`)
       .innerJoin(`${DB_DATA_TABLE.METADATA} as m1`, function () {
         this.on('ct.address', 'm1.address').andOn('ct.tokenId', 'm1.tokenId');
@@ -178,12 +239,7 @@ export class ExtendedDataDbService extends LuksoDataDbService {
       .innerJoin(`${DB_DATA_TABLE.CONTRACT} as c`, 'ct.address', 'c.address')
       .innerJoin(`${DB_DATA_TABLE.METADATA} as m2`, function () {
         this.on('ct.address', '=', 'm2.address').andOnNull('m2.tokenId');
-      })
-      .orderBy('ct.address', 'asc')
-      .orderBy('m2.name', 'asc')
-      .orderBy('ct.tokenId', 'asc')
-      .limit(limit)
-      .offset(offset);
+      });
 
     if (addressInput) query.whereRaw('ct.address LIKE LOWER(?)', [`%${addressInput}%`]);
     if (input)
@@ -198,11 +254,93 @@ export class ExtendedDataDbService extends LuksoDataDbService {
     if (interfaceCode) query.andWhere({ interfaceCode });
     if (owner) query.andWhere('ct.latestKnownOwner', owner);
 
+    return query;
+  }
+
+  public async searchTokenHolder(
+    limit: number,
+    offset: number,
+    holderAddress?: string,
+    contractAddress?: string,
+    tokenId?: string | null,
+    minBalance?: number,
+    maxBalance?: number,
+    holderAfterBlock?: number,
+    holderBeforeBlock?: number,
+  ): Promise<TokenHolderEntity[]> {
+    const query = this.buildTokenHolderQuery(
+      holderAddress,
+      contractAddress,
+      tokenId,
+      minBalance,
+      maxBalance,
+      holderAfterBlock,
+      holderBeforeBlock,
+    )
+      .select('*')
+      .orderBy('th.holderAddress', 'asc')
+      .orderBy('th.contractAddress', 'asc')
+      .orderBy('th.tokenId', 'asc')
+      .limit(limit)
+      .offset(offset);
+
     // Get the SQL query string and bindings
     const { sql, bindings } = knexToSQL(query);
 
     // Execute the query
-    return await this.executeQuery<TokenWithMetadata>(sql, bindings as any[]);
+    return await this.executeQuery<TokenHolderEntity>(sql, bindings as any[]);
+  }
+
+  public async searchTokenHolderCount(
+    holderAddress?: string,
+    contractAddress?: string,
+    tokenId?: string | null,
+    minBalance?: number,
+    maxBalance?: number,
+    holderAfterBlock?: number,
+    holderBeforeBlock?: number,
+  ): Promise<number> {
+    const query = this.buildTokenHolderQuery(
+      holderAddress,
+      contractAddress,
+      tokenId,
+      minBalance,
+      maxBalance,
+      holderAfterBlock,
+      holderBeforeBlock,
+    ).count('*');
+
+    // Get the SQL query string and bindings
+    const { sql, bindings } = knexToSQL(query);
+
+    // Execute the query
+    return (await this.executeQuery<{ count: number }>(sql, bindings as any[]))[0].count;
+  }
+
+  private buildTokenHolderQuery(
+    holderAddress?: string,
+    contractAddress?: string,
+    tokenId?: string | null,
+    minBalance?: number,
+    maxBalance?: number,
+    holderAfterBlock?: number,
+    holderBeforeBlock?: number,
+  ): Knex.QueryBuilder {
+    const query = queryBuilder.from(`${DB_DATA_TABLE.TOKEN_HOLDER} as th`);
+
+    if (holderAddress) query.where('th.holderAddress', holderAddress);
+    if (contractAddress) query.where('th.contractAddress', contractAddress);
+    if (tokenId !== undefined)
+      query.whereRaw(
+        `th."tokenId" ${tokenId === null ? 'IS NULL' : '= ?'}`,
+        tokenId === null ? [] : [tokenId],
+      );
+    if (minBalance) query.where('th.balanceInEth', '>=', minBalance);
+    if (maxBalance) query.where('th.balanceInEth', '<=', maxBalance);
+    if (holderBeforeBlock) query.where('th.holderSinceBlock', '<', holderBeforeBlock);
+    if (holderAfterBlock) query.where('th.holderSinceBlock', '>', holderAfterBlock);
+
+    return query;
   }
 
   public async getMetadataImages(
