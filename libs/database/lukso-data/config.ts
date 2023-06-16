@@ -6,6 +6,11 @@ export enum DB_DATA_TYPE {
   CONTRACT_TYPE = 'contract_type',
 }
 
+export enum DB_DATA_INDEX {
+  TOKEN_HOLDER_UNIQUE = 'token_holder_unique',
+  TOKEN_HOLDER_UNIQUE_NO_TOKEN = 'token_holder_unique_no_token',
+}
+
 export enum DB_DATA_TABLE {
   CONTRACT = 'contract',
   METADATA = 'metadata',
