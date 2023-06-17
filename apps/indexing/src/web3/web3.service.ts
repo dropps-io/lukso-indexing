@@ -21,10 +21,10 @@ export class Web3Service {
   private readonly web3: Web3;
   private readonly logger: winston.Logger;
 
-  private readonly lsp0: LSP0;
-  private readonly lsp4: LSP4;
-  private readonly lsp7: LSP7;
-  private readonly lsp8: LSP8;
+  public readonly lsp0: LSP0;
+  public readonly lsp4: LSP4;
+  public readonly lsp7: LSP7;
+  public readonly lsp8: LSP8;
 
   constructor(
     protected readonly loggerService: LoggerService,

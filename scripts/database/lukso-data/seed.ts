@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
-import { DB_DATA_TABLE, DB_DATA_TYPE } from '@db/lukso-data/config';
+import { DB_DATA_INDEX, DB_DATA_TABLE, DB_DATA_TYPE } from '@db/lukso-data/config';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
@@ -19,6 +19,8 @@ export const seedLuksoData = async (dropTables?: boolean) => {
       await client.query(`DROP TABLE IF EXISTS ${DB_DATA_TABLE[table]} CASCADE`);
     for (const type of Object.keys(DB_DATA_TYPE).values())
       await client.query(`DROP TYPE IF EXISTS ${DB_DATA_TYPE[type]}`);
+    for (const index of Object.keys(DB_DATA_INDEX).values())
+      await client.query(`DROP INDEX IF EXISTS ${DB_DATA_INDEX[index]}`);
   }
 
   await client.query(
@@ -72,10 +74,34 @@ EXECUTE FUNCTION update_contract_token_index();
   `);
 
   await client.query(`
+CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TOKEN_HOLDER} (
+  "holderAddress" CHAR(42) NOT NULL,
+  "contractAddress" CHAR(42) NOT NULL,
+  "tokenId" CHAR(66),
+  "balanceInWei" VARCHAR(78) NOT NULL,
+  "balanceInEth" INTEGER NOT NULL,
+  "holderSinceBlock" INTEGER NOT NULL,
+  FOREIGN KEY ("contractAddress") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("contractAddress", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "tokenId") ON DELETE CASCADE
+)`);
+
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ${DB_DATA_INDEX.TOKEN_HOLDER_UNIQUE}
+    ON ${DB_DATA_TABLE.TOKEN_HOLDER} ("holderAddress", "contractAddress", "tokenId")
+    WHERE "tokenId" IS NOT NULL;
+  `);
+
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ${DB_DATA_INDEX.TOKEN_HOLDER_UNIQUE_NO_TOKEN} 
+    ON ${DB_DATA_TABLE.TOKEN_HOLDER} ("holderAddress", "contractAddress")
+    WHERE "tokenId" IS NULL;
+  `);
+
+  await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
   "id" SERIAL PRIMARY KEY,
   "address" CHAR(42) NOT NULL,
-  "tokenId" VARCHAR(66),
+  "tokenId" CHAR(66),
   "name" VARCHAR(256),
   "symbol" VARCHAR(50),
   "description" VARCHAR(4096),

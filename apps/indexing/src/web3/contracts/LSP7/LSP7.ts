@@ -12,15 +12,9 @@ export class LSP7 {
   }
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
-    const lsp4Data = await this.lsp4.fetchData(address);
-    let isNFT = false;
-
     try {
-      const lsp7contract = new (this.web3Service.getWeb3().eth.Contract)(
-        LSP7DigitalAsset.abi as AbiItem[],
-        address,
-      );
-      isNFT = (await lsp7contract.methods.decimals().call()) === '0';
+      const lsp4Data = await this.lsp4.fetchData(address);
+      const isNFT = await this.isNFT(address);
 
       return {
         metadata: {
@@ -37,10 +31,27 @@ export class LSP7 {
         assets: lsp4Data?.assets || [],
       };
     } catch (e) {
-      this.logger.error(`Error while fetching LSP4 data: ${e.message}`, {
+      this.logger.error(`Error while fetching LSP7 data: ${e.message}`, {
         address,
       });
       return null;
     }
+  }
+
+  public async isNFT(address: string): Promise<boolean> {
+    const lsp7contract = this.getLSP7Contract(address);
+    return (await lsp7contract.methods.decimals().call()) === '0';
+  }
+
+  public async balanceOf(address: string, holderAddress: string): Promise<string> {
+    const lsp7contract = this.getLSP7Contract(address);
+    return await lsp7contract.methods.balanceOf(holderAddress).call();
+  }
+
+  private getLSP7Contract(address: string) {
+    return new (this.web3Service.getWeb3().eth.Contract)(
+      LSP7DigitalAsset.abi as AbiItem[],
+      address,
+    );
   }
 }

@@ -3,6 +3,7 @@ import { Pool, QueryResult } from 'pg';
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import format from 'pg-format';
+import { TokenHolderTable } from '@db/lukso-data/entities/token-holder.table';
 
 import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
@@ -112,6 +113,49 @@ export class LuksoDataDbService {
     ]);
   }
 
+  public async insertTokenHolder(
+    tokenHolder: TokenHolderTable, // 'balanceInEth' is not supplied, hence we omit it
+    onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
+  ): Promise<void> {
+    let query = `
+          INSERT INTO ${DB_DATA_TABLE.TOKEN_HOLDER} ("holderAddress", "contractAddress", "tokenId", "balanceInWei", "balanceInEth", "holderSinceBlock")
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `;
+
+    try {
+      await this.executeQuery(query, [
+        tokenHolder.holderAddress,
+        tokenHolder.contractAddress,
+        tokenHolder.tokenId,
+        tokenHolder.balanceInWei,
+        tokenHolder.balanceInEth,
+        tokenHolder.holderSinceBlock,
+      ]);
+    } catch (error) {
+      if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
+        // Do nothing
+      } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
+        query = `
+          UPDATE ${DB_DATA_TABLE.TOKEN_HOLDER} 
+          SET "balanceInWei" = $4, "balanceInEth" = $5
+          WHERE "holderAddress" = $1 AND "contractAddress" = $2 
+          AND (("tokenId" = $3 AND $3 IS NOT NULL) OR ("tokenId" IS NULL AND $3 IS NULL));
+        `;
+
+        await this.executeQuery(query, [
+          tokenHolder.holderAddress,
+          tokenHolder.contractAddress,
+          tokenHolder.tokenId,
+          tokenHolder.balanceInWei,
+          tokenHolder.balanceInEth,
+        ]);
+      } else {
+        // If some other error occurred, rethrow it
+        throw error;
+      }
+    }
+  }
+
   public async getContractTokenById(id: string): Promise<ContractTokenTable | null> {
     const rows = await this.executeQuery<ContractTokenTable>(
       `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "id" = $1`,
@@ -148,6 +192,24 @@ export class LuksoDataDbService {
     const queryParams = tokenId ? [address, tokenId] : [address];
 
     const rows = await this.executeQuery<MetadataTable>(query, queryParams);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  public async getTokenHolder(
+    holderAddress: string,
+    contractAddress: string,
+    tokenId?: string | null,
+  ): Promise<TokenHolderTable | null> {
+    const query = `SELECT * FROM ${
+      DB_DATA_TABLE.TOKEN_HOLDER
+    } WHERE "holderAddress" = $1 AND "contractAddress" = $2 AND "tokenId"${
+      tokenId ? '=$3' : ' IS NULL'
+    }`;
+    const queryParams = tokenId
+      ? [holderAddress, contractAddress, tokenId]
+      : [holderAddress, contractAddress];
+
+    const rows = await this.executeQuery<TokenHolderTable>(query, queryParams);
     return rows.length > 0 ? rows[0] : null;
   }
 

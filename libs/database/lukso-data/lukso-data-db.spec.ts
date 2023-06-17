@@ -362,6 +362,152 @@ describe('LuksoDataDbService', () => {
     });
   });
 
+  describe('TokenHolderTable', () => {
+    describe('When tokenId is null', () => {
+      const tokenHolder1 = {
+        holderAddress: ADDRESS2,
+        contractAddress: contractToken1.address,
+        tokenId: null,
+        balanceInEth: 1,
+        balanceInWei: '1000000000000000000',
+        holderSinceBlock: 1234,
+      };
+
+      beforeEach(async () => {
+        await service.insertContract(contract1);
+        await service.insertContractToken(contractToken1);
+      });
+
+      it('should be able to insert a token holder', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.TOKEN_HOLDER}`, 'DATA');
+        expect(res.rows.length).toEqual(1);
+        expect(res.rows[0]).toEqual(tokenHolder1);
+      });
+
+      it('should throw by default if inserting on existing holder', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        await expect(service.insertTokenHolder(tokenHolder1)).rejects.toThrow();
+      });
+
+      it('should not throw if inserting on existing holder when do nothing on conflict', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        await expect(service.insertTokenHolder(tokenHolder1, 'do nothing')).resolves.not.toThrow();
+      });
+
+      it('should be able to update balances on conflict', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        await service.insertTokenHolder(
+          { ...tokenHolder1, balanceInWei: 'NEW_BALANCE', balanceInEth: 999, holderSinceBlock: 2 },
+          'update',
+        );
+        const res = await service.getTokenHolder(
+          tokenHolder1.holderAddress,
+          tokenHolder1.contractAddress,
+          tokenHolder1.tokenId,
+        );
+
+        expect(res).toEqual({
+          ...tokenHolder1,
+          balanceInWei: 'NEW_BALANCE',
+          balanceInEth: 999,
+          holderSinceBlock: tokenHolder1.holderSinceBlock,
+        });
+      });
+
+      it('should be able to query a token holder by address and tokenId', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        const res = await service.getTokenHolder(
+          tokenHolder1.holderAddress,
+          tokenHolder1.contractAddress,
+          tokenHolder1.tokenId,
+        );
+        expect(res).toEqual(tokenHolder1);
+      });
+
+      it('should return null if query an unknown address and tokenId', async () => {
+        const res = await service.getTokenHolder(
+          tokenHolder1.holderAddress,
+          tokenHolder1.contractAddress,
+          tokenHolder1.tokenId,
+        );
+        expect(res).toBeNull();
+      });
+    });
+
+    describe('When tokenId is not null', () => {
+      const tokenHolder1 = {
+        holderAddress: ADDRESS2,
+        contractAddress: contractToken1.address,
+        tokenId: contractToken1.tokenId,
+        balanceInEth: 1,
+        balanceInWei: '1000000000000000000',
+        holderSinceBlock: 1234,
+      };
+
+      beforeEach(async () => {
+        await service.insertContract(contract1);
+        await service.insertContractToken(contractToken1);
+      });
+
+      it('should be able to insert a token holder', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.TOKEN_HOLDER}`, 'DATA');
+        expect(res.rows.length).toEqual(1);
+        expect(res.rows[0]).toEqual(tokenHolder1);
+      });
+
+      it('should throw by default if inserting on existing holder', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        await expect(service.insertTokenHolder(tokenHolder1)).rejects.toThrow();
+      });
+
+      it('should not throw if inserting on existing holder when do nothing on conflict', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        await expect(service.insertTokenHolder(tokenHolder1, 'do nothing')).resolves.not.toThrow();
+      });
+
+      it('should be able to update balances on conflict', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        await service.insertTokenHolder(
+          { ...tokenHolder1, balanceInWei: 'NEW_BALANCE', balanceInEth: 999, holderSinceBlock: 2 },
+          'update',
+        );
+        const res = await service.getTokenHolder(
+          tokenHolder1.holderAddress,
+          tokenHolder1.contractAddress,
+          tokenHolder1.tokenId,
+        );
+
+        expect(res).toEqual({
+          ...tokenHolder1,
+          balanceInWei: 'NEW_BALANCE',
+          balanceInEth: 999,
+          holderSinceBlock: tokenHolder1.holderSinceBlock,
+        });
+      });
+
+      it('should be able to query a token holder by address and tokenId', async () => {
+        await service.insertTokenHolder(tokenHolder1);
+        const res = await service.getTokenHolder(
+          tokenHolder1.holderAddress,
+          tokenHolder1.contractAddress,
+          tokenHolder1.tokenId,
+        );
+        expect(res).toEqual(tokenHolder1);
+      });
+
+      it('should return null if query an unknown address and tokenId', async () => {
+        const res = await service.getTokenHolder(
+          tokenHolder1.holderAddress,
+          tokenHolder1.contractAddress,
+          tokenHolder1.tokenId,
+        );
+        expect(res).toBeNull();
+      });
+    });
+  });
+
   describe('MetadataTable', () => {
     beforeEach(async () => {
       await service.insertContract(contract1);

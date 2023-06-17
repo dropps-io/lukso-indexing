@@ -6,11 +6,13 @@ import { EVENTS_TO_ROUTE, TX_TO_ROUTE } from './enums';
 import { convertDecodedParamToMapping } from '../decoding/utils/convert-decoded-param-to-mapping';
 import { Lsp8standardService } from '../standards/lsp8/lsp8standard.service';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
+import { Lsp7standardService } from '../standards/lsp7/lsp7standard.service';
 
 @Injectable()
 export class BlockchainActionRouterService {
   constructor(
     private readonly lsp8Service: Lsp8standardService,
+    private readonly lsp7Service: Lsp7standardService,
     private readonly erc725Service: Erc725StandardService,
   ) {}
 
@@ -21,6 +23,9 @@ export class BlockchainActionRouterService {
         break;
       case EVENTS_TO_ROUTE.LSP8_TRANSFER:
         await this.lsp8Service.processTokenRelatedEvent(event, paramsMap);
+        break;
+      case EVENTS_TO_ROUTE.LSP7_TRANSFER:
+        await this.lsp7Service.processTransferEvent(event, paramsMap);
         break;
     }
   }

@@ -30,11 +30,11 @@ You can then update the connection strings accordingly.
 
 #### Lukso structure database
 
-![indexing-lukso-structure.png](docs%2Fimg%2Findexing-lukso-structure.png)
+![lukso-indexing-structure.png](docs%2Fdiagrams%2Fdatabase%2Flukso-indexing-structure.png)
 
 #### Lukso data database
 
-![lukso-indexing-data.png](docs%2Fimg%2Flukso-indexing-data.png)
+![lukso-indexing-data.png](docs%2Fdiagrams%2Fdatabase%2Flukso-indexing-data.png)
 
 ## Project Structure
 
