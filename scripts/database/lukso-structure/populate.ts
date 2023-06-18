@@ -24,6 +24,8 @@ import { generateAndPersistMethodInterfaces } from '@db/lukso-structure/utils/ge
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import { CONTRACT_TYPE } from '@models/enums';
+import fs from 'fs';
+import path from 'path';
 
 const standardInterfaces = [
   {
@@ -54,8 +56,17 @@ const standardInterfaces = [
     version: '0.9',
     type: CONTRACT_TYPE.PROFILE,
   },
+  {
+    id: '0x3e89ad98',
+    code: 'LSP0',
+    name: 'Universal Profile',
+    version: '0.10',
+    type: CONTRACT_TYPE.PROFILE,
+  },
   { id: '0xc403d48f', code: 'LSP6', name: 'Key Manager', version: '0.7', type: null },
   { id: '0xfb437414', code: 'LSP6', name: 'Key Manager', version: '0.8', type: null },
+  { id: '0x06561226', code: 'LSP6', name: 'Key Manager', version: '0.10', type: null },
+  { id: '0x38bb3cdb', code: 'LSP6', name: 'Key Manager', version: '0.10', type: null },
   {
     id: '0xe33f65c3',
     code: 'LSP7',
@@ -94,7 +105,36 @@ const standardInterfaces = [
   { id: '0xfd4d5c50', code: 'LSP9', name: 'Vault', version: '0.7', type: null },
   { id: '0x7050cee9', code: 'LSP9', name: 'Vault', version: '0.8', type: null },
   { id: '0x19331ad1', code: 'LSP9', name: 'Vault', version: '0.9', type: null },
+  { id: '0x28af17e6', code: 'LSP9', name: 'Vault', version: '0.10', type: null },
 ];
+
+const readJsonFiles = async (dir: string): Promise<any[]> => {
+  let results: any[] = [];
+
+  // Synchronously read directory files
+  const list = fs.readdirSync(dir);
+
+  for (const file of list) {
+    // Full file path
+    const filePath = path.join(dir, file);
+
+    // Synchronously get file stats
+    const stat = fs.statSync(filePath);
+
+    if (stat.isDirectory()) {
+      // If it's a directory, perform a recursive call
+      results = results.concat(await readJsonFiles(filePath));
+    } else {
+      // If it's a file and it ends with '.json', read the file
+      if (path.extname(filePath) === '.json') {
+        const data = fs.readFileSync(filePath, 'utf8');
+        results.push(JSON.parse(data));
+      }
+    }
+  }
+
+  return results;
+};
 
 const db = new LuksoStructureDbService(new LoggerService());
 
@@ -118,19 +158,25 @@ async function populateLuksoStructure() {
     }
   }
 
-  await generateAndPersistMethodInterfaces([
-    LSP0ERC725Account.abi as AbiItem[],
-    LSP8Mintable.abi as AbiItem[],
-    LSP7Mintable.abi as AbiItem[],
-    LSP6KeyManager.abi as AbiItem[],
-    LSP1DelegateVault.abi as AbiItem[],
-    LSP1DelegateUP.abi as AbiItem[],
-    LSP9Vault.abi as AbiItem[],
-    ERC1155.abi as AbiItem[],
-    ERC777.abi as AbiItem[],
-    ERC721.abi as AbiItem[],
-    ERC20.abi as AbiItem[],
-  ]);
+  await generateAndPersistMethodInterfaces(
+    [
+      LSP0ERC725Account.abi as AbiItem[],
+      LSP8Mintable.abi as AbiItem[],
+      LSP7Mintable.abi as AbiItem[],
+      LSP6KeyManager.abi as AbiItem[],
+      LSP1DelegateVault.abi as AbiItem[],
+      LSP1DelegateUP.abi as AbiItem[],
+      LSP9Vault.abi as AbiItem[],
+      ERC1155.abi as AbiItem[],
+      ERC777.abi as AbiItem[],
+      ERC721.abi as AbiItem[],
+      ERC20.abi as AbiItem[],
+    ].concat(
+      (
+        await readJsonFiles(path.join(__dirname, '../../../shared/abi'))
+      ).map((result) => result.abi),
+    ) as AbiItem[][],
+  );
 
   await db.disconnect();
   // eslint-disable-next-line no-console
