@@ -111,6 +111,18 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
 )`);
 
   await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ${DB_DATA_INDEX.METADATA_UNIQUE}
+    ON ${DB_DATA_TABLE.METADATA} ("address", "tokenId")
+    WHERE "tokenId" IS NOT NULL;
+  `);
+
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ${DB_DATA_INDEX.METADATA_UNIQUE_NO_TOKEN} 
+    ON ${DB_DATA_TABLE.METADATA} ("address")
+    WHERE "tokenId" IS NULL;
+  `);
+
+  await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_IMAGE} (
   "metadataId" INTEGER NOT NULL,
   "url" VARCHAR(2048) NOT NULL,

@@ -521,6 +521,93 @@ describe('LuksoDataDbService', () => {
       expect(res.rows[0]).toMatchObject(contractMetadata);
     });
 
+    it('should throw by default when inserting metadata for an existing contract', async () => {
+      await service.insertMetadata(contractMetadata);
+
+      await expect(service.insertMetadata(contractMetadata)).rejects.toThrow();
+    });
+
+    it('should be able to update when inserting metadata for an existing contract', async () => {
+      const updatedContract = {
+        ...contractMetadata,
+        name: 'NEW_NAME',
+        isNFT: true,
+        symbol: 'NEW',
+        description: 'NEW_DESCRIPTION',
+      };
+      await service.insertMetadata(contractMetadata);
+      await service.insertMetadata(updatedContract, 'update');
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(updatedContract);
+    });
+
+    it('should do nothing when inserting metadata for an existing contract if selected', async () => {
+      const updatedContract = {
+        ...contractMetadata,
+        name: 'NEW_NAME',
+        isNFT: true,
+        symbol: 'NEW',
+        description: 'NEW_DESCRIPTION',
+      };
+      await service.insertMetadata(contractMetadata);
+      await service.insertMetadata(updatedContract, 'do nothing');
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA}`, 'DATA');
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(contractMetadata);
+    });
+
+    it('should throw by default when inserting metadata for an existing token', async () => {
+      await service.insertContractToken(contractToken1);
+      const res = await service.insertMetadata(tokenMetadata);
+
+      expect(res.id).toBeDefined();
+      await expect(service.insertMetadata(tokenMetadata)).rejects.toThrow();
+    });
+
+    it('should be able to update when inserting metadata for an existing token', async () => {
+      await service.insertContractToken(contractToken1);
+      const updatedTokenMetadata = {
+        ...tokenMetadata,
+        name: 'NEW_NAME',
+        isNFT: true,
+        symbol: 'NEW',
+        description: 'NEW_DESCRIPTION',
+      };
+      await service.insertMetadata(tokenMetadata);
+      const updateRes = await service.insertMetadata(updatedTokenMetadata, 'update');
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA}`, 'DATA');
+
+      expect(updateRes.id).toBeDefined();
+
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(updatedTokenMetadata);
+    });
+
+    it('should do nothing when inserting metadata for an existing token if selected', async () => {
+      await service.insertContractToken(contractToken1);
+
+      const updatedTokenMetadata = {
+        ...tokenMetadata,
+        name: 'NEW_NAME',
+        isNFT: true,
+        symbol: 'NEW',
+        description: 'NEW_DESCRIPTION',
+      };
+      await service.insertMetadata(tokenMetadata);
+      const insertRes = await service.insertMetadata(updatedTokenMetadata, 'do nothing');
+
+      const res = await executeQuery(`SELECT * FROM ${DB_DATA_TABLE.METADATA}`, 'DATA');
+
+      expect(insertRes.id).toBeDefined();
+
+      expect(res.rows.length).toEqual(1);
+      expect(res.rows[0]).toMatchObject(tokenMetadata);
+    });
+
     it('should be able to insert metadata for a contract token', async () => {
       await service.insertContractToken(contractToken1);
       await service.insertMetadata(tokenMetadata);

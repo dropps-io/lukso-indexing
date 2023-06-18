@@ -9,6 +9,8 @@ export enum DB_DATA_TYPE {
 export enum DB_DATA_INDEX {
   TOKEN_HOLDER_UNIQUE = 'token_holder_unique',
   TOKEN_HOLDER_UNIQUE_NO_TOKEN = 'token_holder_unique_no_token',
+  METADATA_UNIQUE = 'metadata_unique',
+  METADATA_UNIQUE_NO_TOKEN = 'metadata_unique_no_token',
 }
 
 export enum DB_DATA_TABLE {
