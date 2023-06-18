@@ -165,26 +165,57 @@ export class LuksoDataDbService {
   }
 
   // Metadata table functions
-  public async insertMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
-    const rows = await this.executeQuery<{ id: number }>(
-      `
-          INSERT INTO ${DB_DATA_TABLE.METADATA}
-          ("address", "tokenId", "name", "symbol", "description", "isNFT")
-          VALUES ($1, $2, $3, $4, $5, $6)
-          RETURNING id;
-        `,
-      [
+  public async insertMetadata(
+    metadata: Omit<MetadataTable, 'id'>,
+    onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
+  ): Promise<{ id: number }> {
+    let query = `
+        INSERT INTO ${DB_DATA_TABLE.METADATA}
+        ("address", "tokenId", "name", "symbol", "description", "isNFT")
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id;
+      `;
+
+    let rows;
+    try {
+      rows = await this.executeQuery(query, [
         metadata.address,
         metadata.tokenId,
         metadata.name,
         metadata.symbol,
         metadata.description,
         metadata.isNFT,
-      ],
-    );
+      ]);
+    } catch (error) {
+      if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
+        const id = (await this.getMetadata(metadata.address, metadata.tokenId || undefined))?.id;
+        if (!id) throw new Error('Could not get id of metadata');
+        else return { id };
+      } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
+        query = `
+        UPDATE ${DB_DATA_TABLE.METADATA}
+        SET "name" = $3, "symbol" = $4, "description" = $5, "isNFT" = $6
+        WHERE "address" = $1 AND 
+        (("tokenId" = $2 AND $2 IS NOT NULL) OR ("tokenId" IS NULL AND $2 IS NULL))
+          RETURNING id;
+      `;
 
+        rows = await this.executeQuery(query, [
+          metadata.address,
+          metadata.tokenId,
+          metadata.name,
+          metadata.symbol,
+          metadata.description,
+          metadata.isNFT,
+        ]);
+      } else {
+        // If some other error occurred, rethrow it
+        throw error;
+      }
+    }
     return { id: rows[0].id };
   }
+
   public async getMetadata(address: string, tokenId?: string): Promise<MetadataTable | null> {
     const query = `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId"${
       tokenId ? '=$2' : ' IS NULL'
