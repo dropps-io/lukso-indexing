@@ -1,8 +1,8 @@
 {
-  "extends": "../../../lukso-indexing/tsconfig.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "declaration": false,
-    "outDir": "../../../lukso-indexing/dist/apps/api"
+    "outDir": "../../dist/apps/api"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist",

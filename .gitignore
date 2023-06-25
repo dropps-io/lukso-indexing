@@ -38,4 +38,8 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 .env
+.env.mainnet
+.env.testnet
 .env.test
+
+docker-data

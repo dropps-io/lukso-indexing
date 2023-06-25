@@ -64,3 +64,7 @@ You can then update the connection strings accordingly.
 - Create postgres databases and obtain connection strings. Set that to the env variable as `LUKSO_DATA_CONNECTION_STRING` and `LUKSO_STRUCTURE_CONNECTION_STRING` (in the `.env` and `.env.test` files)
 - Populate databases: `npm run seed:populate`
 - Run the indexing: `npm run indexing`
+
+### Start the project with docker
+
+- `docker-compose up`
