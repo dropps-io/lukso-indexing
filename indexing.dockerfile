@@ -19,4 +19,6 @@ FROM base AS release
 COPY --from=dependencies /app/node_modules ./node_modules
 # Copy necessary files from build stage
 COPY --from=build /app/dist/apps/indexing/main.js ./dist/apps/indexing/main.js
+# Copy the 'shared/abi' directory
+COPY shared/abi ./shared/abi
 CMD ["node", "dist/apps/indexing/main.js"]

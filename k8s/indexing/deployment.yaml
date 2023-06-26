@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: indexing-indexing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: indexing-indexing
+  template:
+    metadata:
+      labels:
+        app: indexing-indexing
+    spec:
+      containers:
+        - name: indexing-indexing
+          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing-testnet/indexing-indexing
+          resources:
+            limits:
+              memory: "2Gi"
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: LUKSO_DATA_CONNECTION_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LUKSO_DATA_CONNECTION_STRING
+            - name: LUKSO_STRUCTURE_CONNECTION_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LUKSO_STRUCTURE_CONNECTION_STRING
+            - name: RPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: RPC_URL
