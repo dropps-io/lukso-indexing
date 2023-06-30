@@ -17,7 +17,9 @@ spec:
           image: europe-west1-docker.pkg.dev/dropps-indexing/indexing-testnet/indexing-indexing
           resources:
             limits:
-              memory: "2Gi"
+              memory: 2Gi
+              ephemeral-storage: 2Gi
+              cpu: 1000m
           env:
             - name: NODE_ENV
               value: "production"
