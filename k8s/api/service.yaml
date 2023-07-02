@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: indexing-api-service
+spec:
+  selector:
+    app: indexing-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+  type: LoadBalancer

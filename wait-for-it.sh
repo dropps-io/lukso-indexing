@@ -46,6 +46,8 @@ wait_for()
         fi
         sleep 1
     done
+    echoerr "$WAITFORIT_cmdname: mandatory wait of 10 seconds"
+    sleep 10
     return $WAITFORIT_result
 }
 

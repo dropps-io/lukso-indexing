@@ -28,10 +28,6 @@ export class LoggerService {
 
     const fileFormat = format.combine(format.timestamp(), format.metadata(), format.json());
 
-    const consoleClassicFormat = format.printf(({ level, message, timestamp }) => {
-      return `${timestamp} ${level}: ${message}`;
-    });
-
     // Console logger configuration
     this.consoleLogger = createLogger({
       format: format.errors({ stack: true }),
@@ -49,17 +45,7 @@ export class LoggerService {
       transports: [
         new transports.Console({
           level: 'info',
-          format: format.combine(format.colorize(), consoleClassicFormat),
-        }),
-        new transports.File({
-          filename: 'logs/application.log',
-          level: 'info',
-          format: fileFormat,
-        }),
-        new transports.File({
-          filename: 'logs/error.log',
-          level: 'error',
-          format: fileFormat,
+          format: format.combine(format.colorize(), consoleFormat),
         }),
       ],
     });
@@ -78,8 +64,8 @@ export class LoggerService {
    * @param {number} block - The last block number.
    */
   public setLastBlock(block: number): void {
-    this.lastBlock = block;
-    this.printConsole();
+    // this.lastBlock = block;
+    // this.printConsole();
   }
 
   /**
@@ -87,8 +73,8 @@ export class LoggerService {
    * @param {number} block - The latest indexed block number.
    */
   public setLatestIndexedBlock(block: number): void {
-    this.latestIndexedBlock = block;
-    this.printConsole();
+    // this.latestIndexedBlock = block;
+    // this.printConsole();
   }
 
   /**
@@ -96,33 +82,33 @@ export class LoggerService {
    * @param {number} block - The latest indexed event block number.
    */
   public setLatestIndexedEventBlock(block: number): void {
-    this.latestIndexedEventBlock = block;
-    this.printConsole();
+    // this.latestIndexedEventBlock = block;
+    // this.printConsole();
   }
 
   public incrementIndexedCount(type: 'transaction' | 'contract' | 'event' | 'token'): void {
-    switch (type) {
-      case 'transaction':
-        this.indexedTransactions++;
-        break;
-      case 'contract':
-        this.indexedContracts++;
-        break;
-      case 'event':
-        this.indexedEvents++;
-        break;
-      case 'token':
-        this.indexedTokens++;
-        break;
-    }
-    this.printConsole();
+    // switch (type) {
+    //   case 'transaction':
+    //     this.indexedTransactions++;
+    //     break;
+    //   case 'contract':
+    //     this.indexedContracts++;
+    //     break;
+    //   case 'event':
+    //     this.indexedEvents++;
+    //     break;
+    //   case 'token':
+    //     this.indexedTokens++;
+    //     break;
+    // }
+    // this.printConsole();
   }
 
   /**
    * Print the console log messages, clearing the console each time.
    */
   private printConsole(): void {
-    // // Use ANSI escape codes to clear he console and move the cursor to the beginning
+    // Use ANSI escape codes to clear he console and move the cursor to the beginning
     // const clearConsole = '\x1b[2J\x1b[0;0H';
     // process.stdout.write(clearConsole);
     //
