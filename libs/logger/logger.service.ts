@@ -43,9 +43,15 @@ export class LoggerService {
     this.fileLogger = createLogger({
       format: format.errors({ stack: true }),
       transports: [
-        new transports.Console({
+        new transports.File({
+          filename: 'logs/application.log',
           level: 'info',
-          format: format.combine(format.colorize(), consoleFormat),
+          format: fileFormat,
+        }),
+        new transports.File({
+          filename: 'logs/error.log',
+          level: 'error',
+          format: fileFormat,
         }),
       ],
     });
@@ -64,8 +70,8 @@ export class LoggerService {
    * @param {number} block - The last block number.
    */
   public setLastBlock(block: number): void {
-    // this.lastBlock = block;
-    // this.printConsole();
+    this.lastBlock = block;
+    this.printConsole();
   }
 
   /**
@@ -73,8 +79,8 @@ export class LoggerService {
    * @param {number} block - The latest indexed block number.
    */
   public setLatestIndexedBlock(block: number): void {
-    // this.latestIndexedBlock = block;
-    // this.printConsole();
+    this.latestIndexedBlock = block;
+    this.printConsole();
   }
 
   /**
@@ -82,26 +88,26 @@ export class LoggerService {
    * @param {number} block - The latest indexed event block number.
    */
   public setLatestIndexedEventBlock(block: number): void {
-    // this.latestIndexedEventBlock = block;
-    // this.printConsole();
+    this.latestIndexedEventBlock = block;
+    this.printConsole();
   }
 
   public incrementIndexedCount(type: 'transaction' | 'contract' | 'event' | 'token'): void {
-    // switch (type) {
-    //   case 'transaction':
-    //     this.indexedTransactions++;
-    //     break;
-    //   case 'contract':
-    //     this.indexedContracts++;
-    //     break;
-    //   case 'event':
-    //     this.indexedEvents++;
-    //     break;
-    //   case 'token':
-    //     this.indexedTokens++;
-    //     break;
-    // }
-    // this.printConsole();
+    switch (type) {
+      case 'transaction':
+        this.indexedTransactions++;
+        break;
+      case 'contract':
+        this.indexedContracts++;
+        break;
+      case 'event':
+        this.indexedEvents++;
+        break;
+      case 'token':
+        this.indexedTokens++;
+        break;
+    }
+    this.printConsole();
   }
 
   /**
@@ -109,24 +115,24 @@ export class LoggerService {
    */
   private printConsole(): void {
     // Use ANSI escape codes to clear he console and move the cursor to the beginning
-    // const clearConsole = '\x1b[2J\x1b[0;0H';
-    // process.stdout.write(clearConsole);
-    //
-    // this.consoleLogger.log(
-    //   'info',
-    //   `Event indexing: ${((this.latestIndexedEventBlock / this.lastBlock) * 100).toFixed(
-    //     2,
-    //   )}% complete (${this.latestIndexedEventBlock} / ${this.lastBlock})`,
-    // );
-    // this.consoleLogger.log(
-    //   'info',
-    //   `Transaction indexing: ${((this.latestIndexedBlock / this.lastBlock) * 100).toFixed(
-    //     2,
-    //   )}% complete (${this.latestIndexedBlock} / ${this.lastBlock})`,
-    // );
-    // this.consoleLogger.log('info', `Indexed transactions: ${this.indexedTransactions}`);
-    // this.consoleLogger.log('info', `Indexed contracts: ${this.indexedContracts}`);
-    // this.consoleLogger.log('info', `Indexed events: ${this.indexedEvents}`);
-    // this.consoleLogger.log('info', `Indexed tokens: ${this.indexedTokens}`);
+    const clearConsole = '\x1b[2J\x1b[0;0H';
+    process.stdout.write(clearConsole);
+
+    this.consoleLogger.log(
+      'info',
+      `Event indexing: ${((this.latestIndexedEventBlock / this.lastBlock) * 100).toFixed(
+        2,
+      )}% complete (${this.latestIndexedEventBlock} / ${this.lastBlock})`,
+    );
+    this.consoleLogger.log(
+      'info',
+      `Transaction indexing: ${((this.latestIndexedBlock / this.lastBlock) * 100).toFixed(
+        2,
+      )}% complete (${this.latestIndexedBlock} / ${this.lastBlock})`,
+    );
+    this.consoleLogger.log('info', `Indexed transactions: ${this.indexedTransactions}`);
+    this.consoleLogger.log('info', `Indexed contracts: ${this.indexedContracts}`);
+    this.consoleLogger.log('info', `Indexed events: ${this.indexedEvents}`);
+    this.consoleLogger.log('info', `Indexed tokens: ${this.indexedTokens}`);
   }
 }

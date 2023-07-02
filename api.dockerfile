@@ -22,11 +22,4 @@ RUN npm install --production && npm cache clean --force
 # Copy built api
 COPY --from=build /app/dist/apps/api/main.js ./dist/apps/api/main.js
 EXPOSE 3001
-
-ARG LUKSO_DATA_CONNECTION_STRING
-ARG LUKSO_STRUCTURE_CONNECTION_STRING
-
-ENV LUKSO_DATA_CONNECTION_STRING=${LUKSO_DATA_CONNECTION_STRING}
-ENV LUKSO_STRUCTURE_CONNECTION_STRING=${LUKSO_STRUCTURE_CONNECTION_STRING}
-
 CMD ["node", "dist/apps/api/main.js"]
