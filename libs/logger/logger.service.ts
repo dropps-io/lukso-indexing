@@ -28,6 +28,10 @@ export class LoggerService {
 
     const fileFormat = format.combine(format.timestamp(), format.metadata(), format.json());
 
+    const consoleClassicFormat = format.printf(({ level, message, timestamp }) => {
+      return `${timestamp} ${level}: ${message}`;
+    });
+
     // Console logger configuration
     this.consoleLogger = createLogger({
       format: format.errors({ stack: true }),
@@ -43,6 +47,10 @@ export class LoggerService {
     this.fileLogger = createLogger({
       format: format.errors({ stack: true }),
       transports: [
+        new transports.Console({
+          level: 'info',
+          format: format.combine(format.colorize(), consoleClassicFormat),
+        }),
         new transports.File({
           filename: 'logs/application.log',
           level: 'info',
@@ -114,25 +122,25 @@ export class LoggerService {
    * Print the console log messages, clearing the console each time.
    */
   private printConsole(): void {
-    // Use ANSI escape codes to clear he console and move the cursor to the beginning
-    const clearConsole = '\x1b[2J\x1b[0;0H';
-    process.stdout.write(clearConsole);
-
-    this.consoleLogger.log(
-      'info',
-      `Event indexing: ${((this.latestIndexedEventBlock / this.lastBlock) * 100).toFixed(
-        2,
-      )}% complete (${this.latestIndexedEventBlock} / ${this.lastBlock})`,
-    );
-    this.consoleLogger.log(
-      'info',
-      `Transaction indexing: ${((this.latestIndexedBlock / this.lastBlock) * 100).toFixed(
-        2,
-      )}% complete (${this.latestIndexedBlock} / ${this.lastBlock})`,
-    );
-    this.consoleLogger.log('info', `Indexed transactions: ${this.indexedTransactions}`);
-    this.consoleLogger.log('info', `Indexed contracts: ${this.indexedContracts}`);
-    this.consoleLogger.log('info', `Indexed events: ${this.indexedEvents}`);
-    this.consoleLogger.log('info', `Indexed tokens: ${this.indexedTokens}`);
+    // // Use ANSI escape codes to clear he console and move the cursor to the beginning
+    // const clearConsole = '\x1b[2J\x1b[0;0H';
+    // process.stdout.write(clearConsole);
+    //
+    // this.consoleLogger.log(
+    //   'info',
+    //   `Event indexing: ${((this.latestIndexedEventBlock / this.lastBlock) * 100).toFixed(
+    //     2,
+    //   )}% complete (${this.latestIndexedEventBlock} / ${this.lastBlock})`,
+    // );
+    // this.consoleLogger.log(
+    //   'info',
+    //   `Transaction indexing: ${((this.latestIndexedBlock / this.lastBlock) * 100).toFixed(
+    //     2,
+    //   )}% complete (${this.latestIndexedBlock} / ${this.lastBlock})`,
+    // );
+    // this.consoleLogger.log('info', `Indexed transactions: ${this.indexedTransactions}`);
+    // this.consoleLogger.log('info', `Indexed contracts: ${this.indexedContracts}`);
+    // this.consoleLogger.log('info', `Indexed events: ${this.indexedEvents}`);
+    // this.consoleLogger.log('info', `Indexed tokens: ${this.indexedTokens}`);
   }
 }

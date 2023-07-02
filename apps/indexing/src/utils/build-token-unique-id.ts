@@ -1,5 +1,5 @@
-import { keccak256 } from 'web3-utils';
+import { keccak256, toUtf8Bytes } from 'ethers';
 
 export const buildTokenUniqueId = (transactionHash: string, tokenId: string): string => {
-  return keccak256(transactionHash + tokenId);
+  return keccak256(toUtf8Bytes(transactionHash + tokenId));
 };

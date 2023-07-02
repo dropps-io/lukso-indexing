@@ -6,7 +6,7 @@ import { EventTable } from '@db/lukso-data/entities/event.table';
 
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { buildTokenUniqueId } from '../../utils/build-token-unique-id';
-import { SUPPORTED_STANDARD } from '../../web3/types/enums';
+import { SUPPORTED_STANDARD } from '../../ethers/types/enums';
 
 @Injectable()
 export class Lsp8standardService {

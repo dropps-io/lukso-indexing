@@ -1,14 +1,14 @@
 import winston from 'winston';
-import { AbiItem } from 'web3-utils';
 import LSP7DigitalAsset from '@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json';
+import { ethers } from 'ethers';
 
-import { Web3Service } from '../../web3.service';
+import { EthersService } from '../../ethers.service';
 import { MetadataResponse } from '../../types/metadata-response';
 import { LSP4 } from '../LSP4/LSP4';
 export class LSP7 {
   private readonly lsp4: LSP4;
-  constructor(private web3Service: Web3Service, private logger: winston.Logger) {
-    this.lsp4 = new LSP4(web3Service, logger);
+  constructor(private ethersService: EthersService, private logger: winston.Logger) {
+    this.lsp4 = new LSP4(logger);
   }
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
@@ -40,18 +40,16 @@ export class LSP7 {
 
   public async isNFT(address: string): Promise<boolean> {
     const lsp7contract = this.getLSP7Contract(address);
-    return (await lsp7contract.methods.decimals().call()) === '0';
+    return (await lsp7contract.decimals()).toString() === '0';
   }
 
   public async balanceOf(address: string, holderAddress: string): Promise<string> {
     const lsp7contract = this.getLSP7Contract(address);
-    return await lsp7contract.methods.balanceOf(holderAddress).call();
+    const balanceOf = await lsp7contract.balanceOf(holderAddress);
+    return balanceOf.toString();
   }
 
   private getLSP7Contract(address: string) {
-    return new (this.web3Service.getWeb3().eth.Contract)(
-      LSP7DigitalAsset.abi as AbiItem[],
-      address,
-    );
+    return new ethers.Contract(address, LSP7DigitalAsset.abi, this.ethersService.getProvider());
   }
 }

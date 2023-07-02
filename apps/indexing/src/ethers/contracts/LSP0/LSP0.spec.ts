@@ -1,9 +1,6 @@
-import { Test } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
-import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
 import { LSP0 } from './LSP0';
-import { Web3Service } from '../../web3.service';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
 
 jest.setTimeout(15_000);
@@ -11,21 +8,11 @@ jest.setTimeout(15_000);
 describe('LSP0', () => {
   let service: LSP0;
   const logger = new LoggerService();
-  const db = new LuksoStructureDbService(logger);
 
   const e2eProfileAddress = '0xEF1a8DF71Be124E8e0322c62F974C553961E91DC';
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        Web3Service,
-        { provide: LuksoStructureDbService, useValue: db },
-        { provide: LoggerService, useValue: logger },
-      ],
-    }).compile();
-
-    const web3Service: Web3Service = moduleRef.get<Web3Service>(Web3Service);
-    service = new LSP0(web3Service, logger.getChildLogger('LSP0'));
+    service = new LSP0(logger.getChildLogger('LSP0'));
   });
 
   describe('fetchData', () => {

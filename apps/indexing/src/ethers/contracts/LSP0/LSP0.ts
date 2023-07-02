@@ -3,15 +3,14 @@ import LSP3UniversalProfileMetadataJSON from '@erc725/erc725.js/schemas/LSP3Univ
 import { LSP3Profile } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp3-profile';
 import winston from 'winston';
 
-import { Web3Service } from '../../web3.service';
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY } from '../../../globals';
+import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 
 export class LSP0 {
-  constructor(private web3Service: Web3Service, private logger: winston.Logger) {}
+  constructor(private logger: winston.Logger) {}
 
   /**
    * Fetches LSP0 data for the given address and returns a MetadataResponse object.
@@ -26,7 +25,7 @@ export class LSP0 {
       const erc725 = new ERC725(
         LSP3UniversalProfileMetadataJSON as ERC725JSONSchema[],
         address,
-        this.web3Service.getWeb3().currentProvider,
+        RPC_URL,
         { ipfsGateway: IPFS_GATEWAY },
       );
 

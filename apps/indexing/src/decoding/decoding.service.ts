@@ -1,31 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import Web3 from 'web3';
 import winston from 'winston';
-import { AbiItem, hexToNumberString, hexToString, toChecksumAddress } from 'web3-utils';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
-import LSP6KeyManager from '@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json';
 import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
+import { AbiCoder, ethers, formatUnits, getAddress, toUtf8String } from 'ethers';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
-import { Web3Service } from '../web3/web3.service';
+import { EthersService } from '../ethers/ethers.service';
 import { WrappedTransaction } from './types/wrapped-tx';
 import { DecodedParameter } from './types/decoded-parameter';
-import { LSP8_TOKEN_ID_TYPE } from '../web3/contracts/LSP8/enums';
+import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
 import { permissionsToString } from './utils/permissions-to-string';
 import { parseDecodedParameter } from './utils/parse-decoded-parameter';
 
 @Injectable()
 export class DecodingService {
-  private readonly web3: Web3;
+  private readonly provider: ethers.Provider;
   private readonly logger: winston.Logger;
 
   constructor(
     protected readonly structureDB: LuksoStructureDbService,
-    protected readonly web3Service: Web3Service,
+    protected readonly ethersService: EthersService,
     protected loggerService: LoggerService,
   ) {
-    this.web3 = web3Service.getWeb3();
+    this.provider = ethersService.getProvider();
     this.logger = loggerService.getChildLogger('Decoding');
   }
 
@@ -50,15 +48,14 @@ export class DecodingService {
       methodName = methodInterface.name;
       const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
 
-      // Decode the parameters using the Web3 library.
-      const decodedParameters = this.web3.eth.abi.decodeParameters(
-        methodParameters,
-        input.slice(10),
+      const decodedParametersArray = ethers.AbiCoder.defaultAbiCoder().decode(
+        methodParameters.map((p) => p.type),
+        '0x' + input.slice(10),
       );
 
       // Map the decoded parameters to the DecodedParameter[] format.
-      const parameters: DecodedParameter[] = methodParameters.map((parameter) => ({
-        value: parseDecodedParameter(decodedParameters[parameter.name]),
+      const parameters: DecodedParameter[] = methodParameters.map((parameter, index) => ({
+        value: parseDecodedParameter(decodedParametersArray[index]),
         position: parameter.position,
         name: parameter.name,
         type: parameter.type,
@@ -92,11 +89,60 @@ export class DecodingService {
       const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
       if (!methodParameters) return null;
 
-      // Decode the parameters using the Web3 library.
-      const decodedParameters = this.web3.eth.abi.decodeLog(
-        methodParameters,
+      // const eventDescription = {
+      //   type: 'event',
+      //   inputs: methodParameters.map((param) => ({
+      //     name: param.name,
+      //     type: param.type,
+      //     indexed: param.indexed,
+      //   })),
+      // };
+      //
+      // const methodInterface = new ethers.Interface([eventDescription]);
+      // if (!methodInterface) return null;
+      //
+      // const decodedParameters = methodInterface.parseLog({ topics, data });
+      // if (!decodedParameters) return null;
+
+      const indexedParameters = methodParameters.filter((p) => p.indexed);
+      const nonIndexedParameters = methodParameters.filter((p) => !p.indexed);
+
+      const decodedIndexedParams = AbiCoder.defaultAbiCoder().decode(
+        indexedParameters.map((p) => p.type),
+        '0x' +
+          topics
+            .slice(1)
+            .map((t) => t.slice(2))
+            .join(''), // join the topics into a single string and remove the '0x'
+      );
+
+      const decodedNonIndexedParams = AbiCoder.defaultAbiCoder().decode(
+        nonIndexedParameters.map((p) => p.type),
         data,
-        topics.filter((x, i) => i !== 0),
+      );
+
+      // Combine both sets of parameters into one object, mapping names to values
+      let indexedParamsIndex = 0;
+      let nonIndexedParamsIndex = 0;
+
+      const decodedParameters = [...indexedParameters, ...nonIndexedParameters].reduce(
+        (acc, param) => {
+          let value;
+          if (param.indexed) {
+            value = decodedIndexedParams[indexedParamsIndex++];
+          } else {
+            value = decodedNonIndexedParams[nonIndexedParamsIndex++];
+          }
+
+          // Convert BigInt to string
+          if (typeof value === 'bigint') {
+            value = value.toString();
+          }
+
+          acc[param.name] = value;
+          return acc;
+        },
+        {},
       );
 
       // Map the decoded parameters to the DecodedParameter[] format and return.
@@ -144,6 +190,7 @@ export class DecodingService {
 
       switch (methodId) {
         case WRAPPING_METHOD.LSP6_EXECUTE_V0_6:
+        case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_V0_X:
         case WRAPPING_METHOD.LSP6_EXECUTE_RELAY_V0_6: {
           const unwrappedTransaction = await this.unwrapLSP6Execute(contractAddress, parametersMap);
           return unwrappedTransaction ? [unwrappedTransaction] : null;
@@ -174,11 +221,11 @@ export class DecodingService {
 
     switch (tokenIdType) {
       case LSP8_TOKEN_ID_TYPE.address:
-        return toChecksumAddress(tokenId.slice(0, 42));
+        return getAddress(tokenId.slice(0, 42));
       case LSP8_TOKEN_ID_TYPE.uint256:
-        return hexToNumberString(tokenId);
+        return formatUnits(tokenId, 0); // Converts hex to decimal string
       case LSP8_TOKEN_ID_TYPE.string:
-        return hexToString(tokenId);
+        return toUtf8String(tokenId);
       case LSP8_TOKEN_ID_TYPE.bytes32:
       default: // When no tokenIdType, we assume it's a bytes32 type
         return tokenId;
@@ -238,7 +285,10 @@ export class DecodingService {
     schema: ERC725JSONSchema,
   ): { keyParameters: string[]; keyIndex: number | null } {
     if (schema.keyType === 'Array' && schema.key !== key)
-      return { keyParameters: [], keyIndex: parseInt(hexToNumberString('0x' + key.slice(34))) };
+      return {
+        keyParameters: [],
+        keyIndex: parseInt(key.slice(34), 16),
+      };
 
     // Decode the dynamic key parts
     const dynamicKeyParts = ERC725.decodeMappingKey(key, schema as ERC725JSONSchema);
@@ -302,7 +352,7 @@ export class DecodingService {
       const wrappedInput: string = parametersMap['data'];
       return await this.getWrappedTransaction(
         wrappedInput,
-        toChecksumAddress(parametersMap['to']),
+        getAddress(parametersMap['to']),
         parametersMap['value'],
       );
     } catch (e) {
@@ -326,13 +376,20 @@ export class DecodingService {
     parametersMap: Record<string, string>,
   ): Promise<WrappedTransaction | null> {
     try {
-      const keyManagerContract = new this.web3.eth.Contract(
-        LSP6KeyManager.abi as AbiItem[],
-        contractAddress,
-      );
-      const toAddress = await keyManagerContract.methods.target().call();
+      const targetFuncSig = ethers.id('target()').slice(0, 10); // get the first 4 bytes (8 characters) of the keccak-256 hash of the function signature
+
+      const callTransaction = {
+        to: contractAddress,
+        data: targetFuncSig,
+      };
+
+      const result = await this.ethersService.getProvider().call(callTransaction);
+
+      // If the "target" function returns an address, decode the result like this:
+      const targetAddress = ethers.getAddress('0x' + result.slice(26)); // remove the first 12 bytes (24 characters) from the returned data
+
       const wrappedInput = parametersMap['payload'] as string;
-      return await this.getWrappedTransaction(wrappedInput, toAddress, '0');
+      return await this.getWrappedTransaction(wrappedInput, targetAddress, '0');
     } catch (e) {
       this.logger.error(`Error unwrapping LSP6 execute: ${e.message}`, {
         contractAddress,

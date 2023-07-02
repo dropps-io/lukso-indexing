@@ -3,10 +3,10 @@ import { LuksoStructureDbModule } from '@db/lukso-structure/lukso-structure-db.m
 import { LoggerModule } from '@libs/logger/logger.module';
 
 import { DecodingService } from './decoding.service';
-import { Web3Module } from '../web3/web3.module';
+import { EthersModule } from '../ethers/ethers.module';
 
 @Module({
-  imports: [LuksoStructureDbModule, Web3Module, LoggerModule],
+  imports: [LuksoStructureDbModule, EthersModule, LoggerModule],
   providers: [DecodingService],
   exports: [DecodingService],
 })

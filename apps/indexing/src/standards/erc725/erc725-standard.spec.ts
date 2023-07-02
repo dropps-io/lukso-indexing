@@ -2,10 +2,10 @@ import { Test } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
-import { toChecksumAddress } from 'web3-utils';
 import { DB_DATA_TABLE } from '@db/lukso-data/config';
+import { getAddress } from 'ethers';
 
-import { Web3Service } from '../../web3/web3.service';
+import { EthersService } from '../../ethers/ethers.service';
 import { Erc725StandardService } from './erc725-standard.service';
 import { DecodingService } from '../../decoding/decoding.service';
 import { ADDRESS1 } from '../../../../../test/utils/test-values';
@@ -26,7 +26,11 @@ describe('Erc725StandardService', () => {
         { provide: LuksoDataDbService, useValue: dataDB },
         {
           provide: DecodingService,
-          useValue: new DecodingService(structureDB, new Web3Service(logger, structureDB), logger),
+          useValue: new DecodingService(
+            structureDB,
+            new EthersService(logger, structureDB),
+            logger,
+          ),
         },
       ],
     }).compile();
@@ -62,7 +66,7 @@ describe('Erc725StandardService', () => {
         blockNumber: 123,
         key: '0x0cfc51aec37c55a4d0b1a65c6255c4bf2fbdf6277f3cc0730c45b828b6db8b47',
         value: '0x76aeb1274d6486be066e653605b25ddccf0e2f18',
-        decodedValue: toChecksumAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'),
+        decodedValue: getAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'),
       });
     });
 
@@ -124,7 +128,7 @@ describe('Erc725StandardService', () => {
         blockNumber: 234,
         key: '0x6460ee3c0aac563ccbf76d6e1d07bada00000000000000000000000000000003',
         value: '0x21d69022dfa30d8e1388388798b28386b2dd9a78',
-        decodedValue: toChecksumAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'),
+        decodedValue: getAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'),
       });
     });
 
@@ -219,7 +223,7 @@ describe('Erc725StandardService', () => {
           blockNumber: 2345,
           key: '0x0cfc51aec37c55a4d0b1a65c6255c4bf2fbdf6277f3cc0730c45b828b6db8b47',
           value: '0x76aeb1274d6486be066e653605b25ddccf0e2f18',
-          decodedValue: toChecksumAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'),
+          decodedValue: getAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'),
         },
       ]);
     });
@@ -277,7 +281,7 @@ describe('Erc725StandardService', () => {
           blockNumber: 2345,
           key: '0x0cfc51aec37c55a4d0b1a65c6255c4bf2fbdf6277f3cc0730c45b828b6db8b47',
           value: '0x76aeb1274d6486be066e653605b25ddccf0e2f18',
-          decodedValue: toChecksumAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'),
+          decodedValue: getAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'),
         },
         {
           address: ADDRESS1,
@@ -291,7 +295,7 @@ describe('Erc725StandardService', () => {
           blockNumber: 2345,
           key: '0x6460ee3c0aac563ccbf76d6e1d07bada00000000000000000000000000000003',
           value: '0x21d69022dfa30d8e1388388798b28386b2dd9a78',
-          decodedValue: toChecksumAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'),
+          decodedValue: getAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'),
         },
         {
           address: ADDRESS1,

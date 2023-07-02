@@ -3,10 +3,10 @@ import { LoggerModule } from '@libs/logger/logger.module';
 import { LuksoDataDbModule } from '@db/lukso-data/lukso-data-db.module';
 
 import { Lsp7standardService } from './lsp7standard.service';
-import { Web3Module } from '../../web3/web3.module';
+import { EthersModule } from '../../ethers/ethers.module';
 
 @Module({
-  imports: [LuksoDataDbModule, LoggerModule, Web3Module],
+  imports: [LuksoDataDbModule, LoggerModule, EthersModule],
   providers: [Lsp7standardService],
   exports: [Lsp7standardService],
 })

@@ -3,20 +3,20 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 import { LoggerService } from '@libs/logger/logger.service';
-import { toChecksumAddress } from 'web3-utils';
+import { getAddress } from 'ethers';
 
-import { Web3Service } from '../web3/web3.service';
+import { EthersService } from '../ethers/ethers.service';
 import { DecodingService } from './decoding.service';
 import { ADDRESS1 } from '../../../../test/utils/test-values';
-import { LSP8_TOKEN_ID_TYPE } from '../web3/contracts/LSP8/enums';
+import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
 
 class TestDecodingService extends DecodingService {
   constructor(
     protected readonly structureDB: LuksoStructureDbService,
-    protected readonly web3Service: Web3Service,
+    protected readonly ethersService: EthersService,
     protected readonly loggerService: LoggerService,
   ) {
-    super(structureDB, web3Service, loggerService);
+    super(structureDB, ethersService, loggerService);
   }
 
   async testUnwrapLSP6Execute(contractAddress: string, parametersMap: Record<string, string>) {
@@ -110,7 +110,7 @@ describe('DecodingService', () => {
       providers: [
         TestDecodingService,
         { provide: LuksoStructureDbService, useValue: db },
-        { provide: Web3Service, useValue: new Web3Service(logger, db) },
+        { provide: EthersService, useValue: new EthersService(logger, db) },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();
@@ -461,7 +461,7 @@ describe('DecodingService', () => {
         '0x76aeb1274d6486be066e653605b25ddccf0e2f18',
       );
 
-      expect(res?.value).toEqual(toChecksumAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'));
+      expect(res?.value).toEqual(getAddress('0x76aeb1274d6486be066e653605b25ddccf0e2f18'));
       expect(res?.keyParameters).toEqual([]);
       expect(res?.keyIndex).toEqual(null);
     });
@@ -482,7 +482,7 @@ describe('DecodingService', () => {
 
       expect(res?.value).toEqual('CHANGEOWNER,CHANGEEXTENSIONS,TRANSFERVALUE,CALL');
       expect(res?.keyParameters).toEqual([
-        toChecksumAddress('0xd0a434abaa20e8f9627ab2afac944a1264f264d6'),
+        getAddress('0xd0a434abaa20e8f9627ab2afac944a1264f264d6'),
       ]);
     });
 
@@ -500,9 +500,28 @@ describe('DecodingService', () => {
         '0x21d69022dfa30d8e1388388798b28386b2dd9a78',
       );
 
-      expect(res?.value).toEqual(toChecksumAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'));
+      expect(res?.value).toEqual(getAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'));
       expect(res?.keyParameters).toEqual([]);
       expect(res?.keyIndex).toEqual(3);
+    });
+
+    it('should decode ERC725Y value correctly for LSP5ReceivedAssets[17]', async () => {
+      await db.insertErc725ySchema({
+        name: 'LSP5ReceivedAssets[]',
+        key: '0x6460ee3c0aac563ccbf76d6e1d07bada78e3a9514e6382b736ed3f478ab7b90b',
+        keyType: 'Array',
+        valueType: 'address',
+        valueContent: 'Address',
+      });
+
+      const res = await service.decodeErc725YKeyValuePair(
+        '0x6460ee3c0aac563ccbf76d6e1d07bada00000000000000000000000000000011',
+        '0x21d69022dfa30d8e1388388798b28386b2dd9a78',
+      );
+
+      expect(res?.value).toEqual(getAddress('0x21d69022dfa30d8e1388388798b28386b2dd9a78'));
+      expect(res?.keyParameters).toEqual([]);
+      expect(res?.keyIndex).toEqual(17);
     });
 
     it('should decode ERC725Y value correctly for LSP5ReceivedAssets[] root length', async () => {

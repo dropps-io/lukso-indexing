@@ -1,5 +1,5 @@
-import { keccak256 } from 'web3-utils';
+import { keccak256, toUtf8Bytes } from 'ethers';
 
 export const buildLogId = (transactionHash: string, logIndex: number): string => {
-  return keccak256(transactionHash + logIndex);
+  return keccak256(toUtf8Bytes(transactionHash + logIndex));
 };
