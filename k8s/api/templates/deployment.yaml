@@ -15,8 +15,12 @@ spec:
       containers:
         - name: indexing-api
           image: europe-west1-docker.pkg.dev/dropps-indexing/indexing-testnet/indexing-api
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.targetPort }}
           ports:
-            - containerPort: 3001
+            - containerPort: {{ .Values.targetPort }}
           env:
             - name: NODE_ENV
               value: "production"
