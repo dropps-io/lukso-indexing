@@ -20,8 +20,8 @@ import { HealthController } from './health.controller';
     GraphQLModule.forRoot<ApolloDriverConfig>({
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       driver: ApolloDriver,
-      playground: process.env.NODE_ENV !== 'production',
-      introspection: process.env.NODE_ENV !== 'production',
+      introspection: true,
+      playground: true,
     }),
   ],
   controllers: [HealthController],
