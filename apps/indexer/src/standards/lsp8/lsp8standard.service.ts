@@ -39,7 +39,6 @@ export class Lsp8standardService {
           },
           'update',
         );
-      this.loggerService.incrementIndexedCount('token');
     } catch (e) {
       this.logger.error(`Error while processing token related event: ${e.message}`, {
         stack: e.stack,

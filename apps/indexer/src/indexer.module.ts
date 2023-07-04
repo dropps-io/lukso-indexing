@@ -7,7 +7,7 @@ import { LoggerModule } from '@libs/logger/logger.module';
 import { EthersModule } from './ethers/ethers.module';
 import { DecodingModule } from './decoding/decoding.module';
 import { UpdateModule } from './update/update.module';
-import { IndexingService } from './indexing.service';
+import { IndexerService } from './indexer.service';
 import { BlockchainActionRouterModule } from './blockchain-action-router/blockchain-action-router.module';
 import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
 
@@ -22,6 +22,6 @@ import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
     UpdateModule,
     BlockchainActionRouterModule,
   ],
-  providers: [IndexingService, IndexingWsGateway],
+  providers: [IndexerService, IndexingWsGateway],
 })
-export class IndexingModule {}
+export class IndexerModule {}

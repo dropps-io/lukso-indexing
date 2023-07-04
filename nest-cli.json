@@ -10,13 +10,13 @@
     "tsConfigPath": "tsconfig.json"
   },
   "projects": {
-    "indexing": {
+    "indexer": {
       "type": "application",
-      "root": "apps/indexing",
+      "root": "apps/indexer",
       "entryFile": "main",
-      "sourceRoot": "apps/indexing/src",
+      "sourceRoot": "apps/indexer/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/indexing/tsconfig.app.json"
+        "tsConfigPath": "apps/indexer/tsconfig.app.json"
       }
     },
     "api": {

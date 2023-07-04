@@ -31,22 +31,23 @@ import { BlockchainActionRouterService } from './blockchain-action-router/blockc
 import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
 
 /**
- * IndexingService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
+ * IndexerService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
  */
 @Injectable()
-export class IndexingService implements OnModuleInit {
-  private readonly fileLogger: winston.Logger;
+export class IndexerService implements OnModuleInit {
+  private readonly logger: winston.Logger;
 
   constructor(
     private readonly structureDB: LuksoStructureDbService,
     private readonly dataDB: LuksoDataDbService,
     private readonly ethersService: EthersService,
     private readonly decodingService: DecodingService,
-    private readonly logger: LoggerService,
+    private readonly loggerService: LoggerService,
     private readonly actionRouter: BlockchainActionRouterService,
     private readonly indexingWebSocket: IndexingWsGateway,
   ) {
-    this.fileLogger = logger.getChildLogger('Indexing');
+    this.logger = loggerService.getChildLogger('Indexing');
+    this.logger.info('Indexing service initialized');
   }
   onModuleInit() {
     if (NODE_ENV !== 'test') {
@@ -74,13 +75,9 @@ export class IndexingService implements OnModuleInit {
       config = await this.structureDB.getConfig();
       lastBlock = await this.ethersService.getLastBlock();
 
-      // Set logger values
-      this.logger.setLastBlock(lastBlock);
-      this.logger.setLatestIndexedBlock(config.latestIndexedBlock);
-
       // Function to index all transactions within a block
       const indexBlock = async (blockNumber: number) => {
-        this.fileLogger.info(`Indexing data of block ${blockNumber}`, { block: blockNumber });
+        this.logger.info(`Indexing data of block ${blockNumber}`, { block: blockNumber });
 
         // Get transaction hashes for the block
         const transactionsHashes = await this.ethersService.getBlockTransactions(blockNumber);
@@ -114,9 +111,8 @@ export class IndexingService implements OnModuleInit {
 
       // Update the latest indexed block in the database and logger
       await this.structureDB.updateLatestIndexedBlock(indexUntilBlock);
-      this.logger.setLatestIndexedBlock(indexUntilBlock);
     } catch (e) {
-      this.fileLogger.error(`Error while indexing data from blocks: ${e.message}`);
+      this.logger.error(`Error while indexing data from blocks: ${e.message}`);
     }
 
     // Calculate the timeout for the next recursive call based on the current indexing progress
@@ -147,7 +143,6 @@ export class IndexingService implements OnModuleInit {
     try {
       // Retrieve configuration and block data
       config = await this.structureDB.getConfig();
-      this.logger.setLatestIndexedEventBlock(config.latestIndexedEventBlock);
 
       lastBlock = await this.ethersService.getLastBlock();
       // Determine the block number until which we should index in this iteration
@@ -156,7 +151,7 @@ export class IndexingService implements OnModuleInit {
           ? config.latestIndexedEventBlock + config.blockIteration
           : lastBlock;
 
-      this.fileLogger.info(`Indexing from blocks ${config.latestIndexedEventBlock} to ${toBlock}`);
+      this.logger.info(`Indexing from blocks ${config.latestIndexedEventBlock} to ${toBlock}`);
 
       // Retrieve logs from the specified block range
       const logs = await this.ethersService.getPastLogs(config.latestIndexedEventBlock, toBlock);
@@ -186,9 +181,8 @@ export class IndexingService implements OnModuleInit {
 
       // Update the latest indexed event block in the database and logger
       await this.structureDB.updateLatestIndexedEventBlock(toBlock);
-      this.logger.setLatestIndexedEventBlock(toBlock);
     } catch (e) {
-      this.fileLogger.error(`Error while indexing data: ${e.message}`);
+      this.logger.error(`Error while indexing data: ${e.message}`);
     }
 
     // Calculate the timeout for the next recursive call based on the current indexing progress
@@ -218,11 +212,11 @@ export class IndexingService implements OnModuleInit {
       // Function to index contracts and their metadata in batches
       const indexBatchContracts = async (contractsToIndex: string[]) => {
         for (const contract of contractsToIndex) {
-          this.fileLogger.info('Indexing contract', { address: contract });
+          this.logger.info('Indexing contract', { address: contract });
           // Index the contract and retrieve its row
           const contractRow = await this.indexContract(contract);
           if (contractRow) {
-            this.fileLogger.info(`Fetching contract metadata for ${contract}`, { contract });
+            this.logger.info(`Fetching contract metadata for ${contract}`, { contract });
             // Fetch contract metadata using EthersService
             const metadata = await this.ethersService.fetchContractMetadata(
               contract,
@@ -230,7 +224,7 @@ export class IndexingService implements OnModuleInit {
             );
 
             // Log if no metadata is found, and use defaultMetadata as a fallback
-            if (!metadata) this.fileLogger.info(`No metadata found for ${contract}`, { contract });
+            if (!metadata) this.logger.info(`No metadata found for ${contract}`, { contract });
             // Index the contract metadata
             await this.indexMetadata(metadata || defaultMetadata(contract));
           }
@@ -245,7 +239,7 @@ export class IndexingService implements OnModuleInit {
       // Process contract chunks concurrently
       await Promise.all(contractsChunks.map(indexBatchContracts));
     } catch (e) {
-      this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
+      this.logger.error(`Error while processing contracts to index: ${e.message}`);
     }
 
     // Calculate the timeout for the next recursive call based on the current processing progress
@@ -270,7 +264,7 @@ export class IndexingService implements OnModuleInit {
       const indexBatchTokens = async (tokensToIndex: ContractTokenTable[]) => {
         // Loop through each contract token in the batch
         for (const token of tokensToIndex) {
-          this.fileLogger.info('Indexing token', { ...token });
+          this.logger.info('Indexing token', { ...token });
 
           // Fetch the metadata of the contract token
           const tokenData = await this.ethersService.fetchContractTokenMetadata(
@@ -308,7 +302,7 @@ export class IndexingService implements OnModuleInit {
       const tokensChunks = splitIntoChunks(tokensToIndex, TOKENS_INDEXING_BATCH_SIZE);
       await Promise.all(tokensChunks.map(indexBatchTokens));
     } catch (e) {
-      this.fileLogger.error(`Error while processing contracts to index: ${e.message}`);
+      this.logger.error(`Error while processing contracts to index: ${e.message}`);
     }
 
     // Calculate the timeout for the next recursive call based on the current processing progress
@@ -333,7 +327,7 @@ export class IndexingService implements OnModuleInit {
       const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
       if (transactionAlreadyIndexed) return;
 
-      this.fileLogger.info('Indexing transaction', { transactionHash });
+      this.logger.info('Indexing transaction', { transactionHash });
 
       // Retrieve the transaction details using EthersService
       const transaction = await this.ethersService.getTransaction(transactionHash);
@@ -375,8 +369,6 @@ export class IndexingService implements OnModuleInit {
 
       // Insert the transaction row into the database
       await this.dataDB.insertTransaction(transactionRow);
-      // Update the logger with the indexed transaction count
-      this.logger.incrementIndexedCount('transaction');
 
       // Insert transaction input into the database
       await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.data });
@@ -409,7 +401,7 @@ export class IndexingService implements OnModuleInit {
         );
       }
     } catch (e) {
-      this.fileLogger.error(`Error while indexing transaction: ${e.message}`, {
+      this.logger.error(`Error while indexing transaction: ${e.message}`, {
         transactionHash,
         stack: e.stack,
       });
@@ -434,7 +426,7 @@ export class IndexingService implements OnModuleInit {
       const eventAlreadyIndexed = await this.dataDB.getEventById(logId);
       if (eventAlreadyIndexed) return;
 
-      this.fileLogger.info('Indexing log', { ...log });
+      this.logger.info('Indexing log', { ...log });
 
       // Retrieve the event interface using the method ID
       const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
@@ -457,9 +449,6 @@ export class IndexingService implements OnModuleInit {
       // Insert the event data into the database
       await this.dataDB.insertEvent(eventRow);
 
-      // Update the logger with the indexed event count
-      this.logger.incrementIndexedCount('event');
-
       // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
       await this.dataDB.insertContract(
         { address: log.address, interfaceVersion: null, interfaceCode: null, type: null },
@@ -479,7 +468,7 @@ export class IndexingService implements OnModuleInit {
         await this.actionRouter.routeEvent(eventRow, decodedParameters);
       }
     } catch (e) {
-      this.fileLogger.error(`Error while indexing log: ${e.message}`, { ...log });
+      this.logger.error(`Error while indexing log: ${e.message}`, { ...log });
     }
   }
 
@@ -503,7 +492,7 @@ export class IndexingService implements OnModuleInit {
     parentId: number | null,
     transactionHash: string,
   ) {
-    this.fileLogger.info('Indexing wrapped transactions', { parentId, transactionHash });
+    this.logger.info('Indexing wrapped transactions', { parentId, transactionHash });
 
     try {
       // Unwrap the transaction to identify any wrapped transactions within the current transaction
@@ -574,7 +563,7 @@ export class IndexingService implements OnModuleInit {
         }
       }
     } catch (e) {
-      this.fileLogger.error(`Failed to index wrapped transactions: ${e.message}`, {
+      this.logger.error(`Failed to index wrapped transactions: ${e.message}`, {
         input,
         decodedParams,
         contractAddress,
@@ -596,15 +585,14 @@ export class IndexingService implements OnModuleInit {
       const contractAlreadyIndexed = await this.dataDB.getContractByAddress(address);
       if (contractAlreadyIndexed && contractAlreadyIndexed?.interfaceCode) return;
 
-      this.fileLogger.info('Indexing contract', { address });
+      this.logger.info('Indexing contract', { address });
 
       // Identify the contract interface using its address
       const contractInterface = await this.ethersService.identifyContractInterface(address);
 
-      this.fileLogger.info(
-        `Contract interface identified: ${contractInterface?.code ?? 'unknown'}`,
-        { address },
-      );
+      this.logger.info(`Contract interface identified: ${contractInterface?.code ?? 'unknown'}`, {
+        address,
+      });
 
       // Prepare the contract data to be inserted into the database
       const contractRow: ContractTable = {
@@ -616,11 +604,10 @@ export class IndexingService implements OnModuleInit {
 
       // Insert contract, and update on conflict
       await this.dataDB.insertContract(contractRow, 'update');
-      this.logger.incrementIndexedCount('contract');
 
       return contractRow;
     } catch (e) {
-      this.fileLogger.error(`Error while indexing contract: ${e.message}`, { address });
+      this.logger.error(`Error while indexing contract: ${e.message}`, { address });
     }
   }
 
@@ -641,7 +628,7 @@ export class IndexingService implements OnModuleInit {
       await this.dataDB.insertMetadataLinks(id, metadata.links, 'do nothing');
       await this.dataDB.insertMetadataAssets(id, metadata.assets, 'do nothing');
     } catch (e) {
-      this.fileLogger.error(`Error while indexing metadata: ${e.message}`, {
+      this.logger.error(`Error while indexing metadata: ${e.message}`, {
         address: metadata.metadata.address,
         tokenId: metadata.metadata.tokenId,
       });
