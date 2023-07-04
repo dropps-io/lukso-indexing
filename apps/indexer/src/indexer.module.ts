@@ -10,6 +10,7 @@ import { UpdateModule } from './update/update.module';
 import { IndexerService } from './indexer.service';
 import { BlockchainActionRouterModule } from './blockchain-action-router/blockchain-action-router.module';
 import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
+import { IndexingWsModule } from './indexing-ws/indexing-ws.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
     LoggerModule,
     UpdateModule,
     BlockchainActionRouterModule,
+    IndexingWsModule,
   ],
   providers: [IndexerService, IndexingWsGateway],
 })

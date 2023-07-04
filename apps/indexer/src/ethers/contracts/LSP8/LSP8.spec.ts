@@ -14,7 +14,7 @@ class TestLSP8 extends LSP8 {
   }
 
   testGetTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
-    return this.getTokenIdType(address);
+    return this.fetchTokenIdType(address);
   }
 }
 

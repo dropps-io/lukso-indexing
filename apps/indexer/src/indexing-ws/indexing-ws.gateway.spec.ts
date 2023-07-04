@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { LoggerService } from '@libs/logger/logger.service';
 
 import { IndexingWsGateway } from './indexing-ws.gateway';
 
@@ -7,7 +8,7 @@ describe('IndexingWsGateway', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [IndexingWsGateway],
+      providers: [IndexingWsGateway, { provide: LoggerService, useValue: new LoggerService() }],
     }).compile();
 
     gateway = module.get<IndexingWsGateway>(IndexingWsGateway);

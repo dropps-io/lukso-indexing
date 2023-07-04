@@ -13,6 +13,8 @@ export class LSP7 {
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     try {
+      this.logger.debug(`Fetching LSP7 data for ${address}`, { address });
+
       const lsp4Data = await this.lsp4.fetchData(address);
       const isNFT = await this.isNFT(address);
 
@@ -31,7 +33,7 @@ export class LSP7 {
         assets: lsp4Data?.assets || [],
       };
     } catch (e) {
-      this.logger.error(`Error while fetching LSP7 data: ${e.message}`, {
+      this.logger.error(`Error while fetching LSP7 data for ${address}: ${e.message}`, {
         address,
       });
       return null;

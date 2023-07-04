@@ -21,6 +21,8 @@ export class LSP0 {
    */
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     try {
+      this.logger.debug(`Fetching LSP0 data for ${address}`, { address });
+
       // Initialize the ERC725 instance with the appropriate schema, address, provider, and IPFS gateway.
       const erc725 = new ERC725(
         LSP3UniversalProfileMetadataJSON as ERC725JSONSchema[],
@@ -38,7 +40,10 @@ export class LSP0 {
       )?.LSP3Profile;
 
       // Return null if LSP3Profile data is not found.
-      if (!lsp3Profile) return null;
+      if (!lsp3Profile) {
+        this.logger.debug(`No LSP0 data found for ${address}`, { address });
+        return null;
+      }
 
       // Return the MetadataResponse object containing the extracted metadata.
       return {
@@ -59,7 +64,7 @@ export class LSP0 {
         assets: [],
       };
     } catch (e) {
-      this.logger.error(`Error while fetching LSP0 data: ${e.message}`, {
+      this.logger.error(`Error while fetching LSP0 data for ${address}: ${e.message}`, {
         address,
       });
       return null;

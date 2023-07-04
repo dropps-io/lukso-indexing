@@ -81,6 +81,7 @@ export class EthersService {
    */
   public async identifyContractInterface(address: string): Promise<ContractInterfaceTable | null> {
     try {
+      this.logger.debug(`Identifying contract interface for address ${address}`, { address });
       // Get the bytecode of the contract.
       const contractCode = await this.provider.getCode(address);
 
@@ -125,10 +126,10 @@ export class EthersService {
     address: string,
     interfaceCode?: string,
   ): Promise<MetadataResponse | null> {
+    this.logger.debug(`Fetching metadata for ${address}`, { address });
+
     const interfaceCodeToUse =
       interfaceCode || (await this.identifyContractInterface(address))?.code;
-
-    this.logger.info(`Fetching metadata for ${address} using ${interfaceCodeToUse}`);
 
     switch (interfaceCodeToUse) {
       case SUPPORTED_STANDARD.LSP0:
@@ -147,6 +148,17 @@ export class EthersService {
     tokenId: string,
     interfaceCode?: string,
   ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
+    this.logger.debug(
+      `Fetching token metadata for ${address}:${tokenId}, ${
+        interfaceCode ? `interface code ${interfaceCode}` : ''
+      }`,
+      {
+        address,
+        tokenId,
+        interfaceCode,
+      },
+    );
+
     const interfaceCodeToUse =
       interfaceCode || (await this.identifyContractInterface(address))?.code;
 

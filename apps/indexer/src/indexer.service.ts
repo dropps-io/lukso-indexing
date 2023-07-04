@@ -47,7 +47,7 @@ export class IndexerService implements OnModuleInit {
     private readonly indexingWebSocket: IndexingWsGateway,
   ) {
     this.logger = loggerService.getChildLogger('Indexing');
-    this.logger.info('Indexing service initialized');
+    this.logger.info('Indexer starting...');
   }
   onModuleInit() {
     if (NODE_ENV !== 'test') {
@@ -67,20 +67,28 @@ export class IndexerService implements OnModuleInit {
   protected async indexByBlock() {
     const startTime = new Date();
     let lastBlock = 0;
-    let indexUntilBlock = 0;
+    let toBlock = 0;
     let config: ConfigTable | null = null;
 
     try {
       // Retrieve configuration and block data
       config = await this.structureDB.getConfig();
       lastBlock = await this.ethersService.getLastBlock();
+      let fromBlock = config.latestIndexedBlock + 1;
+
+      // Determine the block number until which we should index in this iteration
+      toBlock =
+        fromBlock + BLOCKS_INDEXING_BATCH_SIZE > lastBlock
+          ? lastBlock
+          : fromBlock + BLOCKS_INDEXING_BATCH_SIZE;
 
       // Function to index all transactions within a block
       const indexBlock = async (blockNumber: number) => {
-        this.logger.info(`Indexing data of block ${blockNumber}`, { block: blockNumber });
-
         // Get transaction hashes for the block
         const transactionsHashes = await this.ethersService.getBlockTransactions(blockNumber);
+        this.logger.debug(
+          `Indexing ${transactionsHashes.length} transactions from block ${blockNumber}`,
+        );
 
         // Index transactions in batches
         const indexBatchTransactions = async (txHashes: string[]) => {
@@ -92,32 +100,24 @@ export class IndexerService implements OnModuleInit {
         await Promise.all(transactionHashesChunks.map(indexBatchTransactions));
       };
 
-      // Determine the block number until which we should index in this iteration
-      indexUntilBlock =
-        config.latestIndexedBlock + BLOCKS_INDEXING_BATCH_SIZE + 1 > lastBlock
-          ? lastBlock
-          : config.latestIndexedBlock + BLOCKS_INDEXING_BATCH_SIZE + 1;
+      this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
 
       // Process blocks in batches and wait for all blocks to finish indexing
       const promises: Promise<void>[] = [];
-      for (
-        let blockToIndex = config.latestIndexedBlock + 1;
-        blockToIndex <= indexUntilBlock;
-        blockToIndex++
-      ) {
-        promises.push(indexBlock(blockToIndex));
+      for (fromBlock; fromBlock <= toBlock; fromBlock++) {
+        promises.push(indexBlock(fromBlock));
       }
       await Promise.all(promises);
 
       // Update the latest indexed block in the database and logger
-      await this.structureDB.updateLatestIndexedBlock(indexUntilBlock);
+      await this.structureDB.updateLatestIndexedBlock(toBlock);
     } catch (e) {
       this.logger.error(`Error while indexing data from blocks: ${e.message}`);
     }
 
     // Calculate the timeout for the next recursive call based on the current indexing progress
     const timeout =
-      lastBlock === indexUntilBlock && config
+      lastBlock === toBlock && config
         ? Math.max(
             0,
             config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
@@ -143,18 +143,19 @@ export class IndexerService implements OnModuleInit {
     try {
       // Retrieve configuration and block data
       config = await this.structureDB.getConfig();
+      const fromBlock: number = config.latestIndexedEventBlock + 1;
 
       lastBlock = await this.ethersService.getLastBlock();
       // Determine the block number until which we should index in this iteration
       toBlock =
-        config.latestIndexedEventBlock + config.blockIteration < lastBlock
-          ? config.latestIndexedEventBlock + config.blockIteration
+        fromBlock + config.blockIteration < lastBlock
+          ? fromBlock + config.blockIteration
           : lastBlock;
 
-      this.logger.info(`Indexing from blocks ${config.latestIndexedEventBlock} to ${toBlock}`);
+      this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
 
       // Retrieve logs from the specified block range
-      const logs = await this.ethersService.getPastLogs(config.latestIndexedEventBlock, toBlock);
+      const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
       // Split transaction hashes and logs into chunks for batch processing
       const txHashesChunks = splitIntoChunks(
@@ -212,11 +213,11 @@ export class IndexerService implements OnModuleInit {
       // Function to index contracts and their metadata in batches
       const indexBatchContracts = async (contractsToIndex: string[]) => {
         for (const contract of contractsToIndex) {
-          this.logger.info('Indexing contract', { address: contract });
+          this.logger.debug(`Indexing address ${contract}`, { contract });
           // Index the contract and retrieve its row
           const contractRow = await this.indexContract(contract);
           if (contractRow) {
-            this.logger.info(`Fetching contract metadata for ${contract}`, { contract });
+            this.logger.debug(`Fetching contract metadata for ${contract}`, { contract });
             // Fetch contract metadata using EthersService
             const metadata = await this.ethersService.fetchContractMetadata(
               contract,
@@ -224,7 +225,7 @@ export class IndexerService implements OnModuleInit {
             );
 
             // Log if no metadata is found, and use defaultMetadata as a fallback
-            if (!metadata) this.logger.info(`No metadata found for ${contract}`, { contract });
+            if (!metadata) this.logger.debug(`No metadata found for ${contract}`, { contract });
             // Index the contract metadata
             await this.indexMetadata(metadata || defaultMetadata(contract));
           }
@@ -233,6 +234,10 @@ export class IndexerService implements OnModuleInit {
 
       // Retrieve the list of contracts to be indexed
       const contractsToIndex = await this.dataDB.getContractsToIndex();
+
+      if (contractsToIndex.length > 0)
+        this.logger.info(`Processing ${contractsToIndex.length} contracts to index`);
+      else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
 
       // Split contracts into chunks for batch processing
       const contractsChunks = splitIntoChunks(contractsToIndex, CONTRACTS_INDEXING_BATCH_SIZE);
@@ -264,7 +269,7 @@ export class IndexerService implements OnModuleInit {
       const indexBatchTokens = async (tokensToIndex: ContractTokenTable[]) => {
         // Loop through each contract token in the batch
         for (const token of tokensToIndex) {
-          this.logger.info('Indexing token', { ...token });
+          this.logger.debug(`Indexing token ${token.tokenId} from ${token.address}`, { ...token });
 
           // Fetch the metadata of the contract token
           const tokenData = await this.ethersService.fetchContractTokenMetadata(
@@ -284,6 +289,10 @@ export class IndexerService implements OnModuleInit {
             );
             await this.indexMetadata(tokenData.metadata);
           } else {
+            this.logger.debug(
+              `No metadata found for token ${token.tokenId} from ${token.address}`,
+              { ...token },
+            );
             await this.dataDB.insertContractToken(
               {
                 ...token,
@@ -297,6 +306,10 @@ export class IndexerService implements OnModuleInit {
 
       // Retrieve the list of contract tokens to be indexed
       const tokensToIndex = await this.dataDB.getTokensToIndex();
+
+      if (tokensToIndex.length > 0)
+        this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
+      else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
 
       // Split the list of contract tokens into chunks for batch processing
       const tokensChunks = splitIntoChunks(tokensToIndex, TOKENS_INDEXING_BATCH_SIZE);
@@ -323,11 +336,16 @@ export class IndexerService implements OnModuleInit {
    */
   protected async indexTransaction(transactionHash: string) {
     try {
+      this.logger.debug(`Indexing transaction ${transactionHash}`, { transactionHash });
+
       // Check if the transaction has already been indexed
       const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
-      if (transactionAlreadyIndexed) return;
-
-      this.logger.info('Indexing transaction', { transactionHash });
+      if (transactionAlreadyIndexed) {
+        this.logger.debug(`Transaction ${transactionHash} already indexed, exiting...`, {
+          transactionHash,
+        });
+        return;
+      }
 
       // Retrieve the transaction details using EthersService
       const transaction = await this.ethersService.getTransaction(transactionHash);
@@ -417,16 +435,26 @@ export class IndexerService implements OnModuleInit {
    */
   protected async indexEvent(log: Log) {
     try {
+      this.logger.debug(`Indexing log ${log.transactionHash}:${log.index}`, {
+        transactionHash: log.transactionHash,
+        logIndex: log.index,
+      });
+
       // Generate a unique log ID based on the transaction hash and log index
       const logId = buildLogId(log.transactionHash, log.index);
+
       // Extract the method ID from the log topics
       const methodId = log.topics[0].slice(0, 10);
 
       // Check if the event has already been indexed
       const eventAlreadyIndexed = await this.dataDB.getEventById(logId);
-      if (eventAlreadyIndexed) return;
-
-      this.logger.info('Indexing log', { ...log });
+      if (eventAlreadyIndexed) {
+        this.logger.debug(`Log ${log.transactionHash}:${log.index} already indexed, exiting...`, {
+          transactionHash: log.transactionHash,
+          logIndex: log.index,
+        });
+        return;
+      }
 
       // Retrieve the event interface using the method ID
       const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
@@ -468,7 +496,11 @@ export class IndexerService implements OnModuleInit {
         await this.actionRouter.routeEvent(eventRow, decodedParameters);
       }
     } catch (e) {
-      this.logger.error(`Error while indexing log: ${e.message}`, { ...log });
+      this.logger.error(`Error while indexing log: ${e.message}`, {
+        transactionHash: log.transactionHash,
+        logIndex: log.index,
+        stack: e.stack,
+      });
     }
   }
 
@@ -492,7 +524,13 @@ export class IndexerService implements OnModuleInit {
     parentId: number | null,
     transactionHash: string,
   ) {
-    this.logger.info('Indexing wrapped transactions', { parentId, transactionHash });
+    this.logger.debug(
+      `Indexing wrapped transactions from the ${transactionHash} with parentID ${parentId}`,
+      {
+        parentId,
+        transactionHash,
+      },
+    );
 
     try {
       // Unwrap the transaction to identify any wrapped transactions within the current transaction
@@ -581,16 +619,19 @@ export class IndexerService implements OnModuleInit {
    */
   protected async indexContract(address: string): Promise<ContractTable | undefined> {
     try {
+      this.logger.debug(`Indexing address ${address}`, { address });
+
       // Check if the contract has already been indexed (contract indexed only if interfaceCode is set)
       const contractAlreadyIndexed = await this.dataDB.getContractByAddress(address);
-      if (contractAlreadyIndexed && contractAlreadyIndexed?.interfaceCode) return;
-
-      this.logger.info('Indexing contract', { address });
+      if (contractAlreadyIndexed && contractAlreadyIndexed?.interfaceCode) {
+        this.logger.debug(`Contract already indexed: ${address}`, { address });
+        return;
+      }
 
       // Identify the contract interface using its address
       const contractInterface = await this.ethersService.identifyContractInterface(address);
 
-      this.logger.info(`Contract interface identified: ${contractInterface?.code ?? 'unknown'}`, {
+      this.logger.debug(`Contract interface identified: ${contractInterface?.code ?? 'unknown'}`, {
         address,
       });
 

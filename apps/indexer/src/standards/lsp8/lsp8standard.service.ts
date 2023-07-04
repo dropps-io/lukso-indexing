@@ -23,6 +23,11 @@ export class Lsp8standardService {
     parameters: { [name: string]: DecodedParameter },
   ): Promise<void> {
     try {
+      this.logger.debug(
+        `Processing token related event ${event.transactionHash}:${event.logIndex}`,
+        { transactionHash: event.transactionHash, logIndex: event.logIndex },
+      );
+
       const tokenId = parameters.tokenId.value;
       const newOwner = parameters.to.value;
 

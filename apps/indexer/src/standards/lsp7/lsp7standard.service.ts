@@ -24,7 +24,13 @@ export class Lsp7standardService {
     parameters: { [name: string]: DecodedParameter },
   ): Promise<void> {
     try {
+      this.logger.debug(`Processing transfer event ${event.transactionHash}:${event.logIndex}`, {
+        transactionHash: event.transactionHash,
+        logIndex: event.logIndex,
+      });
       const updateBalance = async (holderAddress: string) => {
+        this.logger.debug(`Updating balance of ${event.address} for ${holderAddress}`);
+
         const balance = await this.ethersService.lsp7.balanceOf(event.address, holderAddress);
         const isNFT = await this.ethersService.lsp7.isNFT(event.address);
         await this.dataDB.insertTokenHolder(
@@ -43,11 +49,14 @@ export class Lsp7standardService {
       if (parameters.from.value) await updateBalance(parameters.from.value);
       if (parameters.to.value) await updateBalance(parameters.to.value);
     } catch (e) {
-      this.logger.error(`Error while processing transfer event: ${e.message}`, {
-        stack: e.stack,
-        ...event,
-        ...parameters,
-      });
+      this.logger.error(
+        `Error while processing transfer event ${event.transactionHash}:${event.logIndex}: ${e.message}`,
+        {
+          stack: e.stack,
+          ...event,
+          ...parameters,
+        },
+      );
     }
   }
 }

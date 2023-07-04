@@ -32,6 +32,11 @@ export class Erc725StandardService {
     parameters: { [name: string]: DecodedParameter },
   ) {
     try {
+      this.logger.debug(
+        `Processing setData batch transaction on ${address} at block ${blockNumber}`,
+        { address, blockNumber },
+      );
+
       // Extract data keys and values from the transaction parameters
       const dataValues = parseArrayString(parameters.dataValues.value);
       const dataKeys = parseArrayString(parameters.dataKeys.value);
@@ -54,11 +59,15 @@ export class Erc725StandardService {
       for (let i = 0; i < dataKeys.length; i++)
         await this.indexDataChanged(address, dataKeys[i], dataValues[i], blockNumber);
     } catch (e) {
-      this.logger.error(`Error while processing setData batch transaction: ${e.message}`, {
-        stack: e.stack,
-        address,
-        ...parameters,
-      });
+      this.logger.error(
+        `Error while processing setData batch transaction on ${address} at block ${blockNumber}: ${e.message}`,
+        {
+          stack: e.stack,
+          address,
+          blockNumber,
+          ...parameters,
+        },
+      );
     }
   }
 
@@ -75,6 +84,8 @@ export class Erc725StandardService {
     parameters: { [name: string]: DecodedParameter },
   ) {
     try {
+      this.logger.debug(`Processing setData transaction on ${address}`, { address });
+
       assertString(parameters.dataValue.value);
       assertNonEmptyString(parameters.dataKey.value);
       await this.indexDataChanged(
@@ -84,7 +95,7 @@ export class Erc725StandardService {
         blockNumber,
       );
     } catch (e) {
-      this.logger.error(`Error while processing setData transaction: ${e.message}`, {
+      this.logger.error(`Processing setData transaction on ${address}: ${e.message}`, {
         stack: e.stack,
         address,
         ...parameters,
@@ -113,7 +124,6 @@ export class Erc725StandardService {
         blockNumber,
         decodedValue: decodedKeyValue?.value || null,
       });
-      // TODO: index key
     } catch (e) {
       this.logger.error('Error while indexing data changed', {
         address,

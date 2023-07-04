@@ -39,11 +39,17 @@ export class DecodingService {
     methodName: string;
   } | null> {
     let methodName: string | null = null;
+    let methodId = '';
     try {
-      const methodId = input.slice(0, 10);
+      methodId = input.slice(0, 10);
+
+      this.logger.debug(`Decoding transaction input for methodId ${methodId}`);
 
       const methodInterface = await this.structureDB.getMethodInterfaceById(methodId);
-      if (!methodInterface) return null;
+      if (!methodInterface) {
+        this.logger.debug(`Method interface not found for methodId ${methodId}, exiting...`);
+        return null;
+      }
 
       methodName = methodInterface.name;
       const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
@@ -63,10 +69,14 @@ export class DecodingService {
 
       return { methodName, parameters };
     } catch (e) {
-      this.logger.error(`Error decoding transaction input: ${e.message}`, {
-        input,
-        stack: e.stack,
-      });
+      this.logger.error(
+        `Error decoding transaction input with methodId ${methodId}: ${e.message}`,
+        {
+          input,
+          methodId,
+          stack: e.stack,
+        },
+      );
       return methodName ? { methodName, parameters: [] } : null;
     }
   }
@@ -84,25 +94,17 @@ export class DecodingService {
     data: string,
     topics: string[],
   ): Promise<DecodedParameter[] | null> {
+    let methodId = '';
     try {
-      const methodId = topics[0].slice(0, 10);
-      const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
-      if (!methodParameters) return null;
+      methodId = topics[0].slice(0, 10);
 
-      // const eventDescription = {
-      //   type: 'event',
-      //   inputs: methodParameters.map((param) => ({
-      //     name: param.name,
-      //     type: param.type,
-      //     indexed: param.indexed,
-      //   })),
-      // };
-      //
-      // const methodInterface = new ethers.Interface([eventDescription]);
-      // if (!methodInterface) return null;
-      //
-      // const decodedParameters = methodInterface.parseLog({ topics, data });
-      // if (!decodedParameters) return null;
+      this.logger.debug(`Decoding log parameters for methodId ${methodId}`);
+
+      const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
+      if (!methodParameters) {
+        this.logger.debug(`Method parameters not found for methodId ${methodId}, exiting...`);
+        return null;
+      }
 
       const indexedParameters = methodParameters.filter((p) => p.indexed);
       const nonIndexedParameters = methodParameters.filter((p) => !p.indexed);
@@ -153,9 +155,10 @@ export class DecodingService {
         type: parameter.type,
       }));
     } catch (e) {
-      this.logger.error(`Error decoding log parameters: ${e.message}`, {
+      this.logger.error(`Error decoding log parameters from methodId ${methodId}: ${e.message}`, {
         data,
         topics,
+        methodId,
         stack: e.stack,
       });
       return null;
@@ -176,10 +179,17 @@ export class DecodingService {
     decodedParameters: DecodedParameter[],
     contractAddress: string,
   ): Promise<WrappedTransaction[] | null> {
-    this.logger.info('Unwrapping transaction', { methodId, decodedParameters, contractAddress });
-
     try {
       if (decodedParameters.length === 0) return null;
+
+      this.logger.debug(
+        `Unwrapping of a transaction of methodId ${methodId} executed on ${contractAddress}`,
+        {
+          methodId,
+          decodedParameters,
+          contract: contractAddress,
+        },
+      );
 
       const parametersMap = decodedParameters.reduce((map, parameter) => {
         map[parameter.name] = parameter.value;
@@ -349,6 +359,8 @@ export class DecodingService {
     parametersMap: Record<string, string>,
   ): Promise<WrappedTransaction | null> {
     try {
+      this.logger.debug(`Unwrapping of an ERC725X execute transaction executed`, { parametersMap });
+
       const wrappedInput: string = parametersMap['data'];
       return await this.getWrappedTransaction(
         wrappedInput,
@@ -376,6 +388,10 @@ export class DecodingService {
     parametersMap: Record<string, string>,
   ): Promise<WrappedTransaction | null> {
     try {
+      this.logger.debug(`Unwrapping of a LSP6 execute transaction executed on ${contractAddress}`, {
+        contract: contractAddress,
+      });
+
       const targetFuncSig = ethers.id('target()').slice(0, 10); // get the first 4 bytes (8 characters) of the keccak-256 hash of the function signature
 
       const callTransaction = {

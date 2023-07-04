@@ -16,6 +16,8 @@ export class LSP4 {
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     try {
+      this.logger.debug(`Fetching LSP4 data for ${address}`, { address });
+
       // Initialize the ERC725 instance with the appropriate schema, address, provider, and IPFS gateway.
       const erc725 = new ERC725(LSP4DigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
         ipfsGateway: IPFS_GATEWAY,
@@ -29,19 +31,19 @@ export class LSP4 {
       // each of these fetchData can fail, so we need to catch them separately
 
       try {
-        const fetchData = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_NAME)).value;
-        assertNonEmptyString(fetchData, 'Invalid token name format');
-        name = fetchData;
+        const fetchedName = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_NAME)).value;
+        assertNonEmptyString(fetchedName, `Invalid token name format: ${fetchedName}`);
+        name = fetchedName;
       } catch (e) {
-        this.logger.warn(`Failed to fetch lsp4 name: ${e.message}`, { address });
+        this.logger.warn(`Failed to fetch lsp4 name for ${address}: ${e.message}`, { address });
       }
 
       try {
-        const fetchData = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_SYMBOL)).value;
-        assertNonEmptyString(fetchData, 'Invalid token symbol format');
-        symbol = fetchData;
+        const fetchedSymbol = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_SYMBOL)).value;
+        assertNonEmptyString(fetchedSymbol, 'Invalid token symbol format');
+        symbol = fetchedSymbol;
       } catch (e) {
-        this.logger.warn(`Failed to fetch lsp4 symbol: ${e.message}`, { address });
+        this.logger.warn(`Failed to fetch lsp4 symbol for ${address}: ${e.message}`, { address });
       }
 
       try {
@@ -56,10 +58,15 @@ export class LSP4 {
           ...formatMetadataImages(lsp4DigitalAsset.icon, METADATA_IMAGE_TYPE.ICON),
         ];
       } catch (e) {
-        this.logger.warn(`Failed to fetch lsp4 metadata: ${e.message}`, { address });
+        this.logger.error(`Failed to fetch lsp4 metadata for ${address}: ${e.message}`, {
+          address,
+        });
       }
 
-      if (!name && !symbol && !lsp4DigitalAsset) return null;
+      if (!name && !symbol && !lsp4DigitalAsset) {
+        this.logger.debug(`No LSP4 data found for ${address}`, { address });
+        return null;
+      }
 
       return {
         metadata: {
@@ -76,7 +83,7 @@ export class LSP4 {
         assets: lsp4DigitalAsset?.assets || [],
       };
     } catch (e) {
-      this.logger.error(`Error while fetching LSP4 data: ${e.message}`, {
+      this.logger.error(`Error while fetching LSP4 data for ${address}: ${e.message}`, {
         address,
       });
       return null;

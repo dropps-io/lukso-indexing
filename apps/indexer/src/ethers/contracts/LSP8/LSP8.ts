@@ -27,10 +27,12 @@ export class LSP8 {
     tokenId: string,
   ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
     try {
+      this.logger.debug(`Fetching LSP8 data for ${address}:${tokenId}`, { address, tokenId });
+
       const erc725 = this.getErc725(address);
 
       // Determine the tokenId type.
-      const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.getTokenIdType(address);
+      const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.fetchTokenIdType(address);
       // Generate the dynamic key for fetching the token metadata.
       const tokenMetadataKey: GetDataDynamicKey = this.getTokenMetadataKey(tokenIdType, tokenId);
 
@@ -59,7 +61,9 @@ export class LSP8 {
    *
    * @throws Will throw an error if the contract do no implements ERC725Y contract.
    */
-  protected async getTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
+  protected async fetchTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
+    this.logger.debug(`Fetching LSP8 token id type for ${address}`, { address });
+
     const erc725 = this.getErc725(address);
     let tokenIdType: LSP8_TOKEN_ID_TYPE = LSP8_TOKEN_ID_TYPE.unknown;
 
@@ -70,7 +74,9 @@ export class LSP8 {
       if (parsedData >= LSP8_TOKEN_ID_TYPE.unknown && parsedData <= LSP8_TOKEN_ID_TYPE.string)
         tokenIdType = parsedData as LSP8_TOKEN_ID_TYPE;
     } catch (e) {
-      this.logger.error(`Failed to fetch lsp8 token id type: ${e.message}`, { address });
+      this.logger.error(`Failed to fetch lsp8 token id type for ${address}: ${e.message}`, {
+        address,
+      });
       throw e;
     }
 
