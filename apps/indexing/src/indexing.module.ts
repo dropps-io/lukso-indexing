@@ -4,7 +4,7 @@ import { LuksoDataDbModule } from '@db/lukso-data/lukso-data-db.module';
 import { LuksoStructureDbModule } from '@db/lukso-structure/lukso-structure-db.module';
 import { LoggerModule } from '@libs/logger/logger.module';
 
-import { Web3Module } from './web3/web3.module';
+import { EthersModule } from './ethers/ethers.module';
 import { DecodingModule } from './decoding/decoding.module';
 import { UpdateModule } from './update/update.module';
 import { IndexingService } from './indexing.service';
@@ -14,7 +14,7 @@ import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    Web3Module,
+    EthersModule,
     DecodingModule,
     LuksoDataDbModule,
     LuksoStructureDbModule,

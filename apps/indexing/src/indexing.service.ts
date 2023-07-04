@@ -5,11 +5,11 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { TransactionTable } from '@db/lukso-data/entities/tx.table';
 import { LoggerService } from '@libs/logger/logger.service';
 import { ContractTable } from '@db/lukso-data/entities/contract.table';
-import { Log } from 'web3-core';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 import { ConfigTable } from '@db/lukso-structure/entities/config.table';
+import { Log } from 'ethers';
 
 import {
   BLOCKS_INDEXING_BATCH_SIZE,
@@ -20,11 +20,11 @@ import {
   TOKENS_INDEXING_BATCH_SIZE,
   TX_INDEXING_BATCH_SIZE,
 } from './globals';
-import { Web3Service } from './web3/web3.service';
+import { EthersService } from './ethers/ethers.service';
 import { DecodingService } from './decoding/decoding.service';
 import { DecodedParameter } from './decoding/types/decoded-parameter';
-import { MetadataResponse } from './web3/types/metadata-response';
-import { defaultMetadata } from './web3/utils/default-metadata-response';
+import { MetadataResponse } from './ethers/types/metadata-response';
+import { defaultMetadata } from './ethers/utils/default-metadata-response';
 import { buildLogId } from './utils/build-log-id';
 import { splitIntoChunks } from './utils/split-into-chunks';
 import { BlockchainActionRouterService } from './blockchain-action-router/blockchain-action-router.service';
@@ -40,7 +40,7 @@ export class IndexingService implements OnModuleInit {
   constructor(
     private readonly structureDB: LuksoStructureDbService,
     private readonly dataDB: LuksoDataDbService,
-    private readonly web3Service: Web3Service,
+    private readonly ethersService: EthersService,
     private readonly decodingService: DecodingService,
     private readonly logger: LoggerService,
     private readonly actionRouter: BlockchainActionRouterService,
@@ -72,7 +72,7 @@ export class IndexingService implements OnModuleInit {
     try {
       // Retrieve configuration and block data
       config = await this.structureDB.getConfig();
-      lastBlock = await this.web3Service.getLastBlock();
+      lastBlock = await this.ethersService.getLastBlock();
 
       // Set logger values
       this.logger.setLastBlock(lastBlock);
@@ -83,7 +83,7 @@ export class IndexingService implements OnModuleInit {
         this.fileLogger.info(`Indexing data of block ${blockNumber}`, { block: blockNumber });
 
         // Get transaction hashes for the block
-        const transactionsHashes = await this.web3Service.getBlockTransactions(blockNumber);
+        const transactionsHashes = await this.ethersService.getBlockTransactions(blockNumber);
 
         // Index transactions in batches
         const indexBatchTransactions = async (txHashes: string[]) => {
@@ -149,7 +149,7 @@ export class IndexingService implements OnModuleInit {
       config = await this.structureDB.getConfig();
       this.logger.setLatestIndexedEventBlock(config.latestIndexedEventBlock);
 
-      lastBlock = await this.web3Service.getLastBlock();
+      lastBlock = await this.ethersService.getLastBlock();
       // Determine the block number until which we should index in this iteration
       toBlock =
         config.latestIndexedEventBlock + config.blockIteration < lastBlock
@@ -159,7 +159,7 @@ export class IndexingService implements OnModuleInit {
       this.fileLogger.info(`Indexing from blocks ${config.latestIndexedEventBlock} to ${toBlock}`);
 
       // Retrieve logs from the specified block range
-      const logs = await this.web3Service.getPastLogs(config.latestIndexedEventBlock, toBlock);
+      const logs = await this.ethersService.getPastLogs(config.latestIndexedEventBlock, toBlock);
 
       // Split transaction hashes and logs into chunks for batch processing
       const txHashesChunks = splitIntoChunks(
@@ -223,8 +223,8 @@ export class IndexingService implements OnModuleInit {
           const contractRow = await this.indexContract(contract);
           if (contractRow) {
             this.fileLogger.info(`Fetching contract metadata for ${contract}`, { contract });
-            // Fetch contract metadata using Web3Service
-            const metadata = await this.web3Service.fetchContractMetadata(
+            // Fetch contract metadata using EthersService
+            const metadata = await this.ethersService.fetchContractMetadata(
               contract,
               contractRow.interfaceCode || undefined,
             );
@@ -273,7 +273,7 @@ export class IndexingService implements OnModuleInit {
           this.fileLogger.info('Indexing token', { ...token });
 
           // Fetch the metadata of the contract token
-          const tokenData = await this.web3Service.fetchContractTokenMetadata(
+          const tokenData = await this.ethersService.fetchContractTokenMetadata(
             token.address,
             token.tokenId,
           );
@@ -335,17 +335,17 @@ export class IndexingService implements OnModuleInit {
 
       this.fileLogger.info('Indexing transaction', { transactionHash });
 
-      // Retrieve the transaction details using Web3Service
-      const transaction = await this.web3Service.getTransaction(transactionHash);
-      if (!transaction) return;
+      // Retrieve the transaction details using EthersService
+      const transaction = await this.ethersService.getTransaction(transactionHash);
+      const transactionReceipt = await this.ethersService.getTransactionReceipt(transactionHash);
 
       // Extract the method ID from the transaction input
-      const methodId = transaction.input.slice(0, 10);
+      const methodId = transaction.data.slice(0, 10);
       // Decode the transaction input using DecodingService
-      const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.input);
+      const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.data);
 
       const blockNumber = transaction.blockNumber ?? 0;
-      const timestamp = await this.web3Service.getBlockTimestamp(blockNumber);
+      const timestamp = await this.ethersService.getBlockTimestamp(blockNumber);
 
       // Create a transaction row object with the retrieved and decoded data
       const transactionRow: TransactionTable = {
@@ -354,9 +354,12 @@ export class IndexingService implements OnModuleInit {
         blockHash: transaction.blockHash ?? '',
         blockNumber,
         date: new Date(timestamp),
-        transactionIndex: transaction.transactionIndex ?? 0,
+        transactionIndex: transaction.index ?? 0,
         to: transaction.to ?? '',
         methodName: decodedTxInput?.methodName || null,
+        gas: parseInt(transactionReceipt.gasUsed.toString()),
+        value: transaction.value.toString(),
+        gasPrice: transaction.gasPrice.toString(),
       };
 
       // Insert the contracts if they don't exist without an interface, so they will be treated by the other recursive process
@@ -376,7 +379,7 @@ export class IndexingService implements OnModuleInit {
       this.logger.incrementIndexedCount('transaction');
 
       // Insert transaction input into the database
-      await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.input });
+      await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.data });
 
       // If decoded input parameters are present, process them further
       if (decodedTxInput?.parameters) {
@@ -397,7 +400,7 @@ export class IndexingService implements OnModuleInit {
 
         // Index wrapped transactions based on the input parameters
         await this.indexWrappedTransactions(
-          transaction.input,
+          transaction.data,
           transactionRow.blockNumber,
           decodedTxInput.parameters,
           transactionRow.to,
@@ -423,7 +426,7 @@ export class IndexingService implements OnModuleInit {
   protected async indexEvent(log: Log) {
     try {
       // Generate a unique log ID based on the transaction hash and log index
-      const logId = buildLogId(log.transactionHash, log.logIndex);
+      const logId = buildLogId(log.transactionHash, log.index);
       // Extract the method ID from the log topics
       const methodId = log.topics[0].slice(0, 10);
 
@@ -436,10 +439,11 @@ export class IndexingService implements OnModuleInit {
       // Retrieve the event interface using the method ID
       const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
 
-      const timestamp = await this.web3Service.getBlockTimestamp(log.blockNumber);
+      const timestamp = await this.ethersService.getBlockTimestamp(log.blockNumber);
 
       const eventRow: EventTable = {
         ...log,
+        logIndex: log.index,
         date: new Date(timestamp),
         id: logId,
         eventName: eventInterface?.name || null,
@@ -463,10 +467,9 @@ export class IndexingService implements OnModuleInit {
       );
 
       // Decode the log parameters using DecodingService
-      const decodedParameters = await this.decodingService.decodeLogParameters(
-        log.data,
-        log.topics,
-      );
+      const decodedParameters = await this.decodingService.decodeLogParameters(log.data, [
+        ...log.topics,
+      ]);
 
       this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
 
@@ -596,7 +599,7 @@ export class IndexingService implements OnModuleInit {
       this.fileLogger.info('Indexing contract', { address });
 
       // Identify the contract interface using its address
-      const contractInterface = await this.web3Service.identifyContractInterface(address);
+      const contractInterface = await this.ethersService.identifyContractInterface(address);
 
       this.fileLogger.info(
         `Contract interface identified: ${contractInterface?.code ?? 'unknown'}`,

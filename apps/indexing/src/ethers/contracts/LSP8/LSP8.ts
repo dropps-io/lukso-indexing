@@ -2,21 +2,17 @@ import winston from 'winston';
 import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
 import { GetDataDynamicKey } from '@erc725/erc725.js/build/main/src/types/GetData';
-import { hexToNumberString, hexToString, toChecksumAddress } from 'web3-utils';
+import { getAddress, toUtf8String } from 'ethers';
 
-import { Web3Service } from '../../web3.service';
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY } from '../../../globals';
+import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
 import LSP8IdentifiableDigitalAssetSchema from '../schemas/LSP8IdentifiableDigitalAssetSchema.json';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 
 export class LSP8 {
-  constructor(
-    protected readonly web3Service: Web3Service,
-    protected readonly logger: winston.Logger,
-  ) {}
+  constructor(protected readonly logger: winston.Logger) {}
 
   /**
    * Fetches the metadata and images associated with a LSP8 token.
@@ -95,15 +91,15 @@ export class LSP8 {
     switch (tokenIdType) {
       case LSP8_TOKEN_ID_TYPE.address:
         keyName = 'LSP8MetadataJSON:<address>';
-        dynamicKeyParts = toChecksumAddress(tokenId.slice(0, 42));
+        dynamicKeyParts = getAddress(tokenId.slice(0, 42));
         break;
       case LSP8_TOKEN_ID_TYPE.uint256:
         keyName = 'LSP8MetadataJSON:<uint256>';
-        dynamicKeyParts = hexToNumberString(tokenId);
+        dynamicKeyParts = parseInt(tokenId.slice(2), 16).toString();
         break;
       case LSP8_TOKEN_ID_TYPE.string:
         keyName = 'LSP8MetadataJSON:<string>';
-        dynamicKeyParts = hexToString(tokenId);
+        dynamicKeyParts = toUtf8String(tokenId);
         break;
       case LSP8_TOKEN_ID_TYPE.bytes32:
       default: // When no tokenIdType, we assume it's a bytes32 type
@@ -154,11 +150,8 @@ export class LSP8 {
    * @param {string} address - The contract address
    */
   private getErc725(address: string): ERC725 {
-    return new ERC725(
-      LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[],
-      address,
-      this.web3Service.getWeb3().currentProvider,
-      { ipfsGateway: IPFS_GATEWAY },
-    );
+    return new ERC725(LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
+      ipfsGateway: IPFS_GATEWAY,
+    });
   }
 }

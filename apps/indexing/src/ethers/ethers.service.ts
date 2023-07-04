@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import Web3 from 'web3';
-import { Transaction, Log } from 'web3-core';
+import { ethers } from 'ethers';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
-import { AbiItem } from 'web3-utils';
 import winston from 'winston';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
@@ -17,8 +15,8 @@ import { LSP4 } from './contracts/LSP4/LSP4';
 import { LSP8 } from './contracts/LSP8/LSP8';
 
 @Injectable()
-export class Web3Service {
-  private readonly web3: Web3;
+export class EthersService {
+  private readonly provider: ethers.JsonRpcProvider;
   private readonly logger: winston.Logger;
 
   public readonly lsp0: LSP0;
@@ -30,39 +28,48 @@ export class Web3Service {
     protected readonly loggerService: LoggerService,
     protected readonly structureDB: LuksoStructureDbService,
   ) {
-    this.web3 = new Web3(RPC_URL);
-    this.logger = loggerService.getChildLogger('Web3');
+    this.provider = new ethers.JsonRpcProvider(RPC_URL);
+    this.logger = loggerService.getChildLogger('Ethers');
 
-    this.lsp0 = new LSP0(this, this.logger);
-    this.lsp4 = new LSP4(this, this.logger);
+    this.lsp0 = new LSP0(this.logger);
+    this.lsp4 = new LSP4(this.logger);
     this.lsp7 = new LSP7(this, this.logger);
-    this.lsp8 = new LSP8(this, this.logger);
+    this.lsp8 = new LSP8(this.logger);
   }
 
-  public getWeb3(): Web3 {
-    return this.web3;
+  public getProvider(): ethers.JsonRpcProvider {
+    return this.provider;
   }
 
   public async getBlockTransactions(blockNumber: number): Promise<string[]> {
-    const block = await this.web3.eth.getBlock(blockNumber);
-    return block.transactions;
+    const block = await this.provider.getBlock(blockNumber);
+    return block ? [...block.transactions] : [];
   }
 
   public async getBlockTimestamp(blockNumber: number): Promise<number> {
-    const block = await this.web3.eth.getBlock(blockNumber);
-    return (block.timestamp as number) * 1000;
+    const block = await this.provider.getBlock(blockNumber);
+    if (!block) throw new Error(`Block ${blockNumber} not found`);
+    else return block.timestamp * 1000;
   }
 
-  public async getTransaction(transactionHash: string): Promise<Transaction> {
-    return await this.web3.eth.getTransaction(transactionHash);
+  public async getTransaction(transactionHash: string): Promise<ethers.TransactionResponse> {
+    const tx = await this.provider.getTransaction(transactionHash);
+    if (!tx) throw new Error(`Transaction ${transactionHash} not found`);
+    else return tx;
   }
 
-  public async getPastLogs(fromBlock: number, toBlock: number): Promise<Log[]> {
-    return await this.web3.eth.getPastLogs({ fromBlock: fromBlock, toBlock: toBlock });
+  public async getTransactionReceipt(transactionHash: string): Promise<ethers.TransactionReceipt> {
+    const tx = await this.provider.getTransactionReceipt(transactionHash);
+    if (!tx) throw new Error(`Transaction ${transactionHash} not found`);
+    else return tx;
+  }
+
+  public async getPastLogs(fromBlock: number, toBlock: number): Promise<ethers.Log[]> {
+    return await this.provider.getLogs({ fromBlock, toBlock });
   }
 
   public async getLastBlock(): Promise<number> {
-    return await this.web3.eth.getBlockNumber();
+    return await this.provider.getBlockNumber();
   }
 
   /**
@@ -75,9 +82,9 @@ export class Web3Service {
   public async identifyContractInterface(address: string): Promise<ContractInterfaceTable | null> {
     try {
       // Get the bytecode of the contract.
-      const contractCode = await this.web3.eth.getCode(address);
+      const contractCode = await this.provider.getCode(address);
 
-      // If mo bytecode is found, then it's an EOA.
+      // If no bytecode is found, then it's an EOA.
       if (contractCode === '0x')
         return {
           id: '0x00000000',
@@ -98,11 +105,11 @@ export class Web3Service {
       }
 
       // If a match was not found, try to get the contract interface using the contract instance.
-      const contract = new this.web3.eth.Contract(LSP0ERC725Account.abi as AbiItem[], address);
+      const contract = new ethers.Contract(address, LSP0ERC725Account.abi, this.provider);
 
       for (const contractInterface of contractInterfaces) {
         // Check if the contract instance supports the contract interface.
-        if (await contract.methods.supportsInterface(contractInterface.id).call()) {
+        if (await contract.supportsInterface(contractInterface.id)) {
           return contractInterface;
         }
       }
@@ -120,6 +127,8 @@ export class Web3Service {
   ): Promise<MetadataResponse | null> {
     const interfaceCodeToUse =
       interfaceCode || (await this.identifyContractInterface(address))?.code;
+
+    this.logger.info(`Fetching metadata for ${address} using ${interfaceCodeToUse}`);
 
     switch (interfaceCodeToUse) {
       case SUPPORTED_STANDARD.LSP0:

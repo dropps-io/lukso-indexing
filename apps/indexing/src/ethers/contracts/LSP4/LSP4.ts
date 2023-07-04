@@ -5,25 +5,21 @@ import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/inter
 import { assertNonEmptyString } from '@utils/validators';
 import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 
-import { Web3Service } from '../../web3.service';
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY } from '../../../globals';
+import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 
 export class LSP4 {
-  constructor(private web3Service: Web3Service, private logger: winston.Logger) {}
+  constructor(private logger: winston.Logger) {}
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     try {
       // Initialize the ERC725 instance with the appropriate schema, address, provider, and IPFS gateway.
-      const erc725 = new ERC725(
-        LSP4DigitalAssetSchema as ERC725JSONSchema[],
-        address,
-        this.web3Service.getWeb3().currentProvider,
-        { ipfsGateway: IPFS_GATEWAY },
-      );
+      const erc725 = new ERC725(LSP4DigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
+        ipfsGateway: IPFS_GATEWAY,
+      });
 
       let name: string | null = null;
       let symbol: string | null = null;

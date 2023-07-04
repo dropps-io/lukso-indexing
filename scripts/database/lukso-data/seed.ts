@@ -23,9 +23,14 @@ export const seedLuksoData = async (dropTables?: boolean) => {
       await client.query(`DROP INDEX IF EXISTS ${DB_DATA_INDEX[index]}`);
   }
 
-  await client.query(
-    `CREATE TYPE ${DB_DATA_TYPE.CONTRACT_TYPE} AS ENUM ('profile', 'asset', 'collection')`,
-  );
+  try {
+    await client.query(
+      `CREATE TYPE ${DB_DATA_TYPE.CONTRACT_TYPE} AS ENUM ('profile', 'asset', 'collection')`,
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('Type already exists');
+  }
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.CONTRACT} (
@@ -66,12 +71,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql`);
 
-  await client.query(`
-      CREATE TRIGGER contract_token_before_insert
-BEFORE INSERT ON contract_token
-FOR EACH ROW
-EXECUTE FUNCTION update_contract_token_index();
-  `);
+  try {
+    await client.query(`
+        CREATE TRIGGER contract_token_before_insert
+  BEFORE INSERT ON contract_token
+  FOR EACH ROW
+  EXECUTE FUNCTION update_contract_token_index();
+    `);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('Trigger already exists');
+  }
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TOKEN_HOLDER} (

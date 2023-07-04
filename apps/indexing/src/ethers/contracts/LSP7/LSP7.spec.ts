@@ -3,7 +3,7 @@ import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
 import { LSP7 } from './LSP7';
-import { Web3Service } from '../../web3.service';
+import { EthersService } from '../../ethers.service';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
 
 jest.setTimeout(15_000);
@@ -19,14 +19,14 @@ describe('LSP7', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
-        Web3Service,
+        EthersService,
         { provide: LuksoStructureDbService, useValue: db },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();
 
-    const web3Service: Web3Service = moduleRef.get<Web3Service>(Web3Service);
-    service = new LSP7(web3Service, logger.getChildLogger('LSP7'));
+    const ethersService: EthersService = moduleRef.get<EthersService>(EthersService);
+    service = new LSP7(ethersService, logger.getChildLogger('LSP7'));
   });
 
   describe('fetchData', () => {

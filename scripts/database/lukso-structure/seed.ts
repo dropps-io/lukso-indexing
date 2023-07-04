@@ -22,10 +22,23 @@ export const seedLuksoStructure = async (dropTables?: boolean) => {
     }
   }
 
-  await client.query(`CREATE TYPE ${DB_STRUCTURE_TYPE.METHOD_TYPE} AS ENUM ('event', 'function')`);
-  await client.query(
-    `CREATE TYPE ${DB_STRUCTURE_TYPE.CONTRACT_TYPE} AS ENUM ('profile', 'asset', 'collection')`,
-  );
+  try {
+    await client.query(
+      `CREATE TYPE ${DB_STRUCTURE_TYPE.METHOD_TYPE} AS ENUM ('event', 'function')`,
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('Type already exists');
+  }
+
+  try {
+    await client.query(
+      `CREATE TYPE ${DB_STRUCTURE_TYPE.CONTRACT_TYPE} AS ENUM ('profile', 'asset', 'collection')`,
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('Type already exists');
+  }
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA} (
@@ -76,7 +89,12 @@ CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONFIG} (
 	"latestIndexedEventBlock" INTEGER NOT NULL DEFAULT 0
 	)`);
 
-  await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
+  try {
+    await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.log('Config already initialized');
+  }
 
   await client.end();
   // eslint-disable-next-line no-console

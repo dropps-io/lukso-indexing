@@ -138,7 +138,7 @@ const readJsonFiles = async (dir: string): Promise<any[]> => {
 
 const db = new LuksoStructureDbService(new LoggerService());
 
-async function populateLuksoStructure() {
+export async function populateLuksoStructure() {
   for (const standardInterface of standardInterfaces) {
     await tryExecuting(db.insertContractInterface(standardInterface));
   }
@@ -182,5 +182,3 @@ async function populateLuksoStructure() {
   // eslint-disable-next-line no-console
   console.log('Db populated');
 }
-
-populateLuksoStructure().then();

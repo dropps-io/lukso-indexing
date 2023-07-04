@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  lukso-db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: indexing-lukso-data,indexing-lukso-structure
+    ports:
+      - "6543:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker-data:/var/lib/postgresql/data
+
+  lukso-indexing:
+    build:
+      context: .
+      dockerfile: indexing.dockerfile
+    depends_on:
+      - lukso-db
+    environment:
+      LUKSO_DATA_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-data
+      LUKSO_STRUCTURE_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-structure
+      RPC_URL: ${RPC_URL}
+
+  lukso-api:
+    build:
+      context: .
+      dockerfile: api.dockerfile
+    depends_on:
+      - lukso-db
+    environment:
+      API_PORT: 3001
+      LUKSO_DATA_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-data
+      LUKSO_STRUCTURE_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-structure
+    ports:
+      - "3001:3001"
