@@ -16,17 +16,38 @@ export class LoggerService {
       return `${timestamp} ${level}: ${message}`;
     });
 
-    const isVerbose = process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'prod';
+    const fileFormat = format.combine(format.timestamp(), format.metadata(), format.json());
+
+    const prod = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+    const fileLogging = process.env.FILE_LOGGING === 'true';
+
+    const fileTransport = fileLogging
+      ? [
+          new transports.File({
+            filename: 'logs/application.log',
+            level: 'debug',
+            format: fileFormat,
+          }),
+          new transports.File({
+            filename: 'logs/error.log',
+            level: 'error',
+            format: fileFormat,
+          }),
+        ]
+      : [];
+
+    const gcpTransport = prod ? [new LoggingWinston()] : [];
 
     // Logger configuration
     this.logger = createLogger({
       format: format.errors({ stack: true }),
       transports: [
         new transports.Console({
-          level: isVerbose ? 'debug' : 'info',
+          level: prod ? 'info' : 'debug',
           format: format.combine(format.colorize(), format.timestamp(), consoleFormat),
         }),
-        new LoggingWinston(),
+        ...fileTransport,
+        ...gcpTransport,
       ],
     });
   }

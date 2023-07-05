@@ -65,7 +65,7 @@ export class Erc725StandardService {
           stack: e.stack,
           address,
           blockNumber,
-          ...parameters,
+          parameters: JSON.stringify(parameters),
         },
       );
     }
