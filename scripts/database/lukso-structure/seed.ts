@@ -79,7 +79,8 @@ CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.METHOD_PARAMETER} (
 	"type" VARCHAR(40) NOT NULL,
 	"indexed" BOOLEAN NOT NULL,
 	"position" INTEGER NOT NULL,
-	FOREIGN KEY("methodId") REFERENCES ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}("id") ON DELETE CASCADE
+	FOREIGN KEY("methodId") REFERENCES ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}("id") ON DELETE CASCADE,
+	UNIQUE ("methodId", "position")
 )`);
 
   await client.query(`
@@ -93,10 +94,14 @@ CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONFIG} (
 	)`);
 
   try {
-    await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
+    const { rowCount } = await client.query(`SELECT * FROM ${DB_STRUCTURE_TABLE.CONFIG}`);
+    if (rowCount === 0)
+      await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
+    // eslint-disable-next-line no-console
+    else console.log('Config already initialized');
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.log('Config already initialized');
+    console.error(e);
   }
 
   await client.end();

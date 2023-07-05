@@ -178,8 +178,9 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       const result = await this.client.query(query, values);
       return result.rows as T[];
     } catch (error) {
-      this.logger.error('Error executing a query', { query, values, error });
-      throw new Error(`Error executing query: ${query}`);
+      throw new Error(
+        `Error executing a query: ${error.message}, query: ${query}, values: ${values}`,
+      );
     }
   }
 }
