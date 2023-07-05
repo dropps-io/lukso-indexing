@@ -1,23 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: indexing-indexing
+  name: indexing-indexer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: indexing-indexing
+      app: indexing-indexer
   template:
     metadata:
       labels:
-        app: indexing-indexing
+        app: indexing-indexer
     spec:
       containers:
-        - name: indexing-indexing
-          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing-testnet/indexing-indexing
-          resources:
-            limits:
-              memory: "2Gi"
+        - name: indexing-indexer
+          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/indexer:latest
           env:
             - name: NODE_ENV
               value: "production"

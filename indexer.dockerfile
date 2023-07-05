@@ -21,4 +21,5 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist/apps/indexer/main.js ./dist/apps/indexer/main.js
 # Copy the 'shared/abi' directory
 COPY shared/abi ./shared/abi
-CMD ["NODE_ENV=prod", "node", "dist/apps/indexer/main.js"]
+
+CMD ["node", "dist/apps/indexer/main.js"]
