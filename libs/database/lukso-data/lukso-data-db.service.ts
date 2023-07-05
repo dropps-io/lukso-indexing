@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
@@ -24,7 +24,7 @@ import { WrappedTxParameterTable } from './entities/wrapped-tx-parameter.table';
 import { WrappedTxInputTable } from './entities/wrapped-tx-input.table';
 
 @Injectable()
-export class LuksoDataDbService {
+export class LuksoDataDbService implements OnModuleDestroy {
   protected readonly client: Pool & {
     query: (query: string, values?: any[]) => Promise<QueryResult<any>>;
   };
@@ -35,6 +35,14 @@ export class LuksoDataDbService {
     this.client = new Pool({
       connectionString: LUKSO_DATA_CONNECTION_STRING,
     });
+  }
+
+  async onModuleDestroy() {
+    await this.disconnect();
+  }
+
+  public async disconnect() {
+    await this.client.end();
   }
 
   // Contract table functions

@@ -105,6 +105,10 @@ describe('LuksoDataDbService', () => {
     service = module.get<LuksoDataDbService>(LuksoDataDbService);
   });
 
+  afterEach(async () => {
+    await service.disconnect();
+  });
+
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
