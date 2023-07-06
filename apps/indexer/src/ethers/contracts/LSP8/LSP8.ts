@@ -68,7 +68,10 @@ export class LSP8 {
     legacy?: boolean,
   ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
     const tokenMetadataKey: string = this.getLsp8TokenMetadataKey(tokenIdType, legacy);
-    const key = this.getErc725(address).encodeKeyName(tokenMetadataKey, decodedTokenId);
+
+    // Todo: Tmp fix as there is an issue with the new metadata key hash
+    let key = this.getErc725(address).encodeKeyName(tokenMetadataKey, decodedTokenId);
+    key = (legacy ? '0x9a26b4060ae7f7d5e3cd0000' : '0x4690256ef7e93288012f0000') + key.slice(26);
 
     const response = await erc725yGetData(address, key);
     if (!response) return null;
