@@ -602,6 +602,7 @@ export class IndexerService implements OnModuleInit {
       }
     } catch (e) {
       this.logger.error(`Failed to index wrapped transactions: ${e.message}`, {
+        stack: e.stack,
         input,
         decodedParams,
         contractAddress,

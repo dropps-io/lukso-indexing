@@ -701,8 +701,6 @@ export class LuksoDataDbService implements OnModuleDestroy {
       const result = await this.client.query(query, values);
       return result.rows as T[];
     } catch (error) {
-      // Log the error and rethrow a custom error with a more specific message
-      this.logger.error('Error executing a query', { query, values, error });
       throw new Error(`Error executing query: ${query}\n\nError details: ${error.message}`);
     }
   }

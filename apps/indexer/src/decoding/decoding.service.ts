@@ -3,13 +3,12 @@ import winston from 'winston';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
-import { AbiCoder, ethers, formatUnits, getAddress, toUtf8String } from 'ethers';
+import { AbiCoder, ethers, getAddress } from 'ethers';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { EthersService } from '../ethers/ethers.service';
 import { WrappedTransaction } from './types/wrapped-tx';
 import { DecodedParameter } from './types/decoded-parameter';
-import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
 import { permissionsToString } from './utils/permissions-to-string';
 import { parseDecodedParameter } from './utils/parse-decoded-parameter';
 
@@ -226,22 +225,6 @@ export class DecodingService {
     }
   }
 
-  public decodeLsp8TokenId(tokenId: string, tokenIdType?: LSP8_TOKEN_ID_TYPE): string {
-    if (!tokenIdType) return tokenId;
-
-    switch (tokenIdType) {
-      case LSP8_TOKEN_ID_TYPE.address:
-        return getAddress(tokenId.slice(0, 42));
-      case LSP8_TOKEN_ID_TYPE.uint256:
-        return formatUnits(tokenId, 0); // Converts hex to decimal string
-      case LSP8_TOKEN_ID_TYPE.string:
-        return toUtf8String(tokenId);
-      case LSP8_TOKEN_ID_TYPE.bytes32:
-      default: // When no tokenIdType, we assume it's a bytes32 type
-        return tokenId;
-    }
-  }
-
   /**
    * Decodes an ERC725Y key-value pair based on the provided key and value.
    *
@@ -362,9 +345,10 @@ export class DecodingService {
       this.logger.debug(`Unwrapping of an ERC725X execute transaction executed`, { parametersMap });
 
       const wrappedInput: string = parametersMap['data'];
+      const toAddress: string = parametersMap['target'] || parametersMap['to'];
       return await this.getWrappedTransaction(
         wrappedInput,
-        getAddress(parametersMap['to']),
+        getAddress(toAddress),
         parametersMap['value'],
       );
     } catch (e) {
@@ -404,7 +388,7 @@ export class DecodingService {
       // If the "target" function returns an address, decode the result like this:
       const targetAddress = ethers.getAddress('0x' + result.slice(26)); // remove the first 12 bytes (24 characters) from the returned data
 
-      const wrappedInput = parametersMap['payload'] as string;
+      const wrappedInput = (parametersMap['payload'] || parametersMap['_calldata']) as string;
       return await this.getWrappedTransaction(wrappedInput, targetAddress, '0');
     } catch (e) {
       this.logger.error(`Error unwrapping LSP6 execute: ${e.message}`, {
