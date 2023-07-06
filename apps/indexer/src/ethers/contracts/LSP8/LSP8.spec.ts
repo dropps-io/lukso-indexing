@@ -1,18 +1,16 @@
 import { LoggerService } from '@libs/logger/logger.service';
-import winston from 'winston';
+import { Test } from '@nestjs/testing';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
 import { LSP8 } from './LSP8';
 import { ADDRESS1, HASH1 } from '../../../../../../test/utils/test-values';
 import { MetadataResponse } from '../../types/metadata-response';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
+import { EthersService } from '../../ethers.service';
 
 jest.setTimeout(15_000);
 
 class TestLSP8 extends LSP8 {
-  constructor(protected readonly logger: winston.Logger) {
-    super(logger);
-  }
-
   testGetTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
     return this.fetchTokenIdType(address);
   }
@@ -38,7 +36,17 @@ describe('LSP8', () => {
   const logger = new LoggerService();
 
   beforeAll(async () => {
-    service = new TestLSP8(logger.getChildLogger('LSP8'));
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        EthersService,
+        { provide: LuksoStructureDbService, useValue: new LuksoStructureDbService(logger) },
+        { provide: LoggerService, useValue: logger },
+      ],
+    }).compile();
+
+    const ethersService = moduleRef.get<EthersService>(EthersService);
+
+    service = new TestLSP8(ethersService, logger.getChildLogger('LSP8'));
   });
 
   describe('fetchTokenData', () => {

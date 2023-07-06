@@ -38,8 +38,8 @@ export class Erc725StandardService {
       );
 
       // Extract data keys and values from the transaction parameters
-      const dataValues = parseArrayString(parameters.dataValues.value);
-      const dataKeys = parseArrayString(parameters.dataKeys.value);
+      const dataValues = parseArrayString((parameters.dataValues || parameters.values).value);
+      const dataKeys = parseArrayString((parameters.dataKeys || parameters.keys).value);
 
       // Validate data keys and values
       if (
@@ -90,8 +90,8 @@ export class Erc725StandardService {
       assertNonEmptyString(parameters.dataKey.value);
       await this.indexDataChanged(
         address,
-        parameters.dataKey.value,
-        parameters.dataValue.value,
+        (parameters.dataKey || parameters.key).value,
+        (parameters.dataValue || parameters.value).value,
         blockNumber,
       );
     } catch (e) {

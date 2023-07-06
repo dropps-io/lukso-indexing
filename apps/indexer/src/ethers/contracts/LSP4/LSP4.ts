@@ -1,15 +1,16 @@
-import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import winston from 'winston';
-import LSP4DigitalAssetSchema from '@erc725/erc725.js/schemas/LSP4DigitalAsset.json';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
 import { assertNonEmptyString } from '@utils/validators';
 import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
+import { toUtf8String } from 'ethers';
 
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
+import { erc725yGetData } from '../utils/erc725y-get-data';
+import { decodeJsonUrl } from '../../../utils/json-url';
+import { formatUrl } from '../../../utils/format-url';
 
 export class LSP4 {
   constructor(private logger: winston.Logger) {}
@@ -17,12 +18,6 @@ export class LSP4 {
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     try {
       this.logger.debug(`Fetching LSP4 data for ${address}`, { address });
-
-      // Initialize the ERC725 instance with the appropriate schema, address, provider, and IPFS gateway.
-      const erc725 = new ERC725(LSP4DigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
-        ipfsGateway: IPFS_GATEWAY,
-      });
-
       let name: string | null = null;
       let symbol: string | null = null;
       let lsp4DigitalAsset: LSP4DigitalAsset | null = null;
@@ -31,32 +26,35 @@ export class LSP4 {
       // each of these fetchData can fail, so we need to catch them separately
 
       try {
-        const fetchedName = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_NAME)).value;
+        const fetchedName = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_NAME);
         assertNonEmptyString(fetchedName, `Invalid token name format: ${fetchedName}`);
-        name = fetchedName;
+        name = toUtf8String(fetchedName);
       } catch (e) {
         this.logger.warn(`Failed to fetch lsp4 name for ${address}: ${e.message}`, { address });
       }
 
       try {
-        const fetchedSymbol = (await erc725.fetchData(ERC725Y_KEY.LSP4_TOKEN_SYMBOL)).value;
+        const fetchedSymbol = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_SYMBOL);
         assertNonEmptyString(fetchedSymbol, 'Invalid token symbol format');
-        symbol = fetchedSymbol;
+        symbol = toUtf8String(fetchedSymbol);
       } catch (e) {
         this.logger.warn(`Failed to fetch lsp4 symbol for ${address}: ${e.message}`, { address });
       }
 
       try {
-        lsp4DigitalAsset = (
-          (await erc725.fetchData(ERC725Y_KEY.LSP4_METADATA)).value as unknown as {
-            LSP4Metadata: LSP4DigitalAsset;
-          }
-        )?.LSP4Metadata;
+        const response = await erc725yGetData(address, ERC725Y_KEY.LSP4_METADATA);
 
-        images = [
-          ...formatMetadataImages(lsp4DigitalAsset.images, null),
-          ...formatMetadataImages(lsp4DigitalAsset.icon, METADATA_IMAGE_TYPE.ICON),
-        ];
+        if (response) {
+          const url = formatUrl(decodeJsonUrl(response));
+          lsp4DigitalAsset = await this.fetchLsp4MetadataFromUrl(url);
+
+          if (lsp4DigitalAsset) {
+            images = [
+              ...formatMetadataImages(lsp4DigitalAsset.images, null),
+              ...formatMetadataImages(lsp4DigitalAsset.icon, METADATA_IMAGE_TYPE.ICON),
+            ];
+          }
+        }
       } catch (e) {
         this.logger.error(`Failed to fetch lsp4 metadata for ${address}: ${e.message}`, {
           address,
@@ -86,6 +84,35 @@ export class LSP4 {
       this.logger.error(`Error while fetching LSP4 data for ${address}: ${e.message}`, {
         address,
       });
+      return null;
+    }
+  }
+
+  /**
+   * Fetches LSP4 metadata from a provided URL.
+   *
+   * @param {string} url - The URL from which to fetch metadata.
+   *
+   * @returns {Promise<(LSP4DigitalAsset & { name?: string }) | null>} -
+   * A promise that resolves to an object containing the digital asset's metadata, or null if an error occurs.
+   */
+  public async fetchLsp4MetadataFromUrl(
+    url: string,
+  ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
+    try {
+      // Attempt to fetch the token metadata from the given URL
+      const tokenMetadata = await fetch(url);
+
+      // Convert the metadata response to JSON
+      const tokenMetadataJson = await tokenMetadata.json();
+
+      // If the metadata JSON doesn't exist or doesn't contain an 'LSP4Metadata' property, return null
+      if (!tokenMetadataJson || !tokenMetadataJson.LSP4Metadata) return null;
+      // Otherwise, return the 'LSP4Metadata' property of the metadata JSON
+      else return tokenMetadataJson.LSP4Metadata;
+    } catch (e) {
+      // If an error occurs, log a warning with the URL and return null
+      this.logger.warn(`Failed to fetch metadata from ${url}`);
       return null;
     }
   }

@@ -9,7 +9,7 @@ export const ADDRESS2 = '0xA8f668006AeD69BB42F0A4458ced8B2ab744bfb7';
 export const ADDRESS3 = '0xab257eE1D2669BC37fDcFE90BCbB3D9663557a19';
 export const ADDRESS4 = '0x78B33dBFE571319f29A390eeCaf14F503f78BC8E';
 
-// 0x + keccak256({any value})
+// 0x + keccak({any value})
 export const HASH1 = '0x5f00fc4780204bdf03778df2ffa69c4ab03bff0aa84ed56c8dc215ff83ec0f39';
 export const HASH2 = '0xbecf0fccb9e2778cd8f9a27b2b4b6ff7047ad6e5e49f8c8dade166c75ec73646';
 export const HASH3 = '0xbb2ee8fb5c4d5dd6d160424318832d0545c205fb6a76f01f21d35c9f82b0d083';

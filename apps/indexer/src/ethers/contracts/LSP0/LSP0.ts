@@ -1,13 +1,13 @@
-import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
-import LSP3UniversalProfileMetadataJSON from '@erc725/erc725.js/schemas/LSP3UniversalProfileMetadata.json';
 import { LSP3Profile } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp3-profile';
 import winston from 'winston';
 
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
+import { erc725yGetData } from '../utils/erc725y-get-data';
+import { formatUrl } from '../../../utils/format-url';
+import { decodeJsonUrl } from '../../../utils/json-url';
 
 export class LSP0 {
   constructor(private logger: winston.Logger) {}
@@ -23,21 +23,18 @@ export class LSP0 {
     try {
       this.logger.debug(`Fetching LSP0 data for ${address}`, { address });
 
-      // Initialize the ERC725 instance with the appropriate schema, address, provider, and IPFS gateway.
-      const erc725 = new ERC725(
-        LSP3UniversalProfileMetadataJSON as ERC725JSONSchema[],
-        address,
-        RPC_URL,
-        { ipfsGateway: IPFS_GATEWAY },
-      );
-
       // Fetch the LSP3Profile data from the contract.
-      const fetchedData = await erc725.fetchData(ERC725Y_KEY.LSP3_PROFILE);
+      const response = await erc725yGetData(address, ERC725Y_KEY.LSP3_PROFILE);
+
+      if (!response) {
+        this.logger.debug(`No LSP0 data found for ${address}`, { address });
+        return null;
+      }
+
+      const url = formatUrl(decodeJsonUrl(response));
 
       // Extract the LSP3Profile from the fetched data, if available.
-      const lsp3Profile: LSP3Profile | undefined = (
-        fetchedData?.value as unknown as { LSP3Profile: LSP3Profile | undefined }
-      )?.LSP3Profile;
+      const lsp3Profile = await this.fetchLsp3ProfileFromUrl(url);
 
       // Return null if LSP3Profile data is not found.
       if (!lsp3Profile) {
@@ -67,6 +64,33 @@ export class LSP0 {
       this.logger.error(`Error while fetching LSP0 data for ${address}: ${e.message}`, {
         address,
       });
+      return null;
+    }
+  }
+
+  /**
+   * Fetches LSP3 Profile from a provided URL.
+   *
+   * @param {string} url - The URL from which to fetch metadata.
+   *
+   * @returns {Promise<(LSP3Profile & { name?: string }) | null>} -
+   * A promise that resolves to an object containing the profile's metadata, or null if an error occurs.
+   */
+  protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
+    try {
+      // Attempt to fetch the token metadata from the given URL
+      const tokenMetadata = await fetch(url);
+
+      // Convert the metadata response to JSON
+      const tokenMetadataJson = await tokenMetadata.json();
+
+      // If the metadata JSON doesn't exist or doesn't contain an 'LSP4Metadata' property, return null
+      if (!tokenMetadataJson || !tokenMetadataJson.LSP3Profile) return null;
+      // Otherwise, return the 'LSP4Metadata' property of the metadata JSON
+      else return tokenMetadataJson.LSP3Profile;
+    } catch (e) {
+      // If an error occurs, log a warning with the URL and return null
+      this.logger.warn(`Failed to fetch LSP3 Profile from ${url}`);
       return null;
     }
   }

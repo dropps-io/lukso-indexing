@@ -22,4 +22,5 @@ COPY --from=build /app/dist/apps/indexer/main.js ./dist/apps/indexer/main.js
 # Copy the 'shared/abi' directory
 COPY shared/abi ./shared/abi
 
+ENV NODE_ENV=production
 CMD ["node", "dist/apps/indexer/main.js"]

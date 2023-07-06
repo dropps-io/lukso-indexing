@@ -34,7 +34,7 @@ export class EthersService {
     this.lsp0 = new LSP0(this.logger);
     this.lsp4 = new LSP4(this.logger);
     this.lsp7 = new LSP7(this, this.logger);
-    this.lsp8 = new LSP8(this.logger);
+    this.lsp8 = new LSP8(this, this.logger);
   }
 
   public getProvider(): ethers.JsonRpcProvider {
@@ -110,8 +110,15 @@ export class EthersService {
 
       for (const contractInterface of contractInterfaces) {
         // Check if the contract instance supports the contract interface.
-        if (await contract.supportsInterface(contractInterface.id)) {
-          return contractInterface;
+        try {
+          if (await contract.supportsInterface(contractInterface.id)) {
+            return contractInterface;
+          }
+        } catch (e) {
+          this.logger.warn(`Error while checking contract interface support: ${e.message}`, {
+            address,
+          });
+          return null;
         }
       }
     } catch (e) {

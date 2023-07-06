@@ -39,7 +39,7 @@ export class Lsp7standardService {
             contractAddress: event.address,
             tokenId: null,
             balanceInWei: balance,
-            balanceInEth: isNFT ? parseInt(balance) : parseInt(formatEther(balance)),
+            balanceInEth: isNFT ? balance : formatEther(balance),
             holderSinceBlock: event.blockNumber,
           },
           'update',
