@@ -79,15 +79,16 @@ export class LSP0 {
   protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
     try {
       // Attempt to fetch the token metadata from the given URL
-      const tokenMetadata = await fetch(url);
+      const profileMetadata = await fetch(url);
 
       // Convert the metadata response to JSON
-      const tokenMetadataJson = await tokenMetadata.json();
+      const profileMetadataJson = await profileMetadata.json();
 
-      // If the metadata JSON doesn't exist or doesn't contain an 'LSP4Metadata' property, return null
-      if (!tokenMetadataJson || !tokenMetadataJson.LSP3Profile) return null;
-      // Otherwise, return the 'LSP4Metadata' property of the metadata JSON
-      else return tokenMetadataJson.LSP3Profile;
+      if (profileMetadataJson && profileMetadataJson.LSP3Profile)
+        return profileMetadataJson.LSP3Profile;
+      else if (profileMetadataJson && (profileMetadataJson.name || profileMetadataJson.description))
+        return profileMetadataJson;
+      else return null;
     } catch (e) {
       // If an error occurs, log a warning with the URL and return null
       this.logger.warn(`Failed to fetch LSP3 Profile from ${url}`);

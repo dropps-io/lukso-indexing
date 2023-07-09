@@ -100,17 +100,19 @@ export class IndexerService implements OnModuleInit {
         await Promise.all(transactionHashesChunks.map(indexBatchTransactions));
       };
 
-      this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
+      if (fromBlock < toBlock) {
+        this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
 
-      // Process blocks in batches and wait for all blocks to finish indexing
-      const promises: Promise<void>[] = [];
-      for (fromBlock; fromBlock <= toBlock; fromBlock++) {
-        promises.push(indexBlock(fromBlock));
+        // Process blocks in batches and wait for all blocks to finish indexing
+        const promises: Promise<void>[] = [];
+        for (fromBlock; fromBlock <= toBlock; fromBlock++) {
+          promises.push(indexBlock(fromBlock));
+        }
+        await Promise.all(promises);
+
+        // Update the latest indexed block in the database and logger
+        await this.structureDB.updateLatestIndexedBlock(toBlock);
       }
-      await Promise.all(promises);
-
-      // Update the latest indexed block in the database and logger
-      await this.structureDB.updateLatestIndexedBlock(toBlock);
     } catch (e) {
       this.logger.error(`Error while indexing data from blocks: ${e.message}`);
     }
@@ -152,36 +154,38 @@ export class IndexerService implements OnModuleInit {
           ? fromBlock + config.blockIteration
           : lastBlock;
 
-      this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
+      if (fromBlock < toBlock) {
+        this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
 
-      // Retrieve logs from the specified block range
-      const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
+        // Retrieve logs from the specified block range
+        const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
-      // Split transaction hashes and logs into chunks for batch processing
-      const txHashesChunks = splitIntoChunks(
-        logs
-          .map((log) => log.transactionHash)
-          .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index),
-        TX_INDEXING_BATCH_SIZE,
-      );
-      const logsChunks = splitIntoChunks(logs, EVENTS_INDEXING_BATCH_SIZE);
+        // Split transaction hashes and logs into chunks for batch processing
+        const txHashesChunks = splitIntoChunks(
+          logs
+            .map((log) => log.transactionHash)
+            .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index),
+          TX_INDEXING_BATCH_SIZE,
+        );
+        const logsChunks = splitIntoChunks(logs, EVENTS_INDEXING_BATCH_SIZE);
 
-      // Functions to index transactions and events in batches
-      const indexBatchTransactions = async (txHashes: string[]) => {
-        for (const txHash of txHashes) await this.indexTransaction(txHash);
-      };
-      const indexBatchEvents = async (logs: Log[]) => {
-        for (const log of logs) await this.indexEvent(log);
-      };
+        // Functions to index transactions and events in batches
+        const indexBatchTransactions = async (txHashes: string[]) => {
+          for (const txHash of txHashes) await this.indexTransaction(txHash);
+        };
+        const indexBatchEvents = async (logs: Log[]) => {
+          for (const log of logs) await this.indexEvent(log);
+        };
 
-      // Process transactions and events in batches concurrently
-      await Promise.all([
-        Promise.all(logsChunks.map(indexBatchEvents)),
-        Promise.all(txHashesChunks.map(indexBatchTransactions)),
-      ]);
+        // Process transactions and events in batches concurrently
+        await Promise.all([
+          Promise.all(logsChunks.map(indexBatchEvents)),
+          Promise.all(txHashesChunks.map(indexBatchTransactions)),
+        ]);
 
-      // Update the latest indexed event block in the database and logger
-      await this.structureDB.updateLatestIndexedEventBlock(toBlock);
+        // Update the latest indexed event block in the database and logger
+        await this.structureDB.updateLatestIndexedEventBlock(toBlock);
+      }
     } catch (e) {
       this.logger.error(`Error while indexing data: ${e.message}`);
     }

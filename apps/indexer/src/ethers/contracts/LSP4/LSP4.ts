@@ -106,10 +106,11 @@ export class LSP4 {
       // Convert the metadata response to JSON
       const tokenMetadataJson = await tokenMetadata.json();
 
-      // If the metadata JSON doesn't exist or doesn't contain an 'LSP4Metadata' property, return null
-      if (!tokenMetadataJson || !tokenMetadataJson.LSP4Metadata) return null;
-      // Otherwise, return the 'LSP4Metadata' property of the metadata JSON
-      else return tokenMetadataJson.LSP4Metadata;
+      if (tokenMetadataJson && tokenMetadataJson.LSP4Metadata)
+        return tokenMetadataJson.LSP4Metadata;
+      else if (tokenMetadataJson && (tokenMetadataJson.name || tokenMetadataJson.description))
+        return tokenMetadataJson;
+      else return null;
     } catch (e) {
       // If an error occurs, log a warning with the URL and return null
       this.logger.warn(`Failed to fetch metadata from ${url}`);
