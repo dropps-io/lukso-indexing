@@ -1,0 +1,57 @@
++{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Lukso Indexing Debug",
+        "program": "${workspaceFolder}/apps/indexer/src/main.ts",
+        
+        // Task to run before starting the debugger
+        "preLaunchTask": "tsc: build - tsconfig.json",
+        
+        // Use the integrated terminal for console logs
+        "console": "integratedTerminal",
+        
+        // Ensure source maps are used for debugging
+        "sourceMaps": true,
+        
+        // This option ensures the internal console is never opened by default
+        "internalConsoleOptions": "neverOpen",
+        
+        // Mapping of source paths for the debugger
+        "sourceMapPathOverrides": {
+          "webpack:///./*": "${workspaceFolder}/*",
+          "webpack:///src/*": "${workspaceFolder}/src/*",
+          "webpack:///*": "*"
+        },
+        
+        // Files that the debugger should not step into
+        "skipFiles": [
+          "${workspaceFolder}/node_modules/**/*.js",
+          "<node_internals>/**"
+        ],
+        
+        // Specifies the location of generated JavaScript files
+        "outFiles": [
+          "${workspaceFolder}/dist/apps/indexer/**/*.js"
+        ],
+        
+        // Environment variables for the debug session
+        "env": {
+          "NODE_ENV": "development"
+        },
+        
+        // Runtime arguments for Node.js, including TypeScript configurations
+        "runtimeArgs": [
+          "-r",
+          "ts-node/register",
+          "-r",
+          "tsconfig-paths/register"  // Supports custom paths in tsconfig.json
+        ],
+        
+        // Arguments passed to the Node.js program being debugged
+        "args": ["${workspaceFolder}/apps/indexer/src/main.ts"]
+      }
+    ]
+  }

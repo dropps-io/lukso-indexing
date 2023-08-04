@@ -5,6 +5,7 @@ import { MethodParameterTable } from '@db/lukso-structure/entities/methodParamet
 import { LoggerService } from '@libs/logger/logger.service';
 import { getAddress } from 'ethers';
 
+import { IpfsService } from '../ipfs/ipfs.service';
 import { EthersService } from '../ethers/ethers.service';
 import { DecodingService } from './decoding.service';
 import { ADDRESS1 } from '../../../../test/utils/test-values';
@@ -105,13 +106,17 @@ describe('DecodingService', () => {
   let service: TestDecodingService;
   const logger = new LoggerService();
   const db = new LuksoStructureDbService(logger);
+  const ipfsService = new IpfsService(logger);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         TestDecodingService,
         { provide: LuksoStructureDbService, useValue: db },
-        { provide: EthersService, useValue: new EthersService(logger, db) },
+        {
+          provide: EthersService,
+          useValue: new EthersService(logger, ipfsService, db),
+        },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();

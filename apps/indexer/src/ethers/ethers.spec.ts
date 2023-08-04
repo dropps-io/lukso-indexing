@@ -4,10 +4,17 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 
 import { EthersService } from './ethers.service';
 import { TEST_CONTRACT_INTERFACE } from '../../../../test/utils/test-values';
+import { IpfsService } from '../ipfs/ipfs.service';
+
 describe('EthersService', () => {
   let service: EthersService;
   const logger = new LoggerService();
   const db = new LuksoStructureDbService(logger);
+
+  const mockIpfsService = () => ({
+    getFileFromIPFS: jest.fn(),
+    getRandomGatewayURL: jest.fn(),
+  });
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -15,9 +22,9 @@ describe('EthersService', () => {
         EthersService,
         { provide: LuksoStructureDbService, useValue: db },
         { provide: LoggerService, useValue: logger },
+        { provide: IpfsService, useFactory: mockIpfsService },
       ],
     }).compile();
-
     service = moduleRef.get<EthersService>(EthersService);
   });
 

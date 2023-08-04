@@ -8,7 +8,7 @@ export const PORT = process.env.WS_PORT || 3002;
 export const DROP_DB_ON_START = process.env.DROP_DB_ON_START === 'true';
 
 export const NODE_ENV = process.env.NODE_ENV || 'dev';
-export const IPFS_GATEWAY = 'https://2eff.lukso.dev/ipfs/';
+export const IPFS_GATEWAYS = (process.env.IPFS_GATEWAYS || '').split(',').filter(Boolean);
 export const ARWEAVE_GATEWAY = 'https://arweave.net/';
 
 export const CONTRACTS_PROCESSING_INTERVAL = 1000;

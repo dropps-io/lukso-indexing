@@ -6,7 +6,7 @@ import { LSP8 } from './LSP8';
 import { ADDRESS1, HASH1 } from '../../../../../../test/utils/test-values';
 import { MetadataResponse } from '../../types/metadata-response';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
-import { EthersService } from '../../ethers.service';
+import { IpfsService } from '../../../ipfs/ipfs.service';
 
 jest.setTimeout(15_000);
 
@@ -38,15 +38,13 @@ describe('LSP8', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
-        EthersService,
         { provide: LuksoStructureDbService, useValue: new LuksoStructureDbService(logger) },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();
 
-    const ethersService = moduleRef.get<EthersService>(EthersService);
-
-    service = new TestLSP8(ethersService, logger.getChildLogger('LSP8'));
+    const ipfsService = moduleRef.get<IpfsService>(IpfsService);
+    service = new TestLSP8(logger.getChildLogger('LSP8'), ipfsService);
   });
 
   describe('fetchTokenData', () => {

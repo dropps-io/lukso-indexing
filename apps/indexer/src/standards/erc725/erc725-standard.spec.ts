@@ -5,6 +5,7 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { DB_DATA_TABLE } from '@db/lukso-data/config';
 import { getAddress } from 'ethers';
 
+import { IpfsService } from '../../ipfs/ipfs.service';
 import { EthersService } from '../../ethers/ethers.service';
 import { Erc725StandardService } from './erc725-standard.service';
 import { DecodingService } from '../../decoding/decoding.service';
@@ -17,6 +18,7 @@ describe('Erc725StandardService', () => {
   const logger = new LoggerService();
   const dataDB = new LuksoDataDbService(logger);
   const structureDB = new LuksoStructureDbService(logger);
+  const ipfsService = new IpfsService(logger);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -28,7 +30,7 @@ describe('Erc725StandardService', () => {
           provide: DecodingService,
           useValue: new DecodingService(
             structureDB,
-            new EthersService(logger, structureDB),
+            new EthersService(logger, ipfsService, structureDB),
             logger,
           ),
         },

@@ -5,7 +5,7 @@ import { toUtf8String } from 'ethers';
 import { keccak } from '@utils/keccak';
 
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
+import { RPC_URL } from '../../../globals';
 import LSP8IdentifiableDigitalAssetSchema from '../schemas/LSP8IdentifiableDigitalAssetSchema.json';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
 import { ERC725Y_KEY } from '../config';
@@ -15,11 +15,11 @@ import { formatUrl } from '../../../utils/format-url';
 import { decodeJsonUrl } from '../../../utils/json-url';
 import { decodeLsp8TokenId } from '../../../decoding/utils/decode-lsp8-token-id';
 import { LSP4 } from '../LSP4/LSP4';
-import { EthersService } from '../../ethers.service';
+import { IpfsService } from '../../../ipfs/ipfs.service';
 
 export class LSP8 {
   private readonly lsp4: LSP4;
-  constructor(private ethersService: EthersService, private logger: winston.Logger) {
+  constructor(private logger: winston.Logger, private ipfsService: IpfsService) {
     this.lsp4 = new LSP4(logger);
   }
 
@@ -66,19 +66,38 @@ export class LSP8 {
     decodedTokenId: string,
     tokenIdType: LSP8_TOKEN_ID_TYPE,
     legacy?: boolean,
+    maxRetries = 3,
   ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
     const tokenMetadataKey: string = this.getLsp8TokenMetadataKey(tokenIdType, legacy);
 
     // Todo: Tmp fix as there is an issue with the new metadata key hash
-    let key = this.getErc725(address).encodeKeyName(tokenMetadataKey, decodedTokenId);
-    key = (legacy ? '0x9a26b4060ae7f7d5e3cd0000' : '0x4690256ef7e93288012f0000') + key.slice(26);
+    let key: string;
 
-    const response = await erc725yGetData(address, key);
-    if (!response) return null;
+    let attempts = 0;
+    while (attempts < maxRetries) {
+      try {
+        key = this.getErc725(address).encodeKeyName(tokenMetadataKey, decodedTokenId);
+        key =
+          (legacy ? '0x9a26b4060ae7f7d5e3cd0000' : '0x4690256ef7e93288012f0000') + key.slice(26);
 
-    const url = legacy ? decodeJsonUrl(response) : toUtf8String('0x' + response.slice(10));
+        const response = await erc725yGetData(address, key);
+        if (!response) return null;
 
-    return await this.lsp4.fetchLsp4MetadataFromUrl(formatUrl(url));
+        const url = legacy ? decodeJsonUrl(response) : toUtf8String('0x' + response.slice(10));
+        const metadata = await this.lsp4.fetchLsp4MetadataFromUrl(formatUrl(url));
+        return metadata;
+      } catch (error) {
+        attempts++;
+        if (attempts >= maxRetries) {
+          this.logger.error(
+            `Failed to fetch metadata after ${maxRetries} attempts. Error: ${error.message}`,
+          );
+        }
+      }
+    }
+    this.logger.error(`Failed to fetch lsp8 metadata for ${address} after all retries.`);
+
+    return null;
   }
 
   /**
@@ -189,7 +208,7 @@ export class LSP8 {
    */
   private getErc725(address: string): ERC725 {
     return new ERC725(LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
-      ipfsGateway: IPFS_GATEWAY,
+      ipfsGateway: this.ipfsService.getRandomGatewayURL(),
     });
   }
 }
