@@ -4,6 +4,7 @@ import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import format from 'pg-format';
 import { TokenHolderTable } from '@db/lukso-data/entities/token-holder.table';
+import { DecodedParameter } from 'apps/indexer/src/decoding/types/decoded-parameter';
 
 import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
@@ -22,6 +23,34 @@ import { EventParameterTable } from './entities/event-parameter.table';
 import { WrappedTxTable } from './entities/wrapped-tx.table';
 import { WrappedTxParameterTable } from './entities/wrapped-tx-parameter.table';
 import { WrappedTxInputTable } from './entities/wrapped-tx-input.table';
+
+type TransactionWithInput = {
+  transactionHash: string;
+  input: string;
+  hash: string;
+  nonce: number;
+  blockHash: string;
+  blockNumber: number;
+  date: string;
+  transactionIndex: number;
+  methodId: string;
+  methodName?: string;
+  from: string;
+  to: string;
+  value: string;
+  gasPrice: string;
+  gas: number;
+};
+
+// type DecodedMethod = {
+//   methodName: string;
+//   parameters: DecodedParameter[];
+// };
+
+type DecodedData = {
+  parameters: DecodedParameter[];
+  methodName: string;
+};
 
 @Injectable()
 export class LuksoDataDbService implements OnModuleDestroy {
@@ -526,6 +555,31 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
   }
 
+  public async updateTransactionWithDecodedMethod(
+    transactionHash: string,
+    decodedMethod: DecodedData,
+  ): Promise<void> {
+    console.log('updateTransactionWithDecodedMethod', transactionHash, decodedMethod);
+    const { methodName, parameters } = decodedMethod;
+
+    await this.executeQuery(
+      `
+      UPDATE ${DB_DATA_TABLE.TRANSACTION}
+      SET "methodName" = $1
+      WHERE "hash" = $2
+    `,
+      [methodName, transactionHash],
+    );
+    await this.executeQuery(
+      `
+      UPDATE ${DB_DATA_TABLE.TRANSACTION_PARAMETER}
+      SET "decodedValue" = $1
+      WHERE "transactionHash" = $2
+    `,
+      [parameters, transactionHash],
+    );
+  }
+
   // Wrapped Transaction table functions
   public async insertWrappedTx(
     wrappedTransaction: Omit<WrappedTxTable, 'id'>,
@@ -703,5 +757,42 @@ export class LuksoDataDbService implements OnModuleDestroy {
     } catch (error) {
       throw new Error(`Error executing query: ${query}\n\nError details: ${error.message}`);
     }
+  }
+
+  // Select all transactions that have not been decoded yet and have an input field
+  public async fetchNonDecodedTransactionsWithInput(): Promise<TransactionWithInput[]> {
+    const sql = `
+      -- The purpose of this query is two-fold:
+      -- 
+      -- 1. There are cases where the decoding process identifies a known method 
+      --    but does not decode its parameters (due to an unexpected data format 
+      --    or other transient errors). We want to capture such transactions where 
+      --    the methodName exists, but the associated parameters have blank values 
+      --    to facilitate a re-attempt at decoding or further inspection.
+      -- 
+      -- 2. In some instances, the decoding process may fail to identify a known method 
+      --    altogether, resulting in a blank methodName, but there still exists raw 
+      --    transaction input data. Fetching these transactions helps in identifying 
+      --    potential updates to the decoding logic or additions to the method interface 
+      --    library.
+
+      -- Fetching transactions with blank methodName but with transaction data
+      (SELECT t.*, ti.input, NULL AS name, NULL AS type, NULL AS position 
+       FROM "transaction" t
+       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
+       WHERE t."methodName" IS NULL AND ti.input IS NOT NULL)
+      
+      UNION 
+      
+      -- Fetching transactions with at least one blank parameter value
+      (SELECT t.*, ti.input, tp.name, tp.type, tp.position 
+       FROM "transaction" t
+       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
+       JOIN "transaction_parameter" tp ON t."hash" = tp."transactionHash"
+       WHERE tp."value" = '')
+      
+      ORDER BY "hash";
+    `;
+    return await this.executeQuery(sql);
   }
 }

@@ -7,6 +7,7 @@ import { LoggerModule } from '@libs/logger/logger.module';
 
 import { UpdateService } from './update.service';
 import { RedisConnectionModule } from '../redis-connection/redis-connection.module';
+import { DecodingModule } from '../decoding/decoding.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisConnectionModule } from '../redis-connection/redis-connection.modu
     ConfigModule.forRoot(),
     LoggerModule,
     RedisConnectionModule,
+    DecodingModule,
   ],
   providers: [UpdateService, ConfigService],
   exports: [UpdateService],
