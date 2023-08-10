@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createLogger, format, transports, Logger as WinstonLogger } from 'winston';
+import { StreamTransportInstance } from 'winston/lib/winston/transports';
 
 /**
  * LoggerService is a NestJS service for logging, using the Winston library.
@@ -9,6 +10,13 @@ import { createLogger, format, transports, Logger as WinstonLogger } from 'winst
 @Injectable()
 export class LoggerService {
   private readonly logger: WinstonLogger;
+  private readonly dummyLogger: WinstonLogger = createLogger({
+    transports: [
+      new transports.Console({
+        silent: true, // Never print logs
+      }),
+    ],
+  });
 
   constructor() {
     const consoleFormat = format.printf((info) => {
@@ -75,6 +83,17 @@ export class LoggerService {
    * @param service
    */
   public getChildLogger(service: string): WinstonLogger {
+    const allowedService = process.env.ONLY_LOG_SERVICE;
+
+    // If ONLY_LOG_SERVICE is set and doesn't match the current service, return the dummy logger
+    if (allowedService && allowedService !== service) {
+      return this.dummyLogger;
+    } else if (allowedService && allowedService === service) {
+      this.logger.info(
+        `Only logging for service ${allowedService}, other logs are suppressed and not written to file.`,
+      );
+    }
+
     return this.logger.child({ service });
   }
 }

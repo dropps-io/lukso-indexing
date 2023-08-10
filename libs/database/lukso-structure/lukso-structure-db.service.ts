@@ -14,6 +14,25 @@ import { ContractInterfaceTable } from './entities/contractInterface.table';
 import { MethodInterfaceTable } from './entities/methodInterface.table';
 import { MethodParameterTable } from './entities/methodParameter.table';
 
+type InterfaceType = 'method' | 'erc' | 'contract';
+
+@Injectable()
+export class InterfaceTableFactory {
+  private static tableLookup: { [key in InterfaceType]: string } = {
+    erc: 'erc725y_schema',
+    method: 'method_interface',
+    contract: 'contract_interface',
+  };
+
+  static getTableName(type: InterfaceType): string {
+    const tableName = this.tableLookup[type];
+    if (!tableName) {
+      throw new Error(`Invalid interface type: ${type}`);
+    }
+    return tableName;
+  }
+}
+
 @Injectable()
 export class LuksoStructureDbService implements OnModuleDestroy {
   private readonly client: Pool & {
@@ -79,7 +98,13 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       INSERT INTO ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA}
       ("key", "name", "keyType", "valueType", "valueContent")
       VALUES ($1, $2, $3, $4, $5)
-    `,
+      ON CONFLICT ("key")
+      DO UPDATE SET 
+        "name" = excluded."name", 
+        "keyType" = excluded."keyType", 
+        "valueType" = excluded."valueType", 
+        "valueContent" = excluded."valueContent"
+      `,
       [schema.key, schema.name, schema.keyType, schema.valueType, schema.valueContent],
     );
   }
@@ -95,7 +120,11 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   async insertContractInterface(contractInterface: ContractInterfaceTable): Promise<void> {
     await this.executeQuery(
       `
-      INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version", "type") VALUES ($1, $2, $3, $4, $5)`,
+        INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version", "type")
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (id)
+        DO UPDATE SET code = excluded.code, name = excluded.name, version = excluded.version, type = excluded.type;
+        `,
       [
         contractInterface.id,
         contractInterface.code,
@@ -140,8 +169,11 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   async insertMethodInterface(methodInterface: MethodInterfaceTable): Promise<void> {
     await this.executeQuery(
       `
-      INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}
-      VALUES ($1, $2, $3, $4)`,
+        INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}(id, hash, name, type)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (id)
+        DO UPDATE SET name = excluded.name, type = excluded.type;
+        `,
       [methodInterface.id, methodInterface.hash, methodInterface.name, methodInterface.type],
     );
   }
@@ -182,5 +214,20 @@ export class LuksoStructureDbService implements OnModuleDestroy {
         `Error executing a query: ${error.message}, query: ${query}, values: ${values}`,
       );
     }
+  }
+
+  async fetchNewInterfaces(
+    since: Date,
+    type: InterfaceType,
+  ): Promise<(ContractInterfaceTable | MethodInterfaceTable | ERC725YSchemaTable)[]> {
+    const tableName = InterfaceTableFactory.getTableName(type);
+
+    const query = `
+        SELECT * FROM ${tableName}
+        WHERE "createdAt" > $1
+    `;
+    const values = [since];
+
+    return await this.executeQuery(query, values);
   }
 }

@@ -43,3 +43,4 @@ lerna-debug.log*
 .env.test
 
 docker-data
+.vscode/launch.json

@@ -54,8 +54,23 @@ You can then update the connection strings accordingly.
 | tsconfig.json       | Config settings for compiling server code written in TypeScript                                            |
 | .eslintrc.json      | Config settings for ESLint code style checking                                                             |
 
-
 ## Development
+
+### Install Redis
+
+```
+ sudo apt-add-repository ppa:redislabs/redis
+ sudo apt-get update
+ sudo apt-get upgrade
+ sudo apt-get install redis-server
+
+sudo service redis-server restart
+
+# Optionally run it as a service so it starts on boot
+sudo systemctl enable redis-server
+ ```
+
+ [More info](https://developer.redis.com/create/windows/)
 
 ### Start the project
 
