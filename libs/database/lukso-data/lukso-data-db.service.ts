@@ -52,6 +52,11 @@ type DecodedData = {
   methodName: string;
 };
 
+type DecodedEventData = {
+  parameters: DecodedParameter[];
+  methodName: string;
+};
+
 @Injectable()
 export class LuksoDataDbService implements OnModuleDestroy {
   protected readonly client: Pool & {
@@ -559,25 +564,60 @@ export class LuksoDataDbService implements OnModuleDestroy {
     transactionHash: string,
     decodedMethod: DecodedData,
   ): Promise<void> {
-    console.log('updateTransactionWithDecodedMethod', transactionHash, decodedMethod);
     const { methodName, parameters } = decodedMethod;
-
+    //loop through all the new parameters and update the transactionParameter table
     await this.executeQuery(
       `
-      UPDATE ${DB_DATA_TABLE.TRANSACTION}
-      SET "methodName" = $1
-      WHERE "hash" = $2
-    `,
+    UPDATE ${DB_DATA_TABLE.TRANSACTION}
+    SET "methodName" = $1
+    WHERE "hash" = $2
+  `,
       [methodName, transactionHash],
     );
-    await this.executeQuery(
-      `
-      UPDATE ${DB_DATA_TABLE.TRANSACTION_PARAMETER}
-      SET "decodedValue" = $1
-      WHERE "transactionHash" = $2
-    `,
-      [parameters, transactionHash],
-    );
+    this.insertTransactionParameters(transactionHash, parameters, 'do nothing');
+  }
+
+  public updateWrappedTransactionWithDecodedMethod = (hash, decodedData) => {
+    //TODO: implement this
+    console.log('updateWrappedTransactionWithDecodedMethod', hash, decodedData);
+  };
+  //TransactionParameter and TransactionInput table functions
+
+  // Select all transactions that have not been decoded yet and have an input field
+  public async fetchNonDecodedTransactionsWithInput(): Promise<TransactionWithInput[]> {
+    const sql = `
+      -- The purpose of this query is two-fold:
+      -- 
+      -- 1. There are cases where the decoding process identifies a known method 
+      --    but does not decode its parameters (due to an unexpected data format 
+      --    or other transient errors). We want to capture such transactions where 
+      --    the methodName exists, but the associated parameters have blank values 
+      --    to facilitate a re-attempt at decoding or further inspection.
+      -- 
+      -- 2. In some instances, the decoding process may fail to identify a known method 
+      --    altogether, resulting in a blank methodName, but there still exists raw 
+      --    transaction input data. Fetching these transactions helps in identifying 
+      --    potential updates to the decoding logic or additions to the method interface 
+      --    library.
+
+      -- Fetching transactions with blank methodName but with transaction data
+      (SELECT t.*, ti.input, NULL AS name, NULL AS type, NULL AS position 
+       FROM "transaction" t
+       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
+       WHERE t."methodName" IS NULL AND ti.input IS NOT NULL)
+      
+      UNION 
+      
+      -- Fetching transactions with at least one blank parameter value
+      (SELECT t.*, ti.input, tp.name, tp.type, tp.position 
+       FROM "transaction" t
+       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
+       JOIN "transaction_parameter" tp ON t."hash" = tp."transactionHash"
+       WHERE tp."value" = '')
+      
+      ORDER BY "hash";
+    `;
+    return await this.executeQuery(sql);
   }
 
   // Wrapped Transaction table functions
@@ -633,6 +673,43 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
     return rows.length > 0 ? rows[0].input : null;
   }
+
+  public async fetchNonDecodedWrapped(): Promise<any[]> {
+    try {
+      // SQL to fetch the non-decoded wrapped transactions with their input
+      const sql = `
+      -- Fetching wrapped transactions with blank methodId but with transaction data
+      (SELECT t1.*, ti1.input 
+       FROM wrapped_transaction t1
+       JOIN wrapped_transaction_input ti1 ON t1.id = ti1."wrappedTransactionId"
+       WHERE t1."methodId" IS NULL AND ti1.input IS NOT NULL)
+      
+      UNION 
+      
+      -- Fetching wrapped transactions with at least one blank parameter value
+      (SELECT t2.*, ti2.input 
+       FROM wrapped_transaction t2
+       JOIN wrapped_transaction_input ti2 ON t2.id = ti2."wrappedTransactionId"
+       JOIN wrapped_transaction_parameter tp ON t2.id = tp."wrappedTransactionId"
+       WHERE tp.value = '')
+      
+      ORDER BY id;      
+      `;
+
+      // Execute the query
+      const rows = await this.executeQuery(sql, []);
+      return rows;
+    } catch (error) {
+      this.logger.error('Error fetching non-decoded wrapped transactions with input:', error);
+      throw error;
+    }
+  }
+
+  public updateDecodedWrappedTransaction = (hash: any, decodedData: any) => {
+    // console.log('updateWrappedTransactionWithDecodedMethod', hash, decodedData);
+    //Update the main wrapped transaction table with the decoded method name
+    //and then update the param table with the insertWrappedTxParameters function
+  };
 
   // Wrapped Transaction Parameter table functions
   public async insertWrappedTxParameters(
@@ -750,6 +827,97 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
   }
 
+  //General Event and EventParameter table functions
+  updateEventWithDecodedMethod = async (hash: string, decodedData: DecodedEventData) => {
+    try {
+      // Update the eventName in the event table
+      const updateEventSQL = `
+            UPDATE event 
+            SET eventName = $1
+            WHERE transactionHash = $2;
+        `;
+
+      // Execute the query to update the event's method name
+      await this.executeQuery(updateEventSQL, [decodedData.methodName, hash]);
+
+      // Now, iterate over the decoded parameters
+      for (const param of decodedData.parameters) {
+        // Check if this parameter already exists for the event
+        const checkSQL = `
+                SELECT id 
+                FROM event_parameter 
+                WHERE "eventId" = $1 AND name = $2 AND position = $3;
+            `;
+
+        const existingRows = await this.executeQuery(checkSQL, [hash, param.name, param.position]);
+
+        if (existingRows.length > 0) {
+          // Update the existing parameter value
+          const updateParamSQL = `
+                    UPDATE event_parameter 
+                    SET value = $1 
+                    WHERE "eventId" = $2 AND name = $3 AND position = $4;
+                `;
+
+          // Execute the query to update the parameter's value
+          await this.executeQuery(updateParamSQL, [param.value, hash, param.name, param.position]);
+        } else {
+          // Insert a new parameter for the event
+          const insertParamSQL = `
+                    INSERT INTO event_parameter ("eventId", value, name, type, position)
+                    VALUES ($1, $2, $3, $4, $5);
+                `;
+
+          // Execute the query to insert the new parameter
+          await this.executeQuery(insertParamSQL, [
+            hash,
+            param.value,
+            param.name,
+            param.type,
+            param.position,
+          ]);
+        }
+      }
+
+      this.logger.info('Successfully updated event with decoded method', hash, decodedData);
+    } catch (error) {
+      this.logger.error('Error updating event with decoded method:', error);
+      throw error;
+    }
+  };
+
+  public async fetchNonDecodedEvents(): Promise<any[]> {
+    // TODO: type
+    try {
+      // SQL to fetch the non-decoded events with their input
+      const sql = `
+      -- Fetching events with blank methodId but with transaction data
+      (SELECT e1.*, ep1.value
+        FROM event e1
+        JOIN event_parameter ep1 ON e1.id = ep1."eventId"
+        WHERE e1."methodId" IS NULL AND ep1.value IS NOT NULL)
+
+      UNION
+
+      -- Fetching events with at least one blank parameter value
+      (SELECT e2.*, ep2.value
+        FROM event e2
+        JOIN event_parameter ep2 ON e2.id = ep2."eventId"
+        JOIN event_parameter ep ON e2.id = ep."eventId"
+        WHERE ep.value = '')
+
+      ORDER BY id;
+      `;
+      // Execute the query
+      const rows = await this.executeQuery(sql, []);
+      return rows;
+    } catch (error) {
+      this.logger.error('Error fetching non-decoded events with input:', error);
+      throw error;
+    }
+  }
+
+  // General functions
   protected async executeQuery<T>(query: string, values?: any[]): Promise<T[]> {
     try {
       const result = await this.client.query(query, values);
@@ -757,42 +925,5 @@ export class LuksoDataDbService implements OnModuleDestroy {
     } catch (error) {
       throw new Error(`Error executing query: ${query}\n\nError details: ${error.message}`);
     }
-  }
-
-  // Select all transactions that have not been decoded yet and have an input field
-  public async fetchNonDecodedTransactionsWithInput(): Promise<TransactionWithInput[]> {
-    const sql = `
-      -- The purpose of this query is two-fold:
-      -- 
-      -- 1. There are cases where the decoding process identifies a known method 
-      --    but does not decode its parameters (due to an unexpected data format 
-      --    or other transient errors). We want to capture such transactions where 
-      --    the methodName exists, but the associated parameters have blank values 
-      --    to facilitate a re-attempt at decoding or further inspection.
-      -- 
-      -- 2. In some instances, the decoding process may fail to identify a known method 
-      --    altogether, resulting in a blank methodName, but there still exists raw 
-      --    transaction input data. Fetching these transactions helps in identifying 
-      --    potential updates to the decoding logic or additions to the method interface 
-      --    library.
-
-      -- Fetching transactions with blank methodName but with transaction data
-      (SELECT t.*, ti.input, NULL AS name, NULL AS type, NULL AS position 
-       FROM "transaction" t
-       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
-       WHERE t."methodName" IS NULL AND ti.input IS NOT NULL)
-      
-      UNION 
-      
-      -- Fetching transactions with at least one blank parameter value
-      (SELECT t.*, ti.input, tp.name, tp.type, tp.position 
-       FROM "transaction" t
-       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
-       JOIN "transaction_parameter" tp ON t."hash" = tp."transactionHash"
-       WHERE tp."value" = '')
-      
-      ORDER BY "hash";
-    `;
-    return await this.executeQuery(sql);
   }
 }
