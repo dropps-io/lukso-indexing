@@ -52,10 +52,10 @@ type DecodedData = {
   methodName: string;
 };
 
-type DecodedEventData = {
+interface DecodedEventData {
+  eventName: string;
   parameters: DecodedParameter[];
-  methodName: string;
-};
+}
 
 @Injectable()
 export class LuksoDataDbService implements OnModuleDestroy {
@@ -826,86 +826,57 @@ export class LuksoDataDbService implements OnModuleDestroy {
       [eventId],
     );
   }
-
   //General Event and EventParameter table functions
-  updateEventWithDecodedMethod = async (hash: string, decodedData: DecodedEventData) => {
+  async updateEventWithDecodedData(hash: string, decodedData: DecodedEventData): Promise<void> {
     try {
-      // Update the eventName in the event table
-      const updateEventSQL = `
-            UPDATE event 
-            SET eventName = $1
-            WHERE transactionHash = $2;
-        `;
+      // Get the existing event using its hash
+      const existingEvent = await this.getEventById(hash);
 
-      // Execute the query to update the event's method name
-      await this.executeQuery(updateEventSQL, [decodedData.methodName, hash]);
+      // If the event exists and needs updating
+      if (existingEvent && !existingEvent.eventName) {
+        existingEvent.eventName = decodedData.eventName;
+        await this.insertEvent(existingEvent);
 
-      // Now, iterate over the decoded parameters
-      for (const param of decodedData.parameters) {
-        // Check if this parameter already exists for the event
-        const checkSQL = `
-                SELECT id 
-                FROM event_parameter 
-                WHERE "eventId" = $1 AND name = $2 AND position = $3;
-            `;
+        // For each parameter in decoded data
+        for (const param of decodedData.parameters) {
+          // Get the parameters for the existing event
+          const existingParameters = await this.getEventParameters(hash);
 
-        const existingRows = await this.executeQuery(checkSQL, [hash, param.name, param.position]);
+          // Find if this parameter exists
+          const existingParam = existingParameters.find(
+            (p) => p.name === param.name && p.position === param.position,
+          );
 
-        if (existingRows.length > 0) {
-          // Update the existing parameter value
-          const updateParamSQL = `
-                    UPDATE event_parameter 
-                    SET value = $1 
-                    WHERE "eventId" = $2 AND name = $3 AND position = $4;
-                `;
-
-          // Execute the query to update the parameter's value
-          await this.executeQuery(updateParamSQL, [param.value, hash, param.name, param.position]);
-        } else {
-          // Insert a new parameter for the event
-          const insertParamSQL = `
-                    INSERT INTO event_parameter ("eventId", value, name, type, position)
-                    VALUES ($1, $2, $3, $4, $5);
-                `;
-
-          // Execute the query to insert the new parameter
-          await this.executeQuery(insertParamSQL, [
-            hash,
-            param.value,
-            param.name,
-            param.type,
-            param.position,
-          ]);
+          // If the parameter exists, update its value
+          if (existingParam) {
+            existingParam.value = param.value;
+            // Using the insert function, assuming it has UPSERT behavior
+            await this.insertEventParameters(hash, [existingParam]);
+          } else {
+            // Otherwise, insert the new parameter
+            await this.insertEventParameters(hash, [param]);
+          }
         }
-      }
 
-      this.logger.info('Successfully updated event with decoded method', hash, decodedData);
+        this.logger.info('Successfully updated event with decoded data', hash, decodedData);
+      }
     } catch (error) {
-      this.logger.error('Error updating event with decoded method:', error);
+      this.logger.error('Error updating event with decoded data:', error);
       throw error;
     }
-  };
+  }
 
   public async fetchNonDecodedEvents(): Promise<any[]> {
     // TODO: type
     try {
       // SQL to fetch the non-decoded events with their input
       const sql = `
-      -- Fetching events with blank methodId but with transaction data
-      (SELECT e1.*, ep1.value
-        FROM event e1
-        JOIN event_parameter ep1 ON e1.id = ep1."eventId"
-        WHERE e1."methodId" IS NULL AND ep1.value IS NOT NULL)
-
-      UNION
-
-      -- Fetching events with at least one blank parameter value
-      (SELECT e2.*, ep2.value
-        FROM event e2
-        JOIN event_parameter ep2 ON e2.id = ep2."eventId"
-        JOIN event_parameter ep ON e2.id = ep."eventId"
-        WHERE ep.value = '')
-
+      -- Fetching events with blank eventName and with non-null parameter value
+      SELECT e1.*, ep1.value
+      FROM event e1
+      JOIN event_parameter ep1 ON e1.id = ep1."eventId"
+      WHERE e1."eventName" IS NULL AND ep1.value IS NOT NULL
+      
       ORDER BY id;
       `;
       // Execute the query

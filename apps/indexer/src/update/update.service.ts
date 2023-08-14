@@ -40,7 +40,7 @@ function isContractInterfaceTable(interfaceItem: any): interfaceItem is Contract
 
 const DEFAULT_DATE = new Date(0);
 const LAST_UPDATE_TIMESTAMP_KEY = 'last_update_timestamp';
-const VERBOSE = true;
+const VERBOSE = false;
 
 const RETRY_CONFIG = {
   maxRetries: 3,
@@ -55,8 +55,7 @@ const cronString = ['production', 'staging', 'prod'].includes(process.env.NODE_E
 @Injectable()
 export class UpdateService {
   private readonly logger: winston.Logger;
-
-  private isUpdateRunning = false; // New locking mechanism
+  private isUpdateRunning = false;
 
   constructor(
     protected readonly structureDB: LuksoStructureDbService,
@@ -68,7 +67,7 @@ export class UpdateService {
     this.logger = this.loggerService.getChildLogger('UpdateService');
   }
 
-  private async fetchAllNonDecoded(): Promise<DecodingQueue> {
+  private async fetchUndecodedItems(): Promise<DecodingQueue> {
     const [nonDecodedTransactions, nonDecodedWrappedTransaction, nonDecodedEvents] =
       await Promise.all([
         retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedTransactionsWithInput() }),
@@ -79,10 +78,11 @@ export class UpdateService {
     return { nonDecodedTransactions, nonDecodedWrappedTransaction, nonDecodedEvents };
   }
 
-  private async handleNewInterfaces(
+  private async processAndDecodeNewInterfaces(
     newInterfaces: any[],
     interfaceType: InterfaceType,
   ): Promise<boolean> {
+    let result: boolean[] = [];
     if (!newInterfaces.length) {
       this.logger.info(`No new interfaces of type ${interfaceType} found.`);
       return true;
@@ -92,11 +92,21 @@ export class UpdateService {
     this.logger.info(`Found ${newInterfaces.length} new ${interfaceType} ${label}`);
 
     try {
-      const allNonDecoded = await this.fetchAllNonDecoded();
+      //get all the non decoded transactions, wrapped transactions and events
+      const allNonDecoded = await this.fetchUndecodedItems();
 
-      for (const interfaceItem of newInterfaces) {
-        await this.handleInterfaceByType(interfaceItem, interfaceType, allNonDecoded);
-      }
+      //iterate over all the items and attempt to decode them with the new interfaces
+      result = await Promise.all(
+        newInterfaces.map((interfaceItem) =>
+          this.handleInterfaceByType(interfaceItem, interfaceType, allNonDecoded),
+        ),
+      );
+
+      this.logger.info(
+        `Successfully decoded ${result.filter((r) => r).length} of ${
+          result.length
+        } new ${interfaceType} ${label}`,
+      );
 
       return true;
     } catch (error) {
@@ -113,26 +123,17 @@ export class UpdateService {
     try {
       switch (interfaceType) {
         case InterfaceType.METHOD:
-          if (isMethodInterfaceTable(interfaceItem)) {
-            await this.handleMethodInterface(interfaceItem, allNonDecoded);
-            return true;
-          }
-          return false;
-
+          return isMethodInterfaceTable(interfaceItem)
+            ? this.handleMethodInterface(interfaceItem, allNonDecoded)
+            : false;
         case InterfaceType.ERC:
-          if (isErc725YSchemaTable(interfaceItem)) {
-            await this.handleErcInterface(interfaceItem);
-            return true;
-          }
-          return false;
-
+          return isErc725YSchemaTable(interfaceItem)
+            ? this.handleErcInterface(interfaceItem)
+            : false;
         case InterfaceType.CONTRACT:
-          if (isContractInterfaceTable(interfaceItem)) {
-            await this.handleContractInterface(interfaceItem);
-            return true;
-          }
-          return false;
-
+          return isContractInterfaceTable(interfaceItem)
+            ? this.handleContractInterface(interfaceItem)
+            : false;
         default:
           this.logger.error(`Unsupported interface type: ${interfaceType}`);
           return false;
@@ -142,81 +143,109 @@ export class UpdateService {
       return false;
     }
   }
+  private async decodeTransaction(tx: any) {
+    if (!tx?.input) {
+      this.logger.warn(`Transaction with hash ${tx?.hash} has no input.`);
+      return null;
+    }
+    const result = await this.decodingService.decodeTransactionInput(tx.input);
+    if (!result) return null; // No interfaces in the db were matched
+
+    this.logger.info(
+      `Decoded transaction with hash ${tx?.hash} using methodId ${result?.methodName}`,
+    );
+    return result;
+  }
+
+  private async decodeEvent(tx: any): Promise<any> {
+    const { data, address, methodId, id } = tx;
+    const topics: string[] = [];
+
+    if (tx?.topic0) topics.push(tx.topic0);
+    if (tx?.topic1) topics.push(tx.topic1);
+    if (tx?.topic2) topics.push(tx.topic2);
+    if (tx?.topic3) topics.push(tx.topic3);
+
+    const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
+    const eventName = eventInterface?.name;
+
+    const decodedParameters = await this.decodingService.decodeLogParameters(data, topics);
+
+    return decodedParameters && eventName ? { eventName, parameters: decodedParameters } : null;
+  }
+
+  private async processEvents(items: any[]): Promise<void> {
+    const processedHashes = new Set();
+
+    for (const tx of items) {
+      try {
+        const hash = tx?.transactionHash || tx?.hash;
+        if (processedHashes.has(hash)) continue;
+        processedHashes.add(hash);
+
+        const decodedData = await this.decodeEvent(tx);
+        if (!decodedData) continue;
+
+        this.logger.info(
+          `Event with hash ${hash} has been decoded. Matched interface/schema ${
+            tx.id
+          } is associated with the event '${
+            decodedData.eventName
+          }', with parameters ${decodedData.parameters.map((param) => `${param.name} `)}.`,
+        );
+        this.luksoDataDB.updateEventWithDecodedData(hash, decodedData);
+      } catch (error) {
+        this.logger.error(`Error processing Event ${tx?.hash}:`, error);
+      }
+    }
+  }
+
+  private async processTransactions(items: any[], type: string): Promise<void> {
+    const processedHashes = new Set();
+
+    for (const tx of items) {
+      try {
+        const hash = tx?.transactionHash || tx?.hash;
+        if (processedHashes.has(hash)) continue;
+        processedHashes.add(hash);
+
+        const decodedData = await this.decodeTransaction(tx);
+        if (!decodedData?.methodName) continue;
+
+        this.logger.info(
+          `${type} with hash ${hash} has been decoded. Matched interface/schema ${
+            tx.id
+          } is associated with the method '${
+            decodedData.methodName
+          }', with parameters ${decodedData.parameters.map(
+            (param: DecodedParameter) => `${param.name} `,
+          )}.`,
+        );
+
+        this.luksoDataDB.updateTransactionWithDecodedMethod(hash, {
+          parameters: [],
+          methodName: decodedData.methodName,
+        });
+      } catch (error) {
+        this.logger.error(`Error processing ${type} ${tx?.hash}:`, error);
+      }
+    }
+  }
 
   private async handleMethodInterface(
     interfaceItem: MethodInterfaceTable,
     queue: DecodingQueue,
   ): Promise<boolean> {
     try {
-      // Decoding helper functions
-      const decodeTransaction = async (tx: any) => {
-        return this.decodingService.decodeTransactionInput(tx?.input);
-      };
-
-      const decodeEvent = async (tx: any) => {
-        const topics = tx?.topics || [];
-        const data = tx?.data || '';
-        return this.decodingService.decodeLogParameters(topics, data);
-      };
-
-      const processItems = async (
-        items: any[],
-        type: string,
-        updateFunction: (
-          hash: any,
-          data: { parameters: DecodedParameter[]; methodName: string },
-        ) => any,
-      ): Promise<void> => {
-        for (const tx of items) {
-          const hash = tx?.transactionHash || tx?.hash;
-
-          let decodedData: any;
-          if (type === 'Event') {
-            decodedData = await decodeEvent(tx);
-            if (decodedData) {
-              this.logger.info(
-                `${type} with hash ${hash} has been decoded. Matched interface/schema ${interfaceItem.id} is associated with the event ${decodedData}.`,
-              );
-              await updateFunction(hash, { parameters: decodedData, methodName: '' });
-            }
-          } else {
-            // decodedData = await decodeTransaction(tx);
-            // if (decodedData?.methodName) {
-            //   this.logger.info(
-            //     `${type} with hash ${hash} has been decoded. Matched interface/schema ${interfaceItem.id} is associated with the methodName ${decodedData.methodName}.`,
-            //   );
-            //   await updateFunction(hash, { parameters: [], methodName: decodedData.methodName });
-            // }
-          }
-
-          // Log if VERBOSE is enabled and decoding was unsuccessful
-          if (!decodedData && VERBOSE) {
-            this.logger.debug(
-              `Unable to decode ${type} ${tx.methodId} using methodId ${interfaceItem.id}`,
-            );
-          }
-        }
-      };
+      const { nonDecodedWrappedTransaction, nonDecodedTransactions, nonDecodedEvents } = queue;
 
       await Promise.all([
-        processItems(
-          queue.nonDecodedTransactions,
-          'Transaction',
-          this.luksoDataDB.updateTransactionWithDecodedMethod.bind(this.luksoDataDB),
-        ),
-        processItems(
-          queue.nonDecodedWrappedTransaction,
-          'Wrapped transaction',
-          this.luksoDataDB.updateWrappedTransactionWithDecodedMethod.bind(this.luksoDataDB),
-        ),
-        processItems(
-          queue.nonDecodedEvents,
-          'Event',
-          this.luksoDataDB.updateEventWithDecodedMethod.bind(this.luksoDataDB),
-        ),
+        this.processTransactions(nonDecodedTransactions, 'Transaction'),
+        this.processTransactions(nonDecodedWrappedTransaction, 'Wrapped transaction'),
+        this.processEvents(nonDecodedEvents),
       ]);
 
-      return true; // Assuming successful execution of handleMethodInterface
+      return true;
     } catch (error) {
       this.logger.error('Error in handleMethodInterface:', error);
       return false;
@@ -225,25 +254,28 @@ export class UpdateService {
 
   private async handleErcInterface(interfaceItem: ERC725YSchemaTable) {
     // Insert the ERC schema into the database
+    return true;
   }
 
   private async handleContractInterface(interfaceItem: ContractInterfaceTable) {
     // Handle the contract interface as required
+    return true;
   }
 
+  // This function is called for each interface type (method, erc, contract) in the cron job below (runUpdate)
   private async processInterfaceType(
     interfaceType: InterfaceType,
     last_update_timestamp: Date,
   ): Promise<boolean> {
     try {
+      //Get all the new interfaces from the database
       const newInterfaces = await retryOperation({
         ...RETRY_CONFIG,
         fn: () => this.structureDB.fetchNewInterfaces(last_update_timestamp, interfaceType),
       });
-      const result = await this.handleNewInterfaces(newInterfaces, interfaceType);
-      return result;
-    } catch (e) {
-      this.logger.error(`Error fetching new interfaces for type ${interfaceType}: `, e);
+      return await this.processAndDecodeNewInterfaces(newInterfaces, interfaceType);
+    } catch (error) {
+      this.logger.error(`Error fetching new interfaces for type ${interfaceType}: `, error);
       return false;
     }
   }
@@ -254,14 +286,11 @@ export class UpdateService {
         fn: () => this.redisConnectionService.get(LAST_UPDATE_TIMESTAMP_KEY),
       });
       this.logger.info('Last update timestamp: ' + reply);
-      if (reply) {
-        const potentialDate = new Date(reply);
-        return !isNaN(potentialDate.getTime()) ? potentialDate : DEFAULT_DATE;
-      }
-    } catch (e) {
-      this.logger.error(`Error fetching ${LAST_UPDATE_TIMESTAMP_KEY} from redis: `, e);
+      return reply ? new Date(reply) : DEFAULT_DATE;
+    } catch (error) {
+      this.logger.error(`Error fetching ${LAST_UPDATE_TIMESTAMP_KEY} from redis: `, error);
+      return DEFAULT_DATE;
     }
-    return DEFAULT_DATE;
   }
 
   private async setLastUpdateTimestamp(timestamp: Date): Promise<void> {
@@ -271,8 +300,8 @@ export class UpdateService {
         fn: () => this.redisConnectionService.set(LAST_UPDATE_TIMESTAMP_KEY, formattedTimestamp),
       });
       this.logger.info(`Updated ${LAST_UPDATE_TIMESTAMP_KEY} in Redis: ` + formattedTimestamp);
-    } catch (e) {
-      this.logger.error(`Error setting ${LAST_UPDATE_TIMESTAMP_KEY} in redis: `, e);
+    } catch (error) {
+      this.logger.error(`Error setting ${LAST_UPDATE_TIMESTAMP_KEY} in redis: `, error);
     }
   }
 
@@ -280,25 +309,23 @@ export class UpdateService {
   async runUpdate() {
     if (this.isUpdateRunning) {
       this.logger.warn('Update is already in progress.');
-      return; // Lock the update to prevent multiple instances running at once
+      return;
     }
 
     try {
-      this.logger.info('Starting update');
       this.isUpdateRunning = true;
-      const last_update_timestamp = await this.fetchLastUpdateTimestamp();
-
+      const lastUpdateTimestamp = await this.fetchLastUpdateTimestamp();
       await Promise.all(
-        Object.values(InterfaceType).map(async (interfaceType) => {
-          await this.processInterfaceType(interfaceType, last_update_timestamp);
-        }),
+        Object.values(InterfaceType).map((interfaceType) =>
+          this.processInterfaceType(interfaceType, lastUpdateTimestamp),
+        ),
       );
       await this.setLastUpdateTimestamp(new Date());
       this.logger.info('Update complete');
-    } catch (e) {
-      this.logger.error('Error running update: ', e);
+    } catch (error) {
+      this.logger.error('Error running update: ', error);
+    } finally {
+      this.isUpdateRunning = false;
     }
-
-    this.isUpdateRunning = false;
   }
 }

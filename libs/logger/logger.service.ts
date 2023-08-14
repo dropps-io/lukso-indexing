@@ -83,14 +83,16 @@ export class LoggerService {
    * @param service
    */
   public getChildLogger(service: string): WinstonLogger {
-    const allowedService = process.env.ONLY_LOG_SERVICE;
+    const allowedServices = process.env.ONLY_LOG_SERVICE?.split(',').map((s) => s.trim());
 
-    // If ONLY_LOG_SERVICE is set and doesn't match the current service, return the dummy logger
-    if (allowedService && allowedService !== service) {
+    // If ONLY_LOG_SERVICE is set and the current service is not in the allowed list, return the dummy logger
+    if (allowedServices && !allowedServices.includes(service)) {
       return this.dummyLogger;
-    } else if (allowedService && allowedService === service) {
+    } else if (allowedServices && allowedServices.includes(service)) {
       this.logger.info(
-        `Only logging for service ${allowedService}, other logs are suppressed and not written to file.`,
+        `Only logging for services ${allowedServices.join(
+          ', ',
+        )}, other logs are suppressed and not written to file.`,
       );
     }
 
