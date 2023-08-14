@@ -21,26 +21,12 @@ enum InterfaceType {
 
 interface DecodingQueue {
   nonDecodedTransactions: any[];
-  nonDecodedWrappedTransaction: any[];
+  nonDecodedWrappedTransactions: any[];
   nonDecodedEvents: any[];
-}
-
-// Type guards
-function isMethodInterfaceTable(interfaceItem: any): interfaceItem is MethodInterfaceTable {
-  return 'id' in interfaceItem && typeof interfaceItem.id === 'string';
-}
-
-function isErc725YSchemaTable(interfaceItem: any): interfaceItem is ERC725YSchemaTable {
-  return 'someUniqueProperty' in interfaceItem; // Replace with a unique property from ERC725YSchemaTable
-}
-
-function isContractInterfaceTable(interfaceItem: any): interfaceItem is ContractInterfaceTable {
-  return 'someUniqueProperty' in interfaceItem; // Replace with a unique property from ContractInterfaceTable
 }
 
 const DEFAULT_DATE = new Date(0);
 const LAST_UPDATE_TIMESTAMP_KEY = 'last_update_timestamp';
-const VERBOSE = false;
 
 const RETRY_CONFIG = {
   maxRetries: 3,
@@ -68,14 +54,14 @@ export class UpdateService {
   }
 
   private async fetchUndecodedItems(): Promise<DecodingQueue> {
-    const [nonDecodedTransactions, nonDecodedWrappedTransaction, nonDecodedEvents] =
+    const [nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents] =
       await Promise.all([
         retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedTransactionsWithInput() }),
         retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedWrapped() }),
         retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedEvents() }),
       ]);
 
-    return { nonDecodedTransactions, nonDecodedWrappedTransaction, nonDecodedEvents };
+    return { nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents };
   }
 
   private async processAndDecodeNewInterfaces(
@@ -123,17 +109,12 @@ export class UpdateService {
     try {
       switch (interfaceType) {
         case InterfaceType.METHOD:
-          return isMethodInterfaceTable(interfaceItem)
-            ? this.handleMethodInterface(interfaceItem, allNonDecoded)
-            : false;
+          return this.handleMethodInterface(allNonDecoded, interfaceType, interfaceItem);
         case InterfaceType.ERC:
-          return isErc725YSchemaTable(interfaceItem)
-            ? this.handleErcInterface(interfaceItem)
-            : false;
+          return this.handleErcInterface(allNonDecoded, interfaceType, interfaceItem);
         case InterfaceType.CONTRACT:
-          return isContractInterfaceTable(interfaceItem)
-            ? this.handleContractInterface(interfaceItem)
-            : false;
+          return this.handleContractInterface(allNonDecoded, interfaceType, interfaceItem);
+
         default:
           this.logger.error(`Unsupported interface type: ${interfaceType}`);
           return false;
@@ -149,16 +130,13 @@ export class UpdateService {
       return null;
     }
     const result = await this.decodingService.decodeTransactionInput(tx.input);
-    if (!result) return null; // No interfaces in the db were matched
+    if (!result) return null;
 
-    this.logger.info(
-      `Decoded transaction with hash ${tx?.hash} using methodId ${result?.methodName}`,
-    );
     return result;
   }
 
   private async decodeEvent(tx: any): Promise<any> {
-    const { data, address, methodId, id } = tx;
+    const { data, methodId, id } = tx;
     const topics: string[] = [];
 
     if (tx?.topic0) topics.push(tx.topic0);
@@ -168,13 +146,21 @@ export class UpdateService {
 
     const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
     const eventName = eventInterface?.name;
+    if (!eventName) {
+      this.logger.warn(`Event does not have a name associated with it: ${id}`);
+      return null;
+    }
 
     const decodedParameters = await this.decodingService.decodeLogParameters(data, topics);
 
     return decodedParameters && eventName ? { eventName, parameters: decodedParameters } : null;
   }
 
-  private async processEvents(items: any[]): Promise<void> {
+  private async processEvents(
+    items: any[],
+    interfaceType: string,
+    interfaceItem: MethodInterfaceTable | ERC725YSchemaTable | ContractInterfaceTable,
+  ): Promise<void> {
     const processedHashes = new Set();
 
     for (const tx of items) {
@@ -184,7 +170,23 @@ export class UpdateService {
         processedHashes.add(hash);
 
         const decodedData = await this.decodeEvent(tx);
-        if (!decodedData) continue;
+        if (!decodedData?.eventName) continue;
+        let matchedInterface;
+        if (interfaceType === InterfaceType.ERC) {
+          // Look for the event in ERC-725Y schema using the key
+          matchedInterface =
+            tx?.key === (interfaceItem as ERC725YSchemaTable).key ? interfaceItem : undefined;
+          if (!matchedInterface) {
+            this.logger.warn(`Event does not have a key associated with it: ${tx.id}`);
+            continue;
+          }
+        } else {
+          matchedInterface = interfaceItem[decodedData.eventName];
+        }
+
+        if (matchedInterface) {
+          this.luksoDataDB.updateEventWithDecodedData(hash, decodedData);
+        }
 
         this.logger.info(
           `Event with hash ${hash} has been decoded. Matched interface/schema ${
@@ -193,14 +195,17 @@ export class UpdateService {
             decodedData.eventName
           }', with parameters ${decodedData.parameters.map((param) => `${param.name} `)}.`,
         );
-        this.luksoDataDB.updateEventWithDecodedData(hash, decodedData);
       } catch (error) {
         this.logger.error(`Error processing Event ${tx?.hash}:`, error);
       }
     }
   }
-
-  private async processTransactions(items: any[], type: string): Promise<void> {
+  private async processTransactions(
+    items: any[],
+    type: string,
+    interfaceType: string,
+    interfaceItem: MethodInterfaceTable | ERC725YSchemaTable | ContractInterfaceTable,
+  ): Promise<void> {
     const processedHashes = new Set();
 
     for (const tx of items) {
@@ -212,6 +217,27 @@ export class UpdateService {
         const decodedData = await this.decodeTransaction(tx);
         if (!decodedData?.methodName) continue;
 
+        let matchedInterface;
+        if (interfaceType === InterfaceType.ERC) {
+          // Look for the transaction in ERC-725Y schema using the key
+          matchedInterface =
+            tx?.key === (interfaceItem as ERC725YSchemaTable).key ? interfaceItem : undefined;
+          if (!matchedInterface) {
+            this.logger.warn(`Transaction does not have a key associated with it: ${tx.id}`);
+            continue;
+          }
+        } else {
+          matchedInterface = interfaceItem[decodedData.methodName];
+        }
+
+        // If matchedInterface is found, it means the transaction can be decoded by the interfaceItem
+        if (matchedInterface) {
+          this.luksoDataDB.updateTransactionWithDecodedMethod(hash, {
+            parameters: [],
+            methodName: decodedData.methodName,
+          });
+        }
+
         this.logger.info(
           `${type} with hash ${hash} has been decoded. Matched interface/schema ${
             tx.id
@@ -221,11 +247,6 @@ export class UpdateService {
             (param: DecodedParameter) => `${param.name} `,
           )}.`,
         );
-
-        this.luksoDataDB.updateTransactionWithDecodedMethod(hash, {
-          parameters: [],
-          methodName: decodedData.methodName,
-        });
       } catch (error) {
         this.logger.error(`Error processing ${type} ${tx?.hash}:`, error);
       }
@@ -233,16 +254,27 @@ export class UpdateService {
   }
 
   private async handleMethodInterface(
-    interfaceItem: MethodInterfaceTable,
     queue: DecodingQueue,
+    interfaceType: string,
+    interfaceItem: MethodInterfaceTable,
   ): Promise<boolean> {
     try {
-      const { nonDecodedWrappedTransaction, nonDecodedTransactions, nonDecodedEvents } = queue;
+      const { nonDecodedWrappedTransactions, nonDecodedTransactions, nonDecodedEvents } = queue;
 
       await Promise.all([
-        this.processTransactions(nonDecodedTransactions, 'Transaction'),
-        this.processTransactions(nonDecodedWrappedTransaction, 'Wrapped transaction'),
-        this.processEvents(nonDecodedEvents),
+        this.processTransactions(
+          nonDecodedTransactions,
+          'Transaction',
+          interfaceType,
+          interfaceItem,
+        ),
+        this.processTransactions(
+          nonDecodedWrappedTransactions,
+          'Wrapped transaction',
+          interfaceType,
+          interfaceItem,
+        ),
+        this.processEvents(nonDecodedEvents, interfaceType, interfaceItem),
       ]);
 
       return true;
@@ -252,14 +284,66 @@ export class UpdateService {
     }
   }
 
-  private async handleErcInterface(interfaceItem: ERC725YSchemaTable) {
-    // Insert the ERC schema into the database
-    return true;
+  private async handleErcInterface(
+    queue: DecodingQueue,
+    interfaceType: string,
+    interfaceItem: ERC725YSchemaTable,
+  ): Promise<boolean> {
+    try {
+      const { nonDecodedWrappedTransactions, nonDecodedTransactions, nonDecodedEvents } = queue;
+
+      await Promise.all([
+        this.processTransactions(
+          nonDecodedTransactions,
+          'Transaction',
+          interfaceType,
+          interfaceItem,
+        ),
+        this.processTransactions(
+          nonDecodedWrappedTransactions,
+          'Wrapped transaction',
+          interfaceType,
+          interfaceItem,
+        ),
+        this.processEvents(nonDecodedEvents, interfaceType, interfaceItem),
+      ]);
+
+      return true;
+    } catch (error) {
+      this.logger.error('Error in handleMethodInterface:', error);
+      return false;
+    }
   }
 
-  private async handleContractInterface(interfaceItem: ContractInterfaceTable) {
-    // Handle the contract interface as required
-    return true;
+  private async handleContractInterface(
+    queue: DecodingQueue,
+    interfaceType: string,
+    interfaceItem: ContractInterfaceTable,
+  ): Promise<boolean> {
+    try {
+      const { nonDecodedWrappedTransactions, nonDecodedTransactions, nonDecodedEvents } = queue;
+
+      await Promise.all([
+        this.processTransactions(
+          nonDecodedTransactions,
+          'Transaction',
+          interfaceType,
+          interfaceItem,
+        ),
+        this.processTransactions(
+          nonDecodedWrappedTransactions,
+          'Wrapped transaction',
+          interfaceType,
+          interfaceItem,
+        ),
+        this.processEvents(nonDecodedEvents, interfaceType, interfaceItem),
+      ]);
+
+      return true;
+    } catch (error) {
+      this.logger.error('Error in handleMethodInterface:', error);
+      return false;
+    }
   }
 
   // This function is called for each interface type (method, erc, contract) in the cron job below (runUpdate)
@@ -268,11 +352,29 @@ export class UpdateService {
     last_update_timestamp: Date,
   ): Promise<boolean> {
     try {
-      //Get all the new interfaces from the database
+      // Define the function to retrieve interfaces based on the type
+      let fetchInterfaceFn: () => Promise<any>;
+
+      switch (interfaceType) {
+        case InterfaceType.ERC:
+          fetchInterfaceFn = () => this.structureDB.getErc725Schemas(last_update_timestamp);
+          break;
+        case InterfaceType.CONTRACT:
+          fetchInterfaceFn = () => this.structureDB.getContractInterfaces(last_update_timestamp);
+          break;
+        case InterfaceType.METHOD:
+          fetchInterfaceFn = () => this.structureDB.getMethodInterfaces(last_update_timestamp);
+          break;
+        default:
+          throw new Error(`Unsupported interface type: ${interfaceType}`);
+      }
+
+      // Fetch the new interfaces with the retry operation
       const newInterfaces = await retryOperation({
         ...RETRY_CONFIG,
-        fn: () => this.structureDB.fetchNewInterfaces(last_update_timestamp, interfaceType),
+        fn: fetchInterfaceFn,
       });
+
       return await this.processAndDecodeNewInterfaces(newInterfaces, interfaceType);
     } catch (error) {
       this.logger.error(`Error fetching new interfaces for type ${interfaceType}: `, error);
