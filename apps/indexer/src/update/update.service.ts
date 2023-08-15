@@ -8,10 +8,10 @@ import { LoggerService } from '@libs/logger/logger.service';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
+import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 
 import { RedisConnectionService } from '../redis-connection/redis-connection.service';
 import { DecodingService } from '../decoding/decoding.service';
-import { DecodedParameter } from '../decoding/types/decoded-parameter';
 
 enum InterfaceType {
   METHOD = 'method',
@@ -23,6 +23,11 @@ interface DecodingQueue {
   nonDecodedTransactions: any[];
   nonDecodedWrappedTransactions: any[];
   nonDecodedEvents: any[];
+}
+
+interface Cache<T> {
+  timestamp: number;
+  data: T;
 }
 
 const DEFAULT_DATE = new Date(0);
@@ -38,10 +43,15 @@ const cronString = ['production', 'staging', 'prod'].includes(process.env.NODE_E
   ? '0 */12 * * *'
   : '*/10 * * * * *';
 
+const cacheIntervalFromEnv = Number(process.env.CACHE_REFRESH_INTERVAL_IN_MS);
+
 @Injectable()
 export class UpdateService {
   private readonly logger: winston.Logger;
   private isUpdateRunning = false;
+
+  private cacheDuration: number = !isNaN(cacheIntervalFromEnv) ? cacheIntervalFromEnv : 60 * 1000; // Default to 60 seconds if env variable isn't a valid number
+  private decodedItemsCache?: Cache<DecodingQueue>;
 
   constructor(
     protected readonly structureDB: LuksoStructureDbService,
@@ -54,6 +64,16 @@ export class UpdateService {
   }
 
   private async fetchUndecodedItems(): Promise<DecodingQueue> {
+    const currentTime = Date.now();
+
+    // Check if cache exists and is valid
+    if (
+      this.decodedItemsCache &&
+      currentTime - this.decodedItemsCache.timestamp < this.cacheDuration
+    ) {
+      return this.decodedItemsCache.data;
+    }
+
     const [nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents] =
       await Promise.all([
         retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedTransactionsWithInput() }),
@@ -61,7 +81,15 @@ export class UpdateService {
         retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedEvents() }),
       ]);
 
-    return { nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents };
+    const result = { nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents };
+
+    // Update cache
+    this.decodedItemsCache = {
+      timestamp: currentTime,
+      data: result,
+    };
+
+    return result;
   }
 
   private async processAndDecodeNewInterfaces(
@@ -171,26 +199,26 @@ export class UpdateService {
 
         const decodedData = await this.decodeEvent(tx);
         if (!decodedData?.eventName) continue;
-        let matchedInterface;
-        if (interfaceType === InterfaceType.ERC) {
-          // Look for the event in ERC-725Y schema using the key
-          matchedInterface =
-            tx?.key === (interfaceItem as ERC725YSchemaTable).key ? interfaceItem : undefined;
-          if (!matchedInterface) {
-            this.logger.warn(`Event does not have a key associated with it: ${tx.id}`);
-            continue;
-          }
-        } else {
-          matchedInterface = interfaceItem[decodedData.eventName];
-        }
 
-        if (matchedInterface) {
-          this.luksoDataDB.updateEventWithDecodedData(hash, decodedData);
+        const matchedInterface = this.getMatchedInterface(
+          tx,
+          { methodName: decodedData.eventName, ...decodedData },
+          interfaceItem,
+          interfaceType,
+        );
+
+        if (!matchedInterface) continue;
+
+        const id = await this.luksoDataDB.updateEventName(hash, decodedData.eventName);
+        if (id && decodedData.parameters) {
+          this.luksoDataDB.insertEventParameters(hash, decodedData.parameters, 'do nothing');
+        } else {
+          this.logger.warn(`Event with hash ${hash} has no parameters.`);
         }
 
         this.logger.info(
           `Event with hash ${hash} has been decoded. Matched interface/schema ${
-            tx.id
+            matchedInterface.id
           } is associated with the event '${
             decodedData.eventName
           }', with parameters ${decodedData.parameters.map((param) => `${param.name} `)}.`,
@@ -200,6 +228,7 @@ export class UpdateService {
       }
     }
   }
+
   private async processTransactions(
     items: any[],
     type: string,
@@ -209,48 +238,86 @@ export class UpdateService {
     const processedHashes = new Set();
 
     for (const tx of items) {
-      try {
-        const hash = tx?.transactionHash || tx?.hash;
-        if (processedHashes.has(hash)) continue;
-        processedHashes.add(hash);
+      const hash = tx?.transactionHash || tx?.hash;
 
+      if (processedHashes.has(hash)) continue;
+      processedHashes.add(hash);
+
+      try {
         const decodedData = await this.decodeTransaction(tx);
         if (!decodedData?.methodName) continue;
 
-        let matchedInterface;
-        if (interfaceType === InterfaceType.ERC) {
-          // Look for the transaction in ERC-725Y schema using the key
-          matchedInterface =
-            tx?.key === (interfaceItem as ERC725YSchemaTable).key ? interfaceItem : undefined;
-          if (!matchedInterface) {
-            this.logger.warn(`Transaction does not have a key associated with it: ${tx.id}`);
-            continue;
-          }
-        } else {
-          matchedInterface = interfaceItem[decodedData.methodName];
+        const matchedInterface = this.getMatchedInterface(
+          tx,
+          decodedData,
+          interfaceItem,
+          interfaceType,
+        );
+
+        if (!matchedInterface) continue;
+
+        const { methodName, parameters } = decodedData;
+
+        if (interfaceType === 'Wrapped transaction') {
+          const wrappedTransaction = this.prepareWrappedTransaction(tx, decodedData);
+          const { id } = await this.luksoDataDB.insertWrappedTx(wrappedTransaction);
+          if (id) this.luksoDataDB.insertWrappedTxParameters(id, parameters, 'do nothing');
+        } else if (interfaceType === 'Transaction') {
+          this.luksoDataDB.insertTransactionName(hash, methodName);
+          this.luksoDataDB.insertTransactionParameters(hash, parameters, 'do nothing');
         }
 
-        // If matchedInterface is found, it means the transaction can be decoded by the interfaceItem
-        if (matchedInterface) {
-          this.luksoDataDB.updateTransactionWithDecodedMethod(hash, {
-            parameters: [],
-            methodName: decodedData.methodName,
-          });
-        }
-
-        this.logger.info(
-          `${type} with hash ${hash} has been decoded. Matched interface/schema ${
-            tx.id
-          } is associated with the method '${
-            decodedData.methodName
-          }', with parameters ${decodedData.parameters.map(
-            (param: DecodedParameter) => `${param.name} `,
+        this.logger.debug(
+          `${type} with hash ${hash} decoded. Interface/schema ${
+            matchedInterface.id
+          } is associated with the method '${methodName}' with parameters ${parameters.map(
+            (param) => `${param.name} `,
           )}.`,
         );
       } catch (error) {
         this.logger.error(`Error processing ${type} ${tx?.hash}:`, error);
       }
     }
+  }
+
+  private getMatchedInterface(
+    tx: any,
+    decodedData: any,
+    interfaceItem: MethodInterfaceTable | ERC725YSchemaTable | ContractInterfaceTable,
+    interfaceType: string,
+  ): any | undefined {
+    if (interfaceType === InterfaceType.ERC) {
+      const ercItem = interfaceItem as ERC725YSchemaTable;
+      return tx?.key === ercItem.key && ercItem.name === decodedData.methodName
+        ? ercItem
+        : undefined;
+    }
+    // if it has a version, it's a contract interface, otherwise it's a method interface (type of event or function)
+    if (Object.prototype.hasOwnProperty.call(interfaceItem, 'type')) {
+      const methodInterface = interfaceItem as MethodInterfaceTable;
+      return methodInterface.name === decodedData.methodName ? methodInterface : undefined;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(interfaceItem, 'version')) {
+      const contractInterface = interfaceItem as ContractInterfaceTable;
+      return contractInterface.name === decodedData.methodName ? contractInterface : undefined;
+    }
+
+    return undefined;
+  }
+
+  private prepareWrappedTransaction(tx: any, decodedData: any): Omit<WrappedTxTable, 'id'> {
+    const { methodId, methodName } = decodedData;
+    return {
+      transactionHash: tx?.transactionHash || tx?.hash,
+      parentId: tx.parentId || null,
+      blockNumber: tx.blockNumber,
+      from: tx.from,
+      to: tx.to,
+      value: tx.value || '0',
+      methodId: methodId,
+      methodName: methodName,
+    };
   }
 
   private async handleMethodInterface(

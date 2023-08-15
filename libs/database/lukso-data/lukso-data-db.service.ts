@@ -24,28 +24,7 @@ import { WrappedTxTable } from './entities/wrapped-tx.table';
 import { WrappedTxParameterTable } from './entities/wrapped-tx-parameter.table';
 import { WrappedTxInputTable } from './entities/wrapped-tx-input.table';
 
-type TransactionWithInput = {
-  transactionHash: string;
-  input: string;
-  hash: string;
-  nonce: number;
-  blockHash: string;
-  blockNumber: number;
-  date: string;
-  transactionIndex: number;
-  methodId: string;
-  methodName?: string;
-  from: string;
-  to: string;
-  value: string;
-  gasPrice: string;
-  gas: number;
-};
-
-// type DecodedMethod = {
-//   methodName: string;
-//   parameters: DecodedParameter[];
-// };
+type TransactionWithInput = TransactionTable & { input: string };
 
 type DecodedData = {
   parameters: DecodedParameter[];
@@ -560,12 +539,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
   }
 
-  public async updateTransactionWithDecodedMethod(
-    transactionHash: string,
-    decodedMethod: DecodedData,
-  ): Promise<void> {
-    const { methodName, parameters } = decodedMethod;
-    //loop through all the new parameters and update the transactionParameter table
+  public async insertTransactionName(transactionHash: string, methodName: string): Promise<void> {
     await this.executeQuery(
       `
     UPDATE ${DB_DATA_TABLE.TRANSACTION}
@@ -574,48 +548,48 @@ export class LuksoDataDbService implements OnModuleDestroy {
   `,
       [methodName, transactionHash],
     );
-    this.insertTransactionParameters(transactionHash, parameters, 'do nothing');
   }
 
-  public updateWrappedTransactionWithDecodedMethod = (hash, decodedData) => {
-    //TODO: implement this
-    console.log('updateWrappedTransactionWithDecodedMethod', hash, decodedData);
-  };
-  //TransactionParameter and TransactionInput table functions
+  // Retrieve a wrapped transaction based on its hash
+  public async getWrappedTransactionByHash(
+    transactionHash: string,
+  ): Promise<WrappedTxTable | null> {
+    const query = `
+      SELECT * FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION}
+      WHERE "transactionHash" = $1
+  `;
+
+    const result = await this.executeQuery<WrappedTxTable>(query, [transactionHash]);
+
+    // Return the retrieved wrapped transaction or null if none found
+    return result.length ? result[0] : null;
+  }
+
+  public async insertWrappedTransactionName(
+    hash: string,
+    methodId: string,
+    methodName: string,
+  ): Promise<void> {
+    await this.executeQuery(
+      `
+    UPDATE ${DB_DATA_TABLE.WRAPPED_TRANSACTION}
+    SET "methodId" = $1, "methodName" = $2
+    WHERE "transactionHash" = $3
+  `,
+      [methodId, methodName, hash],
+    );
+  }
 
   // Select all transactions that have not been decoded yet and have an input field
   public async fetchNonDecodedTransactionsWithInput(): Promise<TransactionWithInput[]> {
     const sql = `
-      -- The purpose of this query is two-fold:
-      -- 
-      -- 1. There are cases where the decoding process identifies a known method 
-      --    but does not decode its parameters (due to an unexpected data format 
-      --    or other transient errors). We want to capture such transactions where 
-      --    the methodName exists, but the associated parameters have blank values 
-      --    to facilitate a re-attempt at decoding or further inspection.
-      -- 
-      -- 2. In some instances, the decoding process may fail to identify a known method 
-      --    altogether, resulting in a blank methodName, but there still exists raw 
-      --    transaction input data. Fetching these transactions helps in identifying 
-      --    potential updates to the decoding logic or additions to the method interface 
-      --    library.
-
-      -- Fetching transactions with blank methodName but with transaction data
-      (SELECT t.*, ti.input, NULL AS name, NULL AS type, NULL AS position 
-       FROM "transaction" t
-       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
-       WHERE t."methodName" IS NULL AND ti.input IS NOT NULL)
-      
-      UNION 
-      
-      -- Fetching transactions with at least one blank parameter value
-      (SELECT t.*, ti.input, tp.name, tp.type, tp.position 
-       FROM "transaction" t
-       JOIN "transaction_input" ti ON t."hash" = ti."transactionHash"
-       JOIN "transaction_parameter" tp ON t."hash" = tp."transactionHash"
-       WHERE tp."value" = '')
-      
-      ORDER BY "hash";
+      -- Fetch transactions with blank methodName and existing data or with blank parameter values
+      SELECT t."hash", ti.input 
+      FROM ${DB_DATA_TABLE.TRANSACTION} t
+      JOIN ${DB_DATA_TABLE.TRANSACTION_INPUT} ti ON t."hash" = ti."transactionHash"
+      LEFT JOIN ${DB_DATA_TABLE.TRANSACTION_PARAMETER} tp ON t."hash" = tp."transactionHash" AND tp."value" = ''
+      WHERE t."methodName" IS NULL OR tp."value" = ''
+      ORDER BY t."hash";
     `;
     return await this.executeQuery(sql);
   }
@@ -680,17 +654,17 @@ export class LuksoDataDbService implements OnModuleDestroy {
       const sql = `
       -- Fetching wrapped transactions with blank methodId but with transaction data
       (SELECT t1.*, ti1.input 
-       FROM wrapped_transaction t1
-       JOIN wrapped_transaction_input ti1 ON t1.id = ti1."wrappedTransactionId"
+       FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION} t1
+       JOIN ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT} ti1 ON t1.id = ti1."wrappedTransactionId"
        WHERE t1."methodId" IS NULL AND ti1.input IS NOT NULL)
       
       UNION 
       
       -- Fetching wrapped transactions with at least one blank parameter value
       (SELECT t2.*, ti2.input 
-       FROM wrapped_transaction t2
-       JOIN wrapped_transaction_input ti2 ON t2.id = ti2."wrappedTransactionId"
-       JOIN wrapped_transaction_parameter tp ON t2.id = tp."wrappedTransactionId"
+       FROM ${DB_DATA_TABLE.WRAPPED_TRANSACTION} t2
+       JOIN ${DB_DATA_TABLE.WRAPPED_TRANSACTION_INPUT} ti2 ON t2.id = ti2."wrappedTransactionId"
+       JOIN ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER} tp ON t2.id = tp."wrappedTransactionId"
        WHERE tp.value = '')
       
       ORDER BY id;      
@@ -704,12 +678,6 @@ export class LuksoDataDbService implements OnModuleDestroy {
       throw error;
     }
   }
-
-  public updateDecodedWrappedTransaction = (hash: any, decodedData: any) => {
-    // console.log('updateWrappedTransactionWithDecodedMethod', hash, decodedData);
-    //Update the main wrapped transaction table with the decoded method name
-    //and then update the param table with the insertWrappedTxParameters function
-  };
 
   // Wrapped Transaction Parameter table functions
   public async insertWrappedTxParameters(
@@ -787,6 +755,13 @@ export class LuksoDataDbService implements OnModuleDestroy {
     return rows.length > 0 ? rows[0] : null;
   }
 
+  public async getEventParameters(eventId: string): Promise<EventParameterTable[]> {
+    return await this.executeQuery<EventParameterTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER} WHERE "eventId" = $1`,
+      [eventId],
+    );
+  }
+
   // EventParameter table functions
   public async insertEventParameters(
     eventId: string,
@@ -820,48 +795,25 @@ export class LuksoDataDbService implements OnModuleDestroy {
     await this.executeQuery(query);
   }
 
-  public async getEventParameters(eventId: string): Promise<EventParameterTable[]> {
-    return await this.executeQuery<EventParameterTable>(
-      `SELECT * FROM ${DB_DATA_TABLE.EVENT_PARAMETER} WHERE "eventId" = $1`,
-      [eventId],
-    );
-  }
-  //General Event and EventParameter table functions
-  async updateEventWithDecodedData(hash: string, decodedData: DecodedEventData): Promise<void> {
+  public async updateEventName(transactionHash: string, eventName: string): Promise<string> {
+    const query = `
+    UPDATE ${DB_DATA_TABLE.EVENT}
+    SET "eventName" = $2
+    WHERE "transactionHash" = $1
+    RETURNING "id";
+`;
+
     try {
-      // Get the existing event using its hash
-      const existingEvent = await this.getEventById(hash);
-
-      // If the event exists and needs updating
-      if (existingEvent && !existingEvent.eventName) {
-        existingEvent.eventName = decodedData.eventName;
-        await this.insertEvent(existingEvent);
-
-        // For each parameter in decoded data
-        for (const param of decodedData.parameters) {
-          // Get the parameters for the existing event
-          const existingParameters = await this.getEventParameters(hash);
-
-          // Find if this parameter exists
-          const existingParam = existingParameters.find(
-            (p) => p.name === param.name && p.position === param.position,
-          );
-
-          // If the parameter exists, update its value
-          if (existingParam) {
-            existingParam.value = param.value;
-            // Using the insert function, assuming it has UPSERT behavior
-            await this.insertEventParameters(hash, [existingParam]);
-          } else {
-            // Otherwise, insert the new parameter
-            await this.insertEventParameters(hash, [param]);
-          }
-        }
-
-        this.logger.info('Successfully updated event with decoded data', hash, decodedData);
+      const result = await this.executeQuery<{ id: string }>(query, [transactionHash, eventName]);
+      if (result.length > 0) {
+        return result[0].id;
       }
+      throw new Error('Unable to retrieve the primary key after the update operation.');
     } catch (error) {
-      this.logger.error('Error updating event with decoded data:', error);
+      this.logger.error(
+        `Error updating the eventName for the transaction with hash: ${transactionHash}`,
+        error,
+      );
       throw error;
     }
   }
@@ -873,8 +825,8 @@ export class LuksoDataDbService implements OnModuleDestroy {
       const sql = `
       -- Fetching events with blank eventName and with non-null parameter value
       SELECT e1.*, ep1.value
-      FROM event e1
-      JOIN event_parameter ep1 ON e1.id = ep1."eventId"
+      FROM ${DB_DATA_TABLE.EVENT} e1
+      JOIN ${DB_DATA_TABLE.EVENT_PARAMETER} ep1 ON e1.id = ep1."eventId"
       WHERE e1."eventName" IS NULL AND ep1.value IS NOT NULL
       
       ORDER BY id;

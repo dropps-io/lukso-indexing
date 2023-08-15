@@ -14,24 +14,10 @@ import { ContractInterfaceTable } from './entities/contractInterface.table';
 import { MethodInterfaceTable } from './entities/methodInterface.table';
 import { MethodParameterTable } from './entities/methodParameter.table';
 
-type InterfaceType = 'method' | 'erc' | 'contract';
-
-// @Injectable()
-// export class InterfaceTableFactory {
-//   private static tableLookup: { [key in InterfaceType]: string } = {
-//     erc: 'erc725y_schema',
-//     method: 'method_interface',
-//     contract: 'contract_interface',
-//   };
-
-//   static getTableName(type: InterfaceType): string {
-//     const tableName = this.tableLookup[type];
-//     if (!tableName) {
-//       throw new Error(`Invalid interface type: ${type}`);
-//     }
-//     return tableName;
-//   }
-// }
+type CacheItem<T> = {
+  values: T[];
+  lastRefresh: number;
+};
 
 @Injectable()
 export class LuksoStructureDbService implements OnModuleDestroy {
@@ -40,12 +26,19 @@ export class LuksoStructureDbService implements OnModuleDestroy {
   };
   private readonly logger: winston.Logger;
   private cache: {
-    contractInterfaces: {
-      values: ContractInterfaceTable[];
-      lastRefresh: number;
-    };
+    contractInterfaces: CacheItem<ContractInterfaceTable>;
+    methodInterfaces: CacheItem<MethodInterfaceTable>;
+    erc725Schemas: CacheItem<ERC725YSchemaTable>;
   } = {
     contractInterfaces: {
+      values: [],
+      lastRefresh: 0,
+    },
+    methodInterfaces: {
+      values: [],
+      lastRefresh: 0,
+    },
+    erc725Schemas: {
       values: [],
       lastRefresh: 0,
     },
@@ -149,11 +142,14 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     return rows.length > 0 ? rows[0] : null;
   }
 
-  async getContractInterfaces(fromDate?: Date): Promise<ContractInterfaceTable[]> {
+  async getContractInterfaces(
+    fromDate?: Date,
+    noCache?: boolean,
+  ): Promise<ContractInterfaceTable[]> {
     const now = Date.now();
 
-    //If the cache is empty or the cache is older than CACHE_REFRESH_INTERVAL_IN_MS, then refresh the cache
     if (
+      noCache ||
       this.cache.contractInterfaces.values.length === 0 ||
       now - this.cache.contractInterfaces.lastRefresh >= CACHE_REFRESH_INTERVAL_IN_MS
     ) {
@@ -161,10 +157,10 @@ export class LuksoStructureDbService implements OnModuleDestroy {
         `SELECT * FROM ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE}`,
       );
 
-      //filter
+      // filter
       if (fromDate) {
-        this.cache.contractInterfaces.values = this.cache.contractInterfaces.values.filter(
-          (c) => c.createdAt >= fromDate,
+        this.cache.contractInterfaces.values = this.cache.contractInterfaces.values.filter((c) =>
+          c.createdAt ? c.createdAt >= fromDate : false,
         );
       }
 
@@ -224,38 +220,47 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     }
   }
 
-  getMethodInterfaces = async (fromDate?: Date): Promise<MethodInterfaceTable[]> => {
-    const query = `
-      SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}
-      WHERE "createdAt" > $1
-    `;
-    const values = [fromDate];
+  async getMethodInterfaces(fromDate?: Date, noCache?: boolean): Promise<MethodInterfaceTable[]> {
+    const now = Date.now();
 
-    return await this.executeQuery(query, values);
-  };
+    if (
+      noCache ||
+      this.cache.methodInterfaces.values.length === 0 ||
+      now - this.cache.methodInterfaces.lastRefresh >= CACHE_REFRESH_INTERVAL_IN_MS
+    ) {
+      const query = `
+        SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}
+        WHERE "createdAt" > $1
+      `;
+      const values = [fromDate];
 
-  getErc725Schemas = async (fromDate?: Date): Promise<MethodInterfaceTable[]> => {
-    const query = `
-      SELECT * FROM ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA}
-      WHERE "createdAt" > $1
-    `;
-    const values = [fromDate];
+      this.cache.methodInterfaces.values = await this.executeQuery(query, values);
 
-    return await this.executeQuery(query, values);
-  };
+      this.cache.methodInterfaces.lastRefresh = now;
+    }
 
-  // async getContractInterfaces(
-  //   fromDate?: Date,
-  //   type: InterfaceType,
-  // ): Promise<ContractInterfaceTable[]> {
-  //   const tableName = InterfaceTableFactory.getTableName(type);
+    return this.cache.methodInterfaces.values;
+  }
 
-  //   const query = `
-  //       SELECT * FROM ${tableName}
-  //       WHERE "createdAt" > $1
-  //   `;
-  //   const values = [since];
+  async getErc725Schemas(fromDate?: Date, noCache?: boolean): Promise<ERC725YSchemaTable[]> {
+    const now = Date.now();
 
-  //   return await this.executeQuery(query, values);
-  // }
+    if (
+      noCache ||
+      this.cache.erc725Schemas.values.length === 0 ||
+      now - this.cache.erc725Schemas.lastRefresh >= CACHE_REFRESH_INTERVAL_IN_MS
+    ) {
+      const query = `
+        SELECT * FROM ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA}
+        WHERE "createdAt" > $1
+      `;
+      const values = [fromDate];
+
+      this.cache.erc725Schemas.values = await this.executeQuery(query, values);
+
+      this.cache.erc725Schemas.lastRefresh = now;
+    }
+
+    return this.cache.erc725Schemas.values;
+  }
 }
