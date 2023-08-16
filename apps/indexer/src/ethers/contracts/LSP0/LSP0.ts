@@ -51,6 +51,8 @@ export class LSP0 {
           description: lsp3Profile.description,
           symbol: null,
           isNFT: null,
+          isHistorical: null,
+          version: null,
         },
         images: [
           ...formatMetadataImages(lsp3Profile.profileImage, METADATA_IMAGE_TYPE.PROFILE),

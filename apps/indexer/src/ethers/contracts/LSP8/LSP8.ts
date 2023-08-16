@@ -174,6 +174,8 @@ export class LSP8 {
         description: metadata?.description || null,
         symbol: null,
         isNFT: true,
+        isHistorical: false,
+        version: null,
       },
       images: formatMetadataImages(metadata?.images, null),
       tags: [],

@@ -26,6 +26,8 @@ export class LSP7 {
           description: lsp4Data?.metadata.description || null,
           symbol: lsp4Data?.metadata.symbol || null,
           isNFT,
+          isHistorical: false,
+          version: null,
         },
         images: lsp4Data?.images || [],
         tags: [],

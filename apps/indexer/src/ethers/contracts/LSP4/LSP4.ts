@@ -74,6 +74,8 @@ export class LSP4 {
           description: lsp4DigitalAsset?.description || null,
           symbol: symbol,
           isNFT: null,
+          isHistorical: false,
+          version: null,
         },
         images,
         tags: [],

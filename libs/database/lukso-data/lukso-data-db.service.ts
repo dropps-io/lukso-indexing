@@ -190,51 +190,83 @@ export class LuksoDataDbService implements OnModuleDestroy {
     metadata: Omit<MetadataTable, 'id'>,
     onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
   ): Promise<{ id: number }> {
-    let query = `
-        INSERT INTO ${DB_DATA_TABLE.METADATA}
-        ("address", "tokenId", "name", "symbol", "description", "isNFT")
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id;
-      `;
+    // First, check if the data already exists and get its latest version
+    const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId);
+    const newVersion = existingMetadata?.version ? existingMetadata.version + 1 : 1;
 
-    let rows;
+    const query = `
+        INSERT INTO ${DB_DATA_TABLE.METADATA}
+        ("address", "tokenId", "name", "symbol", "description", "isNFT", "isHistorical", "version")
+        VALUES ($1, $2, $3, $4, $5, $6, false, $7)
+        RETURNING id;
+    `;
+
     try {
-      rows = await this.executeQuery(query, [
+      const rows = await this.executeQuery(query, [
         metadata.address,
         metadata.tokenId,
         metadata.name,
         metadata.symbol,
         metadata.description,
         metadata.isNFT,
+        newVersion,
       ]);
+      return { id: (rows[0] as { id: number }).id };
     } catch (error) {
       if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
-        const id = (await this.getMetadata(metadata.address, metadata.tokenId || undefined))?.id;
+        const id = (await this.getLatestMetadata(metadata.address, metadata.tokenId))?.id;
         if (!id) throw new Error('Could not get id of metadata');
         else return { id };
       } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
-        query = `
-        UPDATE ${DB_DATA_TABLE.METADATA}
-        SET "name" = $3, "symbol" = $4, "description" = $5, "isNFT" = $6
-        WHERE "address" = $1 AND 
-        (("tokenId" = $2 AND $2 IS NOT NULL) OR ("tokenId" IS NULL AND $2 IS NULL))
-          RETURNING id;
-      `;
-
-        rows = await this.executeQuery(query, [
-          metadata.address,
-          metadata.tokenId,
-          metadata.name,
-          metadata.symbol,
-          metadata.description,
-          metadata.isNFT,
-        ]);
+        return await this.updateMetadata(metadata);
       } else {
         // If some other error occurred, rethrow it
         throw error;
       }
     }
-    return { id: rows[0].id };
+  }
+
+  public async updateMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
+    // First, mark the old metadata as historical
+    await this.markMetadataAsHistorical(metadata.address, metadata.tokenId || undefined);
+
+    // Retrieve latest version and increment
+    const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId);
+    const newVersion = existingMetadata?.version ? existingMetadata.version + 1 : 1;
+
+    const query = `
+        INSERT INTO ${DB_DATA_TABLE.METADATA}
+        ("address", "tokenId", "name", "symbol", "description", "isNFT", "isHistorical", "version")
+        VALUES ($1, $2, $3, $4, $5, $6, false, $7)
+        RETURNING id;
+    `;
+
+    const rows = await this.executeQuery(query, [
+      metadata.address,
+      metadata.tokenId,
+      metadata.name,
+      metadata.symbol,
+      metadata.description,
+      metadata.isNFT,
+      newVersion,
+    ]);
+    return { id: (rows[0] as { id: number }).id };
+  }
+
+  // Helper function to retrieve the latest version of metadata for an address and tokenId
+  public async getLatestMetadata(
+    address: string,
+    tokenId: string | null,
+  ): Promise<MetadataTable | null> {
+    const query = `
+        SELECT * FROM ${DB_DATA_TABLE.METADATA}
+        WHERE "address" = $1 AND ("tokenId" = $2 OR "tokenId" IS NULL)
+        ORDER BY "version" DESC
+        LIMIT 1;
+    `;
+
+    const rows = await this.executeQuery(query, [address, tokenId]);
+    return (rows[0] as MetadataTable) || null;
   }
 
   public async getMetadata(address: string, tokenId?: string): Promise<MetadataTable | null> {
@@ -297,6 +329,13 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
 
     await this.executeQuery(query);
+  }
+
+  public async getMetadataImagesByMetadataId(metadataId: number): Promise<MetadataImageTable[]> {
+    return await this.executeQuery<MetadataImageTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.METADATA_IMAGE} WHERE "metadataId" = $1`,
+      [metadataId],
+    );
   }
 
   // MetadataLink table functions
@@ -848,5 +887,22 @@ export class LuksoDataDbService implements OnModuleDestroy {
     } catch (error) {
       throw new Error(`Error executing query: ${query}\n\nError details: ${error.message}`);
     }
+  }
+
+  //Profile metadata (LSP3Profile)
+
+  public async markMetadataAsHistorical(
+    address: string,
+    tokenId?: string,
+    contentType?: string,
+  ): Promise<void> {
+    if (!contentType) contentType === 'all';
+    const query = `
+    UPDATE ${DB_DATA_TABLE.METADATA}
+    SET "isHistorical" = true
+    WHERE "address" = $1 AND 
+    (("tokenId" = $2 AND $2 IS NOT NULL) OR ("tokenId" IS NULL AND $2 IS NULL));
+  `;
+    await this.executeQuery(query, [address, tokenId]);
   }
 }

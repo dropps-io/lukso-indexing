@@ -6,4 +6,6 @@ export interface MetadataTable {
   symbol: string | null;
   description: string | null;
   isNFT: boolean | null;
+  isHistorical: boolean | null;
+  version: string | null;
 }

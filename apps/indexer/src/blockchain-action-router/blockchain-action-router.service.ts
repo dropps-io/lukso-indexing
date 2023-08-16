@@ -36,6 +36,7 @@ export class BlockchainActionRouterService {
     const paramsMap = convertDecodedParamToMapping(decodedParameters);
     switch (event.topic0) {
       case EVENTS_TO_ROUTE.DATA_CHANGED:
+        await this.erc725Service.processDataChangedEvent(event, paramsMap);
         break;
       case EVENTS_TO_ROUTE.LSP8_TRANSFER:
         await this.lsp8Service.processTokenRelatedEvent(event, paramsMap);
@@ -63,4 +64,6 @@ export class BlockchainActionRouterService {
         break;
     }
   }
+
+  //TODO: Add a protected method here to allow testing of the router
 }

@@ -9,6 +9,8 @@ export const defaultMetadata = (address: string): MetadataResponse => {
       symbol: null,
       description: null,
       isNFT: null,
+      isHistorical: null,
+      version: null,
     },
     tags: [],
     assets: [],
