@@ -10,6 +10,7 @@ import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 import { ConfigTable } from '@db/lukso-structure/entities/config.table';
 import { Log } from 'ethers';
+import pLimit from 'p-limit';
 
 import {
   BLOCKS_INDEXING_BATCH_SIZE,
@@ -26,7 +27,6 @@ import { DecodedParameter } from './decoding/types/decoded-parameter';
 import { MetadataResponse } from './ethers/types/metadata-response';
 import { defaultMetadata } from './ethers/utils/default-metadata-response';
 import { buildLogId } from './utils/build-log-id';
-import { splitIntoChunks } from './utils/split-into-chunks';
 import { BlockchainActionRouterService } from './blockchain-action-router/blockchain-action-router.service';
 import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
 
@@ -90,14 +90,17 @@ export class IndexerService implements OnModuleInit {
           `Indexing ${transactionsHashes.length} transactions from block ${blockNumber}`,
         );
 
-        // Index transactions in batches
-        const indexBatchTransactions = async (txHashes: string[]) => {
-          for (const txHash of txHashes) await this.indexTransaction(txHash);
-        };
+        const limit = pLimit(TX_INDEXING_BATCH_SIZE);
 
-        // Split transaction hashes into chunks and process them concurrently
-        const transactionHashesChunks = splitIntoChunks(transactionsHashes, TX_INDEXING_BATCH_SIZE);
-        await Promise.all(transactionHashesChunks.map(indexBatchTransactions));
+        //Index transaction hashes in batches of TX_INDEXING_BATCH_SIZE using plimit
+
+        await Promise.all(
+          transactionsHashes.map((txHash) => async () => {
+            limit(async () => {
+              await this.indexTransaction(txHash);
+            });
+          }),
+        );
       };
 
       if (fromBlock < toBlock) {
@@ -160,27 +163,28 @@ export class IndexerService implements OnModuleInit {
         // Retrieve logs from the specified block range
         const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
-        // Split transaction hashes and logs into chunks for batch processing
-        const txHashesChunks = splitIntoChunks(
-          logs
-            .map((log) => log.transactionHash)
-            .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index),
-          TX_INDEXING_BATCH_SIZE,
-        );
-        const logsChunks = splitIntoChunks(logs, EVENTS_INDEXING_BATCH_SIZE);
+        //Define limits for concurrent processing
+        const txHashesLimiter = pLimit(TX_INDEXING_BATCH_SIZE);
+        const logHashesLimiter = pLimit(EVENTS_INDEXING_BATCH_SIZE);
 
-        // Functions to index transactions and events in batches
-        const indexBatchTransactions = async (txHashes: string[]) => {
-          for (const txHash of txHashes) await this.indexTransaction(txHash);
-        };
-        const indexBatchEvents = async (logs: Log[]) => {
-          for (const log of logs) await this.indexEvent(log);
-        };
-
-        // Process transactions and events in batches concurrently
+        // Index transaction hashes in batches of TX_INDEXING_BATCH_SIZE using plimit
+        const txHashes = logs.map((log) => log.transactionHash);
+        // Index transaction hashes in batches using txHashesLimiter
         await Promise.all([
-          Promise.all(logsChunks.map(indexBatchEvents)),
-          Promise.all(txHashesChunks.map(indexBatchTransactions)),
+          Promise.all(
+            txHashes.map((txHash) =>
+              txHashesLimiter(async () => {
+                await this.indexTransaction(txHash);
+              }),
+            ),
+          ),
+          Promise.all(
+            logs.map((log) =>
+              logHashesLimiter(async () => {
+                await this.indexEvent(log);
+              }),
+            ),
+          ),
         ]);
 
         // Update the latest indexed event block in the database and logger
@@ -214,28 +218,6 @@ export class IndexerService implements OnModuleInit {
     const startTime = new Date();
 
     try {
-      // Function to index contracts and their metadata in batches
-      const indexBatchContracts = async (contractsToIndex: string[]) => {
-        for (const contract of contractsToIndex) {
-          this.logger.debug(`Indexing address ${contract}`, { contract });
-          // Index the contract and retrieve its row
-          const contractRow = await this.indexContract(contract);
-          if (contractRow) {
-            this.logger.debug(`Fetching contract metadata for ${contract}`, { contract });
-            // Fetch contract metadata using EthersService
-            const metadata = await this.ethersService.fetchContractMetadata(
-              contract,
-              contractRow.interfaceCode || undefined,
-            );
-
-            // Log if no metadata is found, and use defaultMetadata as a fallback
-            if (!metadata) this.logger.debug(`No metadata found for ${contract}`, { contract });
-            // Index the contract metadata
-            await this.indexMetadata(metadata || defaultMetadata(contract));
-          }
-        }
-      };
-
       // Retrieve the list of contracts to be indexed
       const contractsToIndex = await this.dataDB.getContractsToIndex();
 
@@ -243,10 +225,22 @@ export class IndexerService implements OnModuleInit {
         this.logger.info(`Processing ${contractsToIndex.length} contracts to index`);
       else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
 
-      // Split contracts into chunks for batch processing
-      const contractsChunks = splitIntoChunks(contractsToIndex, CONTRACTS_INDEXING_BATCH_SIZE);
       // Process contract chunks concurrently
-      await Promise.all(contractsChunks.map(indexBatchContracts));
+      const limit = pLimit(CONTRACTS_INDEXING_BATCH_SIZE);
+
+      await Promise.all(
+        contractsToIndex.map((contract) =>
+          limit(async () => {
+            const contractRow = await this.indexContract(contract);
+            const metadata = await this.ethersService.fetchContractMetadata(
+              contract,
+              contractRow?.interfaceCode || undefined,
+            );
+            if (!metadata) this.logger.debug(`No metadata found for ${contract}`, { contract });
+            await this.indexMetadata(metadata || defaultMetadata(contract));
+          }),
+        ),
+      );
     } catch (e) {
       this.logger.error(`Error while processing contracts to index: ${e.message}`);
     }
@@ -316,8 +310,9 @@ export class IndexerService implements OnModuleInit {
       else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
 
       // Split the list of contract tokens into chunks for batch processing
-      const tokensChunks = splitIntoChunks(tokensToIndex, TOKENS_INDEXING_BATCH_SIZE);
-      await Promise.all(tokensChunks.map(indexBatchTokens));
+      const limit = pLimit(TOKENS_INDEXING_BATCH_SIZE);
+
+      await Promise.all(tokensToIndex.map((token) => limit(async () => indexBatchTokens([token]))));
     } catch (e) {
       this.logger.error(`Error while processing contracts to index: ${e.message}`);
     }
