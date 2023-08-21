@@ -35,6 +35,8 @@ describe('ExtendedDataDbService', () => {
     symbol: 'TST',
     description: 'A test token',
     isNFT: true,
+    isHistorical: false,
+    version: '1',
   };
 
   beforeEach(async () => {

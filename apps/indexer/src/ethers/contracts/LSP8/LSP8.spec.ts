@@ -134,6 +134,8 @@ const expectedMetadata: MetadataResponse = {
     description: 'My super token id description',
     symbol: null,
     isNFT: true,
+    isHistorical: false,
+    version: '1',
   },
   images: [
     {
