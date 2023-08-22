@@ -10,7 +10,7 @@ import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterfa
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 
-import { RedisService } from '../redis-connection/redis.service';
+import { RedisService } from '../redis/redis.service';
 import { DecodingService } from '../decoding/decoding.service';
 
 enum InterfaceType {

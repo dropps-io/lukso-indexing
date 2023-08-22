@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createLogger, format, transports, Logger as WinstonLogger } from 'winston';
-import { StreamTransportInstance } from 'winston/lib/winston/transports';
+import { IS_PRODUCTION, ONLY_LOG_SERVICE } from 'apps/indexer/src/globals';
 
 /**
  * LoggerService is a NestJS service for logging, using the Winston library.
@@ -47,7 +47,6 @@ export class LoggerService {
 
     const fileFormat = format.combine(format.timestamp(), format.metadata(), format.json());
 
-    const prod = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
     const fileLogging = process.env.FILE_LOGGING === 'true';
 
     const fileTransport = fileLogging
@@ -70,7 +69,7 @@ export class LoggerService {
       format: format.combine(format.timestamp(), format.errors({ stack: true })),
       transports: [
         new transports.Console({
-          level: prod ? 'info' : 'debug',
+          level: IS_PRODUCTION ? 'info' : 'debug',
           format: format.combine(consoleFormat),
         }),
         ...fileTransport,
@@ -83,17 +82,26 @@ export class LoggerService {
    * @param service
    */
   public getChildLogger(service: string): WinstonLogger {
-    const allowedServices = process.env.ONLY_LOG_SERVICE?.split(',').map((s) => s.trim());
+    let allowedServices: any[] | undefined;
+    if (ONLY_LOG_SERVICE) {
+      allowedServices = ONLY_LOG_SERVICE.split(',').map((s) => s.trim());
 
-    // If ONLY_LOG_SERVICE is set and the current service is not in the allowed list, return the dummy logger
-    if (allowedServices && !allowedServices.includes(service)) {
-      return this.dummyLogger;
-    } else if (allowedServices && allowedServices.includes(service)) {
-      this.logger.info(
-        `Only logging for services ${allowedServices.join(
-          ', ',
-        )}, other logs are suppressed and not written to file.`,
-      );
+      if (!allowedServices?.includes(service)) {
+        // if the allowed services doesn't include the service, return a dummy logger in place
+        // This replaces the logs as well, so only use in testing preferably.
+
+        if (IS_PRODUCTION)
+          this.logger.warn(
+            `Warning: ONLY_LOG_SERVICE feature is active with IS_PRODUCTION set to true. Logs are not written to file, make sure this was done on purpose as logs won't be written to file...`,
+          );
+        return this.dummyLogger;
+      } else {
+        this.logger.info(
+          `Only logging for services ${allowedServices.join(
+            ', ',
+          )}, other logs are suppressed and not written to file.`,
+        );
+      }
     }
 
     return this.logger.child({ service });

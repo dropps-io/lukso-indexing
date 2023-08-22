@@ -6,7 +6,7 @@ import { ConfigService, ConfigModule } from '@nestjs/config';
 import { LoggerModule } from '@libs/logger/logger.module';
 
 import { UpdateService } from './update.service';
-import { RedisModule } from '../redis-connection/redis.module';
+import { RedisModule } from '../redis/redis.module';
 import { DecodingModule } from '../decoding/decoding.module';
 
 @Module({

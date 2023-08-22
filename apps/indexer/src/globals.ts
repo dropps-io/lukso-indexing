@@ -7,7 +7,11 @@ export const PORT = process.env.WS_PORT || 3002;
 
 export const DROP_DB_ON_START = process.env.DROP_DB_ON_START === 'true';
 
+// helpers for Testing, staging, production envs to allow consistent behavior and easy adjustments
 export const NODE_ENV = process.env.NODE_ENV || 'dev';
+export const IS_PRODUCTION =
+  NODE_ENV === 'production' || NODE_ENV === 'prod' || NODE_ENV === 'staging';
+
 export const IPFS_GATEWAY = 'https://2eff.lukso.dev/ipfs/';
 export const ARWEAVE_GATEWAY = 'https://arweave.net/';
 
@@ -22,4 +26,9 @@ export const BLOCKS_INDEXING_BATCH_SIZE = 100;
 export const REDIS_URI =
   process.env.REDIS_URI || `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
 
-export const RESET_LAST_UPDATE_ON_START = process.env.RESET_LAST_UPDATE_ON_START === 'false';
+export const RESET_LAST_UPDATE_ON_START = process.env.RESET_LAST_UPDATE_ON_START
+  ? process.env.RESET_LAST_UPDATE_ON_START
+  : false;
+
+export const ONLY_LOG_SERVICE =
+  process.env.ONLY_LOG_SERVICE === 'false' ? undefined : process.env.ONLY_LOG_SERVICE;
