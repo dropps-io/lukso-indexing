@@ -5,7 +5,7 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 
-import { RedisConnectionService } from '../redis-connection/redis-connection.service';
+import { RedisConnectionService } from '../redis-connection/redis.service';
 import { DecodingService } from '../decoding/decoding.service';
 import { UpdateService } from './update.service';
 

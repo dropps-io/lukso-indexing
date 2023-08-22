@@ -17,3 +17,9 @@ export const TOKENS_INDEXING_BATCH_SIZE = 20;
 export const TX_INDEXING_BATCH_SIZE = 20;
 export const EVENTS_INDEXING_BATCH_SIZE = 20;
 export const BLOCKS_INDEXING_BATCH_SIZE = 100;
+
+//TODO: add getEnvOrThrow
+export const REDIS_URI =
+  process.env.REDIS_URI || `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
+
+export const RESET_LAST_UPDATE_ON_START = process.env.RESET_LAST_UPDATE_ON_START === 'false';

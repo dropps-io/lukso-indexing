@@ -4,12 +4,16 @@
  * Usage:
  * ```typescript
  * const abortController = new AbortController();
+ * const functionToCallback = async () => {
+ *  // do something asynchronous
+ * };
  *
  * try {
- *   await retryOperation({
- *     fn: asyncFunctionToRetry,
+ *   await retryWithExponentialBackoff(
+ *    functionToCallback,
+ *  {
  *     nonRetryableErrors: ['data-related-error', 'another-specific-error'],
- *     jitterStrategy: 'full', // or 'decorrelated' or custom function
+ *     jitterStrategy: 'full', // or 'decorrelated' or a custom function
  *     abortController: abortController,
  *     logger: console // or any logger with `warn` and `error` methods
  *   });
@@ -17,7 +21,7 @@
  *   console.error(err.message);
  * }
  *
- * // To abort the retry operation before all retries are exhausted:
+ * // To halt the retry operation before exhausting all retries:
  * abortController.abort();
  * ```
  *
@@ -25,9 +29,11 @@
  * @returns Promise that resolves with the result of the operation.
  */
 
-export async function retryOperation<T>(options: RetryOptions<T>): Promise<T> {
+export async function retryOperation<T>(
+  callback: () => Promise<T>,
+  options?: RetryOptions,
+): Promise<T> {
   const {
-    fn,
     maxRetries = 3,
     baseDelay = 500,
     delayMultiplier = 2,
@@ -36,7 +42,7 @@ export async function retryOperation<T>(options: RetryOptions<T>): Promise<T> {
     abortController,
     logger,
     nonRetryableErrors = [],
-  } = options;
+  } = options || {}; //uses default values if options is undefined
 
   let retries = 0;
 
@@ -45,7 +51,7 @@ export async function retryOperation<T>(options: RetryOptions<T>): Promise<T> {
 
   while (retries < maxRetries) {
     try {
-      return await fn();
+      return await callback();
     } catch (e) {
       retries++;
 
@@ -83,18 +89,18 @@ export async function retryOperation<T>(options: RetryOptions<T>): Promise<T> {
   throw new Error(`Reached max retries (${maxRetries}) without success`);
 }
 
+//Alternate jitter strategy
 function calculateDecorrelatedJitter(calculatedDelay: number, baseDelay: number): number {
   return Math.min(calculatedDelay, Math.random() * (baseDelay + calculatedDelay));
 }
 
-interface RetryOptions<T> {
-  fn: () => Promise<T>;
+interface RetryOptions {
   maxRetries?: number;
   baseDelay?: number;
   delayMultiplier?: number;
   maxDelay?: number;
   jitterStrategy?: 'full' | 'decorrelated' | ((calculatedDelay: number) => number);
-  abortController?: AbortController;
+  abortController?: AbortController; // useful for aborting the retry operation
   logger?: {
     warn: (message: string) => void;
     error: (message: string) => void;

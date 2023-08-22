@@ -10,7 +10,7 @@ import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterfa
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 
-import { RedisConnectionService } from '../redis-connection/redis-connection.service';
+import { RedisService } from '../redis-connection/redis.service';
 import { DecodingService } from '../decoding/decoding.service';
 
 enum InterfaceType {
@@ -56,7 +56,7 @@ export class UpdateService {
   constructor(
     protected readonly structureDB: LuksoStructureDbService,
     protected readonly luksoDataDB: LuksoDataDbService,
-    private readonly redisConnectionService: RedisConnectionService,
+    private readonly redisService: RedisService,
     protected readonly loggerService: LoggerService,
     private readonly decodingService: DecodingService,
   ) {
@@ -76,9 +76,9 @@ export class UpdateService {
 
     const [nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents] =
       await Promise.all([
-        retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedTransactionsWithInput() }),
-        retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedWrapped() }),
-        retryOperation({ fn: () => this.luksoDataDB.fetchNonDecodedEvents() }),
+        retryOperation(async () => await this.luksoDataDB.fetchNonDecodedWrapped()),
+        retryOperation(async () => await this.luksoDataDB.fetchNonDecodedEvents()),
+        retryOperation(async () => await this.luksoDataDB.fetchNonDecodedTransactionsWithInput()),
       ]);
 
     const result = { nonDecodedTransactions, nonDecodedWrappedTransactions, nonDecodedEvents };
@@ -164,7 +164,7 @@ export class UpdateService {
   }
 
   private async decodeEvent(tx: any): Promise<any> {
-    const { data, methodId, id } = tx;
+    const { data, methodId } = tx;
     const topics: string[] = [];
 
     if (tx?.topic0) topics.push(tx.topic0);
@@ -174,10 +174,8 @@ export class UpdateService {
 
     const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
     const eventName = eventInterface?.name;
-    if (!eventName) {
-      this.logger.warn(`Event does not have a name associated with it: ${id}`);
-      return null;
-    }
+
+    if (!eventName) return null;
 
     const decodedParameters = await this.decodingService.decodeLogParameters(data, topics);
 
@@ -437,10 +435,14 @@ export class UpdateService {
       }
 
       // Fetch the new interfaces with the retry operation
-      const newInterfaces = await retryOperation({
+      const newInterfaces: any[] = await retryOperation(async () => await fetchInterfaceFn(), {
         ...RETRY_CONFIG,
-        fn: fetchInterfaceFn,
       });
+
+      if (!newInterfaces.length) {
+        this.logger.info(`No new interfaces of type ${interfaceType} found.`);
+        return false;
+      }
 
       return await this.processAndDecodeNewInterfaces(newInterfaces, interfaceType);
     } catch (error) {
@@ -451,9 +453,9 @@ export class UpdateService {
 
   private async fetchLastUpdateTimestamp(): Promise<Date> {
     try {
-      const reply = await retryOperation({
-        fn: () => this.redisConnectionService.get(LAST_UPDATE_TIMESTAMP_KEY),
-      });
+      const reply = await retryOperation(async () => {
+        return await this.redisService.get(LAST_UPDATE_TIMESTAMP_KEY);
+      }).then((res) => res?.toString());
       this.logger.info('Last update timestamp: ' + reply);
       return reply ? new Date(reply) : DEFAULT_DATE;
     } catch (error) {
@@ -465,9 +467,11 @@ export class UpdateService {
   private async setLastUpdateTimestamp(timestamp: Date): Promise<void> {
     const formattedTimestamp = timestamp.toISOString();
     try {
-      await retryOperation({
-        fn: () => this.redisConnectionService.set(LAST_UPDATE_TIMESTAMP_KEY, formattedTimestamp),
-      });
+      await retryOperation(
+        async () => await this.redisService.set(LAST_UPDATE_TIMESTAMP_KEY, formattedTimestamp),
+        { ...RETRY_CONFIG },
+      );
+
       this.logger.info(`Updated ${LAST_UPDATE_TIMESTAMP_KEY} in Redis: ` + formattedTimestamp);
     } catch (error) {
       this.logger.error(`Error setting ${LAST_UPDATE_TIMESTAMP_KEY} in redis: `, error);

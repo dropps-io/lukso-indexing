@@ -6,7 +6,7 @@ import { ConfigService, ConfigModule } from '@nestjs/config';
 import { LoggerModule } from '@libs/logger/logger.module';
 
 import { UpdateService } from './update.service';
-import { RedisConnectionModule } from '../redis-connection/redis-connection.module';
+import { RedisModule } from '../redis-connection/redis.module';
 import { DecodingModule } from '../decoding/decoding.module';
 
 @Module({
@@ -16,7 +16,7 @@ import { DecodingModule } from '../decoding/decoding.module';
     LuksoDataDbModule,
     ConfigModule.forRoot(),
     LoggerModule,
-    RedisConnectionModule,
+    RedisModule,
     DecodingModule,
   ],
   providers: [UpdateService, ConfigService],
