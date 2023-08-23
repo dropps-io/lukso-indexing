@@ -4,7 +4,6 @@ import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import format from 'pg-format';
 import { TokenHolderTable } from '@db/lukso-data/entities/token-holder.table';
-import { DecodedParameter } from 'apps/indexer/src/decoding/types/decoded-parameter';
 
 import { DB_DATA_TABLE, LUKSO_DATA_CONNECTION_STRING } from './config';
 import { ContractTable } from './entities/contract.table';
@@ -25,16 +24,6 @@ import { WrappedTxParameterTable } from './entities/wrapped-tx-parameter.table';
 import { WrappedTxInputTable } from './entities/wrapped-tx-input.table';
 
 type TransactionWithInput = TransactionTable & { input: string };
-
-type DecodedData = {
-  parameters: DecodedParameter[];
-  methodName: string;
-};
-
-interface DecodedEventData {
-  eventName: string;
-  parameters: DecodedParameter[];
-}
 
 @Injectable()
 export class LuksoDataDbService implements OnModuleDestroy {
@@ -186,61 +175,23 @@ export class LuksoDataDbService implements OnModuleDestroy {
   }
 
   // Metadata table functions
-  public async insertMetadata(
-    metadata: Omit<MetadataTable, 'id'>,
-    onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
-  ): Promise<{ id: number }> {
-    // First, check if the data already exists and get its latest version
-    const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId);
-    const newVersion = existingMetadata?.version ? existingMetadata.version + 1 : 1;
-
-    const query = `
-        INSERT INTO ${DB_DATA_TABLE.METADATA}
-        ("address", "tokenId", "name", "symbol", "description", "isNFT", "isHistorical", "version")
-        VALUES ($1, $2, $3, $4, $5, $6, false, $7)
-        RETURNING id;
-    `;
-
-    try {
-      const rows = await this.executeQuery(query, [
-        metadata.address,
-        metadata.tokenId,
-        metadata.name,
-        metadata.symbol,
-        metadata.description,
-        metadata.isNFT,
-        newVersion,
-      ]);
-      return { id: (rows[0] as { id: number }).id };
-    } catch (error) {
-      if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
-        const id = (await this.getLatestMetadata(metadata.address, metadata.tokenId))?.id;
-        if (!id) throw new Error('Could not get id of metadata');
-        else return { id };
-      } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
-        return await this.updateMetadata(metadata);
-      } else {
-        // If some other error occurred, rethrow it
-        throw error;
-      }
-    }
-  }
-
-  public async updateMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
-    // First, mark the old metadata as historical
+  public async insertMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
+    // Mark the old metadata as historical & Get the metadata if it exists
     await this.markMetadataAsHistorical(metadata.address, metadata.tokenId || undefined);
-
-    // Retrieve latest version and increment
     const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId);
+    // Add the new metadata with the calculated new version number
     const newVersion = existingMetadata?.version ? existingMetadata.version + 1 : 1;
 
+    //prep query to insert the updated metadata in to the table
+    // note: isHistorical flag to false on creation here
     const query = `
         INSERT INTO ${DB_DATA_TABLE.METADATA}
-        ("address", "tokenId", "name", "symbol", "description", "isNFT", "isHistorical", "version")
-        VALUES ($1, $2, $3, $4, $5, $6, false, $7)
+        ("address", "tokenId", "name", "symbol", "description", "isNFT", "version")
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id;
     `;
 
+    //Attempt to insert the new metadata
     const rows = await this.executeQuery(query, [
       metadata.address,
       metadata.tokenId,
@@ -250,6 +201,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
       metadata.isNFT,
       newVersion,
     ]);
+    // assume there is a response and return it
     return { id: (rows[0] as { id: number }).id };
   }
 

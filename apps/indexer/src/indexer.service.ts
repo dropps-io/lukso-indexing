@@ -666,7 +666,7 @@ export class IndexerService implements OnModuleInit {
   protected async indexMetadata(metadata: MetadataResponse): Promise<void> {
     try {
       // Insert the main metadata and retrieve the generated ID
-      const { id } = await this.dataDB.insertMetadata(metadata.metadata, 'update');
+      const { id } = await this.dataDB.insertMetadata(metadata.metadata);
 
       // Insert related metadata objects into the database
       await this.dataDB.insertMetadataImages(id, metadata.images, 'do nothing');

@@ -201,7 +201,7 @@ export class Erc725StandardService {
 
     const oldMetadata = await this.dataDB.getMetadata(address);
     newMetadata.version = (parseInt(oldMetadata?.version || '0', 10) + 1).toString();
-    await this.dataDB.insertMetadata(newMetadata, 'update');
+    await this.dataDB.insertMetadata(newMetadata);
   }
 
   private async compareAndUpdateMetadata(address: string, newProfile: any) {
