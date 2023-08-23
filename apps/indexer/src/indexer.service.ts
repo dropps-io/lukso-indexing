@@ -19,6 +19,7 @@ import {
   NODE_ENV,
   TOKENS_INDEXING_BATCH_SIZE,
   TX_INDEXING_BATCH_SIZE,
+  IS_TESTING,
 } from './globals';
 import { EthersService } from './ethers/ethers.service';
 import { DecodingService } from './decoding/decoding.service';
@@ -682,9 +683,7 @@ export class IndexerService implements OnModuleInit {
   }
 
   private setRecursiveTimeout(func: () => void, timeout: number) {
-    if (NODE_ENV === 'test') return;
-    setTimeout(() => {
-      func();
-    }, timeout);
+    if (IS_TESTING) return;
+    else setTimeout(func, timeout); // Trigger the internal execution of 'func' through resolve() using setTimeout after 'timeout' milliseconds
   }
 }

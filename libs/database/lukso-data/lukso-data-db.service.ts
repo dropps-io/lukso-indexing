@@ -176,7 +176,12 @@ export class LuksoDataDbService implements OnModuleDestroy {
 
   // Metadata table functions
   public async insertMetadata(metadata: Omit<MetadataTable, 'id'>): Promise<{ id: number }> {
-    // Mark the old metadata as historical & Get the metadata if it exists
+    // Call helper function to change the old metadata row to isHistorical = true & Get the metadata if it exists
+    //TODO: Remove comment after testing
+    //In the metadata table, we have a column called isHistorical, which is a boolean value that indicates whether the metadata is the latest version or not, this is only on the primary key containing table (metadata table)
+    // The other tables that contain metadata (metadataImage, metadataLink, metadataAsset, metadataTag) do not have this column, as they are not the primary source of truth for metadata
+    // there can't be duplicate primary keys... so we need to mark the old metadata as historical, and insert the new metadata with a new version number
+    // but that still has the issue of duplicate primary keys, so we need to add a version number and make the primary key a combination of address, version?
     await this.markMetadataAsHistorical(metadata.address, metadata.tokenId || undefined);
     const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId);
     // Add the new metadata with the calculated new version number
