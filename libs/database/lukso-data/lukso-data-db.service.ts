@@ -182,13 +182,11 @@ export class LuksoDataDbService implements OnModuleDestroy {
     // The other tables that contain metadata (metadataImage, metadataLink, metadataAsset, metadataTag) do not have this column, as they are not the primary source of truth for metadata
     // there can't be duplicate primary keys... so we need to mark the old metadata as historical, and insert the new metadata with a new version number
     // but that still has the issue of duplicate primary keys, so we need to add a version number and make the primary key a combination of address, version?
-    await this.markMetadataAsHistorical(metadata.address, metadata.tokenId || undefined);
-    const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId);
-    // Add the new metadata with the calculated new version number
+    const existingMetadata = await this.getLatestMetadata(metadata.address, metadata.tokenId); // tokenId required for NFTs
+    // calculate the new version number
     const newVersion = existingMetadata?.version ? existingMetadata.version + 1 : 1;
 
     //prep query to insert the updated metadata in to the table
-    // note: isHistorical flag to false on creation here
     const query = `
         INSERT INTO ${DB_DATA_TABLE.METADATA}
         ("address", "tokenId", "name", "symbol", "description", "isNFT", "version")
@@ -196,18 +194,31 @@ export class LuksoDataDbService implements OnModuleDestroy {
         RETURNING id;
     `;
 
-    //Attempt to insert the new metadata
-    const rows = await this.executeQuery(query, [
-      metadata.address,
-      metadata.tokenId,
-      metadata.name,
-      metadata.symbol,
-      metadata.description,
-      metadata.isNFT,
-      newVersion,
-    ]);
-    // assume there is a response and return it
-    return { id: (rows[0] as { id: number }).id };
+    // Use begin and commit to ensure that the metadata is marked as historical before the new metadata is inserted
+    try {
+      await this.client.query('BEGIN'); // Begin transaction
+
+      // Generate a query to mark the metadata as historical and pass it to the client
+      await this.markMetadataAsHistorical(metadata.address, metadata.tokenId || undefined);
+      //Attempt to insert the new metadata, note: isHistorical flag to false on creation here
+      const rows = await this.executeQuery(query, [
+        metadata.address,
+        metadata.tokenId,
+        metadata.name,
+        metadata.symbol,
+        metadata.description,
+        metadata.isNFT,
+        newVersion,
+      ]);
+      //commit the transaction
+      await this.client.query('COMMIT');
+
+      //assume there is a response and return it
+      return { id: (rows[0] as { id: number }).id };
+    } catch (e) {
+      await this.client.query('ROLLBACK');
+    }
+    return { id: -1 };
   }
 
   // Helper function to retrieve the latest version of metadata for an address and tokenId
@@ -848,18 +859,14 @@ export class LuksoDataDbService implements OnModuleDestroy {
 
   //Profile metadata (LSP3Profile)
 
-  public async markMetadataAsHistorical(
-    address: string,
-    tokenId?: string,
-    contentType?: string,
-  ): Promise<void> {
-    if (!contentType) contentType === 'all';
+  public async markMetadataAsHistorical(address: string, tokenId?: string): Promise<void> {
+    // Update the old metadata row to isHistorical = true
     const query = `
     UPDATE ${DB_DATA_TABLE.METADATA}
     SET "isHistorical" = true
-    WHERE "address" = $1 AND 
-    (("tokenId" = $2 AND $2 IS NOT NULL) OR ("tokenId" IS NULL AND $2 IS NULL));
+    WHERE "address" = $1 AND "isHistorical" = false AND ("tokenId" = $2 OR "tokenId" IS NULL)
   `;
+    //Execute or return the query
     await this.executeQuery(query, [address, tokenId]);
   }
 }
