@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { createLogger, format, transports, Logger as WinstonLogger } from 'winston';
-import { IS_PRODUCTION, ONLY_LOG_SERVICE } from 'apps/indexer/src/globals';
+import { getEnv } from '@utils/get-or-throw';
+
+const IS_PRODUCTION =
+  process.env.NODE_ENV === 'production' ||
+  process.env.NODE_ENV === 'prod' ||
+  process.env.NODE_ENV === 'staging';
+const ONLY_LOG_SERVICE = process.env.ONLY_LOG_SERVICE;
 
 /**
  * LoggerService is a NestJS service for logging, using the Winston library.
@@ -47,7 +53,7 @@ export class LoggerService {
 
     const fileFormat = format.combine(format.timestamp(), format.metadata(), format.json());
 
-    const fileLogging = process.env.FILE_LOGGING === 'true';
+    const fileLogging = getEnv<boolean>('FILE_LOGGING');
 
     const fileTransport = fileLogging
       ? [

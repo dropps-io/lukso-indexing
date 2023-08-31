@@ -7,6 +7,5 @@ export const setupEnv = () => {
     config({ path: path.resolve(process.cwd(), '.env.mainnet') });
   if (process.env.NODE_ENV === 'testnet')
     config({ path: path.resolve(process.cwd(), '.env.testnet') });
-
   config();
 };
