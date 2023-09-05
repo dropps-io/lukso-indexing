@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 
 import { IndexerModule } from './indexer.module';
-import { DROP_DB_ON_START, PORT } from './globals';
+import { DROP_DB_ON_START, WS_PORT } from './globals';
 import { seedLuksoData } from '../../../scripts/database/lukso-data/seed';
 import { seedLuksoStructure } from '../../../scripts/database/lukso-structure/seed';
 import { populateLuksoStructure } from '../../../scripts/database/lukso-structure/populate';
@@ -11,6 +11,6 @@ async function bootstrap() {
   await seedLuksoStructure(DROP_DB_ON_START);
   await populateLuksoStructure();
   const app = await NestFactory.create(IndexerModule);
-  await app.listen(PORT);
+  await app.listen(WS_PORT);
 }
 bootstrap();

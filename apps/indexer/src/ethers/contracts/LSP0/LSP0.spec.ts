@@ -2,8 +2,9 @@ import { LoggerService } from '@libs/logger/logger.service';
 
 import { LSP0 } from './LSP0';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
-jest.setTimeout(15_000);
+jest.setTimeout(30_000);
 
 describe('LSP0', () => {
   let service: LSP0;
@@ -12,7 +13,7 @@ describe('LSP0', () => {
   const e2eProfileAddress = '0xEF1a8DF71Be124E8e0322c62F974C553961E91DC';
 
   beforeAll(async () => {
-    service = new LSP0(logger.getChildLogger('LSP0'));
+    service = new LSP0(new FetcherService(), logger.getChildLogger('LSP0'));
   });
 
   describe('fetchData', () => {
@@ -21,7 +22,7 @@ describe('LSP0', () => {
       expect(res).toBeNull();
     });
 
-    it('should fetch LSP7 data', async () => {
+    it('should fetch LSP0 data', async () => {
       const res = await service.fetchData(e2eProfileAddress);
 
       expect(res).toEqual({

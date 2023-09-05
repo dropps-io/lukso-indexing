@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { LuksoDataDbModule } from '@db/lukso-data/lukso-data-db.module';
 import { LuksoStructureDbModule } from '@db/lukso-structure/lukso-structure-db.module';
 import { LoggerModule } from '@libs/logger/logger.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { EthersModule } from './ethers/ethers.module';
 import { DecodingModule } from './decoding/decoding.module';
@@ -23,6 +24,7 @@ import { IndexingWsModule } from './indexing-ws/indexing-ws.module';
     UpdateModule,
     BlockchainActionRouterModule,
     IndexingWsModule,
+    ScheduleModule.forRoot(),
   ],
   providers: [IndexerService, IndexingWsGateway],
 })

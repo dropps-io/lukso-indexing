@@ -1,12 +1,10 @@
 import { LoggerService } from '@libs/logger/logger.service';
-import { Test } from '@nestjs/testing';
-import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
 import { LSP8 } from './LSP8';
 import { ADDRESS1, HASH1 } from '../../../../../../test/utils/test-values';
 import { MetadataResponse } from '../../types/metadata-response';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
-import { EthersService } from '../../ethers.service';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 jest.setTimeout(15_000);
 
@@ -36,17 +34,7 @@ describe('LSP8', () => {
   const logger = new LoggerService();
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        EthersService,
-        { provide: LuksoStructureDbService, useValue: new LuksoStructureDbService(logger) },
-        { provide: LoggerService, useValue: logger },
-      ],
-    }).compile();
-
-    const ethersService = moduleRef.get<EthersService>(EthersService);
-
-    service = new TestLSP8(ethersService, logger.getChildLogger('LSP8'));
+    service = new TestLSP8(new FetcherService(), logger.getChildLogger('LSP8'));
   });
 
   describe('fetchTokenData', () => {

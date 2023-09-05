@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
@@ -8,18 +8,11 @@ import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
-import { ConfigTable } from '@db/lukso-structure/entities/config.table';
 import { Log } from 'ethers';
+import { Cron } from '@nestjs/schedule';
+import { PreventOverlap } from '@decorators/prevent-overlap.decorator';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 
-import {
-  BLOCKS_INDEXING_BATCH_SIZE,
-  CONTRACTS_INDEXING_BATCH_SIZE,
-  CONTRACTS_PROCESSING_INTERVAL,
-  EVENTS_INDEXING_BATCH_SIZE,
-  NODE_ENV,
-  TOKENS_INDEXING_BATCH_SIZE,
-  TX_INDEXING_BATCH_SIZE,
-} from './globals';
 import { EthersService } from './ethers/ethers.service';
 import { DecodingService } from './decoding/decoding.service';
 import { DecodedParameter } from './decoding/types/decoded-parameter';
@@ -29,12 +22,13 @@ import { buildLogId } from './utils/build-log-id';
 import { splitIntoChunks } from './utils/split-into-chunks';
 import { BlockchainActionRouterService } from './blockchain-action-router/blockchain-action-router.service';
 import { IndexingWsGateway } from './indexing-ws/indexing-ws.gateway';
+import { BLOCKS_P_LIMIT, CRON_PROCESS, EVENTS_FETCH_BLOCKS_LIMIT, P_LIMIT } from './globals';
 
 /**
  * IndexerService class that is responsible for indexing transactions from the blockchain and persisting them to the database.
  */
 @Injectable()
-export class IndexerService implements OnModuleInit {
+export class IndexerService {
   private readonly logger: winston.Logger;
 
   constructor(
@@ -49,14 +43,6 @@ export class IndexerService implements OnModuleInit {
     this.logger = loggerService.getChildLogger('Indexing');
     this.logger.info('Indexer starting...');
   }
-  onModuleInit() {
-    if (NODE_ENV !== 'test') {
-      this.indexByBlock().then();
-      this.indexByEvents().then();
-      this.processContractsToIndex().then();
-      this.processContractTokensToIndex().then();
-    }
-  }
 
   /**
    * Indexes data from blocks in a batch-wise manner.
@@ -64,70 +50,49 @@ export class IndexerService implements OnModuleInit {
    * It indexes transactions within blocks and updates the latest indexed block in the database.
    * The method will recursively call itself after a specified timeout.
    */
+  @Cron(CRON_PROCESS)
+  @PreventOverlap()
+  @ExceptionHandler(false)
   protected async indexByBlock() {
-    const startTime = new Date();
-    let lastBlock = 0;
-    let toBlock = 0;
-    let config: ConfigTable | null = null;
+    // Retrieve configuration and block data
+    const config = await this.structureDB.getConfig();
+    const lastBlock = await this.ethersService.getLastBlock();
+    let fromBlock = config.latestIndexedBlock + 1;
 
-    try {
-      // Retrieve configuration and block data
-      config = await this.structureDB.getConfig();
-      lastBlock = await this.ethersService.getLastBlock();
-      let fromBlock = config.latestIndexedBlock + 1;
+    // Determine the block number until which we should index in this iteration
+    const toBlock = fromBlock + BLOCKS_P_LIMIT > lastBlock ? lastBlock : fromBlock + BLOCKS_P_LIMIT;
 
-      // Determine the block number until which we should index in this iteration
-      toBlock =
-        fromBlock + BLOCKS_INDEXING_BATCH_SIZE > lastBlock
-          ? lastBlock
-          : fromBlock + BLOCKS_INDEXING_BATCH_SIZE;
+    // Function to index all transactions within a block
+    const indexBlock = async (blockNumber: number) => {
+      // Get transaction hashes for the block
+      const transactionsHashes = await this.ethersService.getBlockTransactions(blockNumber);
+      this.logger.debug(
+        `Indexing ${transactionsHashes.length} transactions from block ${blockNumber}`,
+      );
 
-      // Function to index all transactions within a block
-      const indexBlock = async (blockNumber: number) => {
-        // Get transaction hashes for the block
-        const transactionsHashes = await this.ethersService.getBlockTransactions(blockNumber);
-        this.logger.debug(
-          `Indexing ${transactionsHashes.length} transactions from block ${blockNumber}`,
-        );
-
-        // Index transactions in batches
-        const indexBatchTransactions = async (txHashes: string[]) => {
-          for (const txHash of txHashes) await this.indexTransaction(txHash);
-        };
-
-        // Split transaction hashes into chunks and process them concurrently
-        const transactionHashesChunks = splitIntoChunks(transactionsHashes, TX_INDEXING_BATCH_SIZE);
-        await Promise.all(transactionHashesChunks.map(indexBatchTransactions));
+      // Index transactions in batches
+      const indexBatchTransactions = async (txHashes: string[]) => {
+        for (const txHash of txHashes) await this.indexTransaction(txHash);
       };
 
-      if (fromBlock < toBlock) {
-        this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
+      // Split transaction hashes into chunks and process them concurrently
+      const transactionHashesChunks = splitIntoChunks(transactionsHashes, P_LIMIT);
+      await Promise.all(transactionHashesChunks.map(indexBatchTransactions));
+    };
 
-        // Process blocks in batches and wait for all blocks to finish indexing
-        const promises: Promise<void>[] = [];
-        for (fromBlock; fromBlock <= toBlock; fromBlock++) {
-          promises.push(indexBlock(fromBlock));
-        }
-        await Promise.all(promises);
+    if (fromBlock < toBlock) {
+      this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
 
-        // Update the latest indexed block in the database and logger
-        await this.structureDB.updateLatestIndexedBlock(toBlock);
+      // Process blocks in batches and wait for all blocks to finish indexing
+      const promises: Promise<void>[] = [];
+      for (fromBlock; fromBlock <= toBlock; fromBlock++) {
+        promises.push(indexBlock(fromBlock));
       }
-    } catch (e) {
-      this.logger.error(`Error while indexing data from blocks: ${e.message}`);
+      await Promise.all(promises);
+
+      // Update the latest indexed block in the database and logger
+      await this.structureDB.updateLatestIndexedBlock(toBlock);
     }
-
-    // Calculate the timeout for the next recursive call based on the current indexing progress
-    const timeout =
-      lastBlock === toBlock && config
-        ? Math.max(
-            0,
-            config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
-          )
-        : 0;
-
-    // Recursively call this function after the calculated timeout
-    this.setRecursiveTimeout(this.indexByBlock.bind(this), timeout);
   }
 
   /**
@@ -136,70 +101,53 @@ export class IndexerService implements OnModuleInit {
    * It indexes transactions and events associated with logs and updates the latest indexed event block in the database.
    * The method will recursively call itself after a specified timeout.
    */
+  @Cron(CRON_PROCESS)
+  @PreventOverlap()
+  @ExceptionHandler(false)
   protected async indexByEvents() {
-    const startTime = new Date();
-    let config: ConfigTable | null = null;
-    let lastBlock = 0;
-    let toBlock = 0;
+    // Retrieve configuration and block data
+    const config = await this.structureDB.getConfig();
+    const fromBlock: number = config.latestIndexedEventBlock + 1;
 
-    try {
-      // Retrieve configuration and block data
-      config = await this.structureDB.getConfig();
-      const fromBlock: number = config.latestIndexedEventBlock + 1;
+    const lastBlock = await this.ethersService.getLastBlock();
+    // Determine the block number until which we should index in this iteration
+    const toBlock =
+      fromBlock + EVENTS_FETCH_BLOCKS_LIMIT < lastBlock
+        ? fromBlock + EVENTS_FETCH_BLOCKS_LIMIT
+        : lastBlock;
 
-      lastBlock = await this.ethersService.getLastBlock();
-      // Determine the block number until which we should index in this iteration
-      toBlock =
-        fromBlock + config.blockIteration < lastBlock
-          ? fromBlock + config.blockIteration
-          : lastBlock;
+    if (fromBlock < toBlock) {
+      this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
 
-      if (fromBlock < toBlock) {
-        this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
+      // Retrieve logs from the specified block range
+      const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
-        // Retrieve logs from the specified block range
-        const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
+      // Split transaction hashes and logs into chunks for batch processing
+      const txHashesChunks = splitIntoChunks(
+        logs
+          .map((log) => log.transactionHash)
+          .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index),
+        P_LIMIT,
+      );
+      const logsChunks = splitIntoChunks(logs, P_LIMIT);
 
-        // Split transaction hashes and logs into chunks for batch processing
-        const txHashesChunks = splitIntoChunks(
-          logs
-            .map((log) => log.transactionHash)
-            .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index),
-          TX_INDEXING_BATCH_SIZE,
-        );
-        const logsChunks = splitIntoChunks(logs, EVENTS_INDEXING_BATCH_SIZE);
+      // Functions to index transactions and events in batches
+      const indexBatchTransactions = async (txHashes: string[]) => {
+        for (const txHash of txHashes) await this.indexTransaction(txHash);
+      };
+      const indexBatchEvents = async (logs: Log[]) => {
+        for (const log of logs) await this.indexEvent(log);
+      };
 
-        // Functions to index transactions and events in batches
-        const indexBatchTransactions = async (txHashes: string[]) => {
-          for (const txHash of txHashes) await this.indexTransaction(txHash);
-        };
-        const indexBatchEvents = async (logs: Log[]) => {
-          for (const log of logs) await this.indexEvent(log);
-        };
+      // Process transactions and events in batches concurrently
+      await Promise.all([
+        Promise.all(logsChunks.map(indexBatchEvents)),
+        Promise.all(txHashesChunks.map(indexBatchTransactions)),
+      ]);
 
-        // Process transactions and events in batches concurrently
-        await Promise.all([
-          Promise.all(logsChunks.map(indexBatchEvents)),
-          Promise.all(txHashesChunks.map(indexBatchTransactions)),
-        ]);
-
-        // Update the latest indexed event block in the database and logger
-        await this.structureDB.updateLatestIndexedEventBlock(toBlock);
-      }
-    } catch (e) {
-      this.logger.error(`Error while indexing data: ${e.message}`);
+      // Update the latest indexed event block in the database and logger
+      await this.structureDB.updateLatestIndexedEventBlock(toBlock);
     }
-
-    // Calculate the timeout for the next recursive call based on the current indexing progress
-    const timeout =
-      lastBlock === toBlock && config
-        ? Math.max(
-            0,
-            config.sleepBetweenIteration - Number(new Date().getTime() - startTime.getTime()),
-          )
-        : 0;
-    // Recursively call this function after the calculated timeout
-    this.setRecursiveTimeout(this.indexByEvents.bind(this), timeout);
   }
 
   /**
@@ -210,54 +158,43 @@ export class IndexerService implements OnModuleInit {
    *
    * @throws {Error} If there is an error while processing and indexing contracts.
    */
+  @Cron(CRON_PROCESS)
+  @PreventOverlap()
+  @ExceptionHandler(false)
   protected async processContractsToIndex() {
-    const startTime = new Date();
+    // Function to index contracts and their metadata in batches
+    const indexBatchContracts = async (contractsToIndex: string[]) => {
+      for (const contract of contractsToIndex) {
+        this.logger.debug(`Indexing address ${contract}`, { contract });
+        // Index the contract and retrieve its row
+        const contractRow = await this.indexContract(contract);
+        if (contractRow) {
+          this.logger.debug(`Fetching contract metadata for ${contract}`, { contract });
+          // Fetch contract metadata using EthersService
+          const metadata = await this.ethersService.fetchContractMetadata(
+            contract,
+            contractRow.interfaceCode || undefined,
+          );
 
-    try {
-      // Function to index contracts and their metadata in batches
-      const indexBatchContracts = async (contractsToIndex: string[]) => {
-        for (const contract of contractsToIndex) {
-          this.logger.debug(`Indexing address ${contract}`, { contract });
-          // Index the contract and retrieve its row
-          const contractRow = await this.indexContract(contract);
-          if (contractRow) {
-            this.logger.debug(`Fetching contract metadata for ${contract}`, { contract });
-            // Fetch contract metadata using EthersService
-            const metadata = await this.ethersService.fetchContractMetadata(
-              contract,
-              contractRow.interfaceCode || undefined,
-            );
-
-            // Log if no metadata is found, and use defaultMetadata as a fallback
-            if (!metadata) this.logger.debug(`No metadata found for ${contract}`, { contract });
-            // Index the contract metadata
-            await this.indexMetadata(metadata || defaultMetadata(contract));
-          }
+          // Log if no metadata is found, and use defaultMetadata as a fallback
+          if (!metadata) this.logger.debug(`No metadata found for ${contract}`, { contract });
+          // Index the contract metadata
+          await this.indexMetadata(metadata || defaultMetadata(contract));
         }
-      };
+      }
+    };
 
-      // Retrieve the list of contracts to be indexed
-      const contractsToIndex = await this.dataDB.getContractsToIndex();
+    // Retrieve the list of contracts to be indexed
+    const contractsToIndex = await this.dataDB.getContractsToIndex();
 
-      if (contractsToIndex.length > 0)
-        this.logger.info(`Processing ${contractsToIndex.length} contracts to index`);
-      else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
+    if (contractsToIndex.length > 0)
+      this.logger.info(`Processing ${contractsToIndex.length} contracts to index`);
+    else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
 
-      // Split contracts into chunks for batch processing
-      const contractsChunks = splitIntoChunks(contractsToIndex, CONTRACTS_INDEXING_BATCH_SIZE);
-      // Process contract chunks concurrently
-      await Promise.all(contractsChunks.map(indexBatchContracts));
-    } catch (e) {
-      this.logger.error(`Error while processing contracts to index: ${e.message}`);
-    }
-
-    // Calculate the timeout for the next recursive call based on the current processing progress
-    const timeout = Math.max(
-      0,
-      CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
-    );
-    // Recursively call this function after the calculated timeout
-    this.setRecursiveTimeout(this.processContractsToIndex.bind(this), timeout);
+    // Split contracts into chunks for batch processing
+    const contractsChunks = splitIntoChunks(contractsToIndex, P_LIMIT);
+    // Process contract chunks concurrently
+    await Promise.all(contractsChunks.map(indexBatchContracts));
   }
 
   /**
@@ -265,70 +202,58 @@ export class IndexerService implements OnModuleInit {
    * splits them into chunks, and indexes each chunk concurrently. After the process is completed, it schedules
    * the next execution of the function based on a calculated timeout.
    */
+  @Cron(CRON_PROCESS)
+  @PreventOverlap()
+  @ExceptionHandler(false)
   protected async processContractTokensToIndex() {
-    const startTime = new Date();
+    // Function to index a batch of contracts and their metadata
+    const indexBatchTokens = async (tokensToIndex: ContractTokenTable[]) => {
+      // Loop through each contract token in the batch
+      for (const token of tokensToIndex) {
+        this.logger.debug(`Indexing token ${token.tokenId} from ${token.address}`, { ...token });
 
-    try {
-      // Function to index a batch of contracts and their metadata
-      const indexBatchTokens = async (tokensToIndex: ContractTokenTable[]) => {
-        // Loop through each contract token in the batch
-        for (const token of tokensToIndex) {
-          this.logger.debug(`Indexing token ${token.tokenId} from ${token.address}`, { ...token });
+        // Fetch the metadata of the contract token
+        const tokenData = await this.ethersService.fetchContractTokenMetadata(
+          token.address,
+          token.tokenId,
+        );
 
-          // Fetch the metadata of the contract token
-          const tokenData = await this.ethersService.fetchContractTokenMetadata(
-            token.address,
-            token.tokenId,
+        // If metadata is available, insert or update the token in the database
+        // and index the metadata
+        if (tokenData) {
+          await this.dataDB.insertContractToken(
+            {
+              ...token,
+              decodedTokenId: tokenData.decodedTokenId,
+            },
+            'update',
           );
-
-          // If metadata is available, insert or update the token in the database
-          // and index the metadata
-          if (tokenData) {
-            await this.dataDB.insertContractToken(
-              {
-                ...token,
-                decodedTokenId: tokenData.decodedTokenId,
-              },
-              'update',
-            );
-            await this.indexMetadata(tokenData.metadata);
-          } else {
-            this.logger.debug(
-              `No metadata found for token ${token.tokenId} from ${token.address}`,
-              { ...token },
-            );
-            await this.dataDB.insertContractToken(
-              {
-                ...token,
-                decodedTokenId: token.tokenId,
-              },
-              'update',
-            );
-          }
+          await this.indexMetadata(tokenData.metadata);
+        } else {
+          this.logger.debug(`No metadata found for token ${token.tokenId} from ${token.address}`, {
+            ...token,
+          });
+          await this.dataDB.insertContractToken(
+            {
+              ...token,
+              decodedTokenId: token.tokenId,
+            },
+            'update',
+          );
         }
-      };
+      }
+    };
 
-      // Retrieve the list of contract tokens to be indexed
-      const tokensToIndex = await this.dataDB.getTokensToIndex();
+    // Retrieve the list of contract tokens to be indexed
+    const tokensToIndex = await this.dataDB.getTokensToIndex();
 
-      if (tokensToIndex.length > 0)
-        this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
-      else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
+    if (tokensToIndex.length > 0)
+      this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
+    else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
 
-      // Split the list of contract tokens into chunks for batch processing
-      const tokensChunks = splitIntoChunks(tokensToIndex, TOKENS_INDEXING_BATCH_SIZE);
-      await Promise.all(tokensChunks.map(indexBatchTokens));
-    } catch (e) {
-      this.logger.error(`Error while processing contracts to index: ${e.message}`);
-    }
-
-    // Calculate the timeout for the next recursive call based on the current processing progress
-    const timeout = Math.max(
-      0,
-      CONTRACTS_PROCESSING_INTERVAL - Number(new Date().getTime() - startTime.getTime()),
-    );
-    // Recursively call this function after the calculated timeout
-    this.setRecursiveTimeout(this.processContractTokensToIndex.bind(this), timeout);
+    // Split the list of contract tokens into chunks for batch processing
+    const tokensChunks = splitIntoChunks(tokensToIndex, P_LIMIT);
+    await Promise.all(tokensChunks.map(indexBatchTokens));
   }
 
   /**
@@ -679,12 +604,5 @@ export class IndexerService implements OnModuleInit {
         tokenId: metadata.metadata.tokenId,
       });
     }
-  }
-
-  private setRecursiveTimeout(func: () => void, timeout: number) {
-    if (NODE_ENV === 'test') return;
-    setTimeout(() => {
-      func();
-    }, timeout);
   }
 }

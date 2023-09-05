@@ -4,6 +4,14 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 
 import { EthersService } from './ethers.service';
 import { TEST_CONTRACT_INTERFACE } from '../../../../test/utils/test-values';
+import { FetcherService } from '../fetcher/fetcher.service';
+
+const mockFetcherService = () => ({
+  fetch: mockFetch,
+});
+
+const mockFetch = jest.fn();
+
 describe('EthersService', () => {
   let service: EthersService;
   const logger = new LoggerService();
@@ -15,6 +23,7 @@ describe('EthersService', () => {
         EthersService,
         { provide: LuksoStructureDbService, useValue: db },
         { provide: LoggerService, useValue: logger },
+        { provide: FetcherService, useFactory: mockFetcherService },
       ],
     }).compile();
 

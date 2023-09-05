@@ -5,6 +5,7 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { LSP7 } from './LSP7';
 import { EthersService } from '../../ethers.service';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 jest.setTimeout(15_000);
 
@@ -21,12 +22,13 @@ describe('LSP7', () => {
       providers: [
         EthersService,
         { provide: LuksoStructureDbService, useValue: db },
+        { provide: FetcherService, useValue: new FetcherService() },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();
 
     const ethersService: EthersService = moduleRef.get<EthersService>(EthersService);
-    service = new LSP7(ethersService, logger.getChildLogger('LSP7'));
+    service = new LSP7(ethersService, new FetcherService(), logger.getChildLogger('LSP7'));
   });
 
   describe('fetchData', () => {

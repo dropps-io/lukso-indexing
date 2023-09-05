@@ -2,6 +2,7 @@ import { LoggerService } from '@libs/logger/logger.service';
 
 import { LSP4 } from './LSP4';
 import { ADDRESS1 } from '../../../../../../test/utils/test-values';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 jest.setTimeout(15_000);
 
@@ -12,7 +13,7 @@ describe('LSP4', () => {
   const lsp7Contract = '0x3429BB49c2c67f42ca83b2164D52566F61c4aDF4';
 
   beforeAll(async () => {
-    service = new LSP4(logger.getChildLogger('LSP4'));
+    service = new LSP4(new FetcherService(), logger.getChildLogger('LSP4'));
   });
 
   describe('fetchData', () => {

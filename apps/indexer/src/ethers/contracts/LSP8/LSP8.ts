@@ -5,22 +5,24 @@ import { toUtf8String } from 'ethers';
 import { keccak } from '@utils/keccak';
 
 import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
+import { RPC_URL } from '../../../globals';
 import LSP8IdentifiableDigitalAssetSchema from '../schemas/LSP8IdentifiableDigitalAssetSchema.json';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 import { erc725yGetData } from '../utils/erc725y-get-data';
-import { formatUrl } from '../../../utils/format-url';
 import { decodeJsonUrl } from '../../../utils/json-url';
 import { decodeLsp8TokenId } from '../../../decoding/utils/decode-lsp8-token-id';
 import { LSP4 } from '../LSP4/LSP4';
-import { EthersService } from '../../ethers.service';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class LSP8 {
   private readonly lsp4: LSP4;
-  constructor(private ethersService: EthersService, private logger: winston.Logger) {
-    this.lsp4 = new LSP4(logger);
+  constructor(
+    protected readonly fetcherService: FetcherService,
+    protected readonly logger: winston.Logger,
+  ) {
+    this.lsp4 = new LSP4(fetcherService, logger);
   }
 
   /**
@@ -78,7 +80,7 @@ export class LSP8 {
 
     const url = legacy ? decodeJsonUrl(response) : toUtf8String('0x' + response.slice(10));
 
-    return await this.lsp4.fetchLsp4MetadataFromUrl(formatUrl(url));
+    return await this.lsp4.fetchLsp4MetadataFromUrl(url);
   }
 
   /**
@@ -102,7 +104,7 @@ export class LSP8 {
     const baseURI = toUtf8String('0x' + response.slice(10));
 
     // Format the token URI by appending the decoded token ID to the base URI
-    const tokenURI = `${formatUrl(baseURI)}/${decodedTokenId}`;
+    const tokenURI = `${baseURI}/${decodedTokenId}`;
     return await this.lsp4.fetchLsp4MetadataFromUrl(tokenURI);
   }
 
@@ -188,8 +190,6 @@ export class LSP8 {
    * @param {string} address - The contract address
    */
   private getErc725(address: string): ERC725 {
-    return new ERC725(LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
-      ipfsGateway: IPFS_GATEWAY,
-    });
+    return new ERC725(LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL);
   }
 }

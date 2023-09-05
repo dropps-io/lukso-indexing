@@ -1,16 +1,21 @@
 import { LSP3Profile } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp3-profile';
 import winston from 'winston';
+import { LSP3ProfileJson } from '@models/lsp3-profile-json';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 
 import { MetadataResponse } from '../../types/metadata-response';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 import { erc725yGetData } from '../utils/erc725y-get-data';
-import { formatUrl } from '../../../utils/format-url';
 import { decodeJsonUrl } from '../../../utils/json-url';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class LSP0 {
-  constructor(private logger: winston.Logger) {}
+  constructor(
+    protected readonly fetcherService: FetcherService,
+    protected readonly logger: winston.Logger,
+  ) {}
 
   /**
    * Fetches LSP0 data for the given address and returns a MetadataResponse object.
@@ -31,7 +36,7 @@ export class LSP0 {
         return null;
       }
 
-      const url = formatUrl(decodeJsonUrl(response));
+      const url = decodeJsonUrl(response);
 
       // Extract the LSP3Profile from the fetched data, if available.
       const lsp3Profile = await this.fetchLsp3ProfileFromUrl(url);
@@ -76,22 +81,17 @@ export class LSP0 {
    * @returns {Promise<(LSP3Profile & { name?: string }) | null>} -
    * A promise that resolves to an object containing the profile's metadata, or null if an error occurs.
    */
+  @ExceptionHandler(false, null)
   protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
-    try {
-      // Attempt to fetch the token metadata from the given URL
-      const profileMetadata = await fetch(url);
+    const profileMetadata = await this.fetcherService.fetch<LSP3ProfileJson>(url, {}, 3, 0, 5000);
 
-      // Convert the metadata response to JSON
-      const profileMetadataJson = await profileMetadata.json();
-
-      if (profileMetadataJson && profileMetadataJson.LSP3Profile)
-        return profileMetadataJson.LSP3Profile;
-      else if (profileMetadataJson && (profileMetadataJson.name || profileMetadataJson.description))
-        return profileMetadataJson;
-      else return null;
-    } catch (e) {
-      // If an error occurs, log a warning with the URL and return null
-      this.logger.warn(`Failed to fetch LSP3 Profile from ${url}`);
+    if ('LSP3Profile' in profileMetadata) {
+      // Case when profileMetadata has the shape { LSP3Profile: LSP3Profile }
+      return profileMetadata.LSP3Profile;
+    } else if (profileMetadata.name || profileMetadata.description) {
+      // Case when profileMetadata has the shape of LSP3Profile
+      return profileMetadata;
+    } else {
       return null;
     }
   }
