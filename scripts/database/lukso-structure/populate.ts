@@ -19,13 +19,13 @@ import ERC721 from '@openzeppelin/contracts/build/contracts/ERC721PresetMinterPa
 import ERC777 from '@openzeppelin/contracts/build/contracts/ERC777PresetFixedSupply.json';
 import ERC1155 from '@openzeppelin/contracts/build/contracts/ERC1155PresetMinterPauser.json';
 import { ERC725JSONSchema } from '@erc725/erc725.js';
-import { tryExecuting } from '@utils/try-executing';
 import { generateAndPersistMethodInterfaces } from '@db/lukso-structure/utils/generate-method-interfaces';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
-import { CONTRACT_TYPE } from '@models/enums';
 import fs from 'fs';
 import path from 'path';
+import { CONTRACT_TYPE } from '@models/enums';
+import { tryExecuting } from '@utils/try-executing';
 
 const standardInterfaces = [
   {

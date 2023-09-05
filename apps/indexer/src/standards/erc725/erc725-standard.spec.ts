@@ -11,6 +11,7 @@ import { DecodingService } from '../../decoding/decoding.service';
 import { ADDRESS1 } from '../../../../../test/utils/test-values';
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { executeQuery } from '../../../../../test/utils/db-helpers';
+import { FetcherService } from '../../fetcher/fetcher.service';
 
 describe('Erc725StandardService', () => {
   let service: Erc725StandardService;
@@ -28,7 +29,7 @@ describe('Erc725StandardService', () => {
           provide: DecodingService,
           useValue: new DecodingService(
             structureDB,
-            new EthersService(logger, structureDB),
+            new EthersService(new FetcherService(), logger, structureDB),
             logger,
           ),
         },

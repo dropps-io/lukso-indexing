@@ -10,6 +10,7 @@ import { DecodingService } from './decoding.service';
 import { ADDRESS1 } from '../../../../test/utils/test-values';
 import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
 import { decodeLsp8TokenId } from './utils/decode-lsp8-token-id';
+import { FetcherService } from '../fetcher/fetcher.service';
 
 class TestDecodingService extends DecodingService {
   constructor(
@@ -111,7 +112,10 @@ describe('DecodingService', () => {
       providers: [
         TestDecodingService,
         { provide: LuksoStructureDbService, useValue: db },
-        { provide: EthersService, useValue: new EthersService(logger, db) },
+        {
+          provide: EthersService,
+          useValue: new EthersService(new FetcherService(), logger, db),
+        },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();

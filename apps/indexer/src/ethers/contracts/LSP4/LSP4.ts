@@ -1,8 +1,10 @@
 import winston from 'winston';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
-import { assertNonEmptyString } from '@utils/validators';
 import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 import { toUtf8String } from 'ethers';
+import { LSP4DigitalAssetJSON } from '@models/lsp4-digital-asset-json';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { assertNonEmptyString } from '@utils/validators';
 
 import { MetadataResponse } from '../../types/metadata-response';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
@@ -10,10 +12,13 @@ import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 import { erc725yGetData } from '../utils/erc725y-get-data';
 import { decodeJsonUrl } from '../../../utils/json-url';
-import { formatUrl } from '../../../utils/format-url';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class LSP4 {
-  constructor(private logger: winston.Logger) {}
+  constructor(
+    protected readonly fetcherService: FetcherService,
+    protected readonly logger: winston.Logger,
+  ) {}
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     try {
@@ -45,7 +50,7 @@ export class LSP4 {
         const response = await erc725yGetData(address, ERC725Y_KEY.LSP4_METADATA);
 
         if (response) {
-          const url = formatUrl(decodeJsonUrl(response));
+          const url = decodeJsonUrl(response);
           lsp4DigitalAsset = await this.fetchLsp4MetadataFromUrl(url);
 
           if (lsp4DigitalAsset) {
@@ -96,24 +101,25 @@ export class LSP4 {
    * @returns {Promise<(LSP4DigitalAsset & { name?: string }) | null>} -
    * A promise that resolves to an object containing the digital asset's metadata, or null if an error occurs.
    */
+  @ExceptionHandler(false, null)
   public async fetchLsp4MetadataFromUrl(
     url: string,
   ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
-    try {
-      // Attempt to fetch the token metadata from the given URL
-      const tokenMetadata = await fetch(url);
+    const tokenMetadata = await this.fetcherService.fetch<LSP4DigitalAssetJSON>(
+      url,
+      {},
+      3,
+      0,
+      5000,
+    );
 
-      // Convert the metadata response to JSON
-      const tokenMetadataJson = await tokenMetadata.json();
-
-      if (tokenMetadataJson && tokenMetadataJson.LSP4Metadata)
-        return tokenMetadataJson.LSP4Metadata;
-      else if (tokenMetadataJson && (tokenMetadataJson.name || tokenMetadataJson.description))
-        return tokenMetadataJson;
-      else return null;
-    } catch (e) {
-      // If an error occurs, log a warning with the URL and return null
-      this.logger.warn(`Failed to fetch metadata from ${url}`);
+    if ('LSP4Metadata' in tokenMetadata) {
+      // Case when tokenMetadata has a shape of { LSP4Metadata: LSP4DigitalAsset & { name?: string } }
+      return tokenMetadata.LSP4Metadata;
+    } else if (tokenMetadata.name || tokenMetadata.description) {
+      // Case when tokenMetadata has a shape of LSP4DigitalAsset & { name?: string }
+      return tokenMetadata;
+    } else {
       return null;
     }
   }

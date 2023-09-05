@@ -13,6 +13,7 @@ import { LSP0 } from './contracts/LSP0/LSP0';
 import { LSP7 } from './contracts/LSP7/LSP7';
 import { LSP4 } from './contracts/LSP4/LSP4';
 import { LSP8 } from './contracts/LSP8/LSP8';
+import { FetcherService } from '../fetcher/fetcher.service';
 
 @Injectable()
 export class EthersService {
@@ -25,16 +26,17 @@ export class EthersService {
   public readonly lsp8: LSP8;
 
   constructor(
+    protected readonly fetcherService: FetcherService,
     protected readonly loggerService: LoggerService,
     protected readonly structureDB: LuksoStructureDbService,
   ) {
     this.provider = new ethers.JsonRpcProvider(RPC_URL);
     this.logger = loggerService.getChildLogger('Ethers');
 
-    this.lsp0 = new LSP0(this.logger);
-    this.lsp4 = new LSP4(this.logger);
-    this.lsp7 = new LSP7(this, this.logger);
-    this.lsp8 = new LSP8(this, this.logger);
+    this.lsp0 = new LSP0(fetcherService, this.logger);
+    this.lsp4 = new LSP4(fetcherService, this.logger);
+    this.lsp7 = new LSP7(this, fetcherService, this.logger);
+    this.lsp8 = new LSP8(fetcherService, this.logger);
   }
 
   public getProvider(): ethers.JsonRpcProvider {

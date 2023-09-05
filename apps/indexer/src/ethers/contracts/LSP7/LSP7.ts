@@ -5,10 +5,15 @@ import { ethers } from 'ethers';
 import { EthersService } from '../../ethers.service';
 import { MetadataResponse } from '../../types/metadata-response';
 import { LSP4 } from '../LSP4/LSP4';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 export class LSP7 {
   private readonly lsp4: LSP4;
-  constructor(private ethersService: EthersService, private logger: winston.Logger) {
-    this.lsp4 = new LSP4(logger);
+  constructor(
+    protected readonly ethersService: EthersService,
+    protected readonly fetcherService: FetcherService,
+    protected readonly logger: winston.Logger,
+  ) {
+    this.lsp4 = new LSP4(fetcherService, this.logger);
   }
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
