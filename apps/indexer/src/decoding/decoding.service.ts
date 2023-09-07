@@ -384,6 +384,12 @@ export class DecodingService {
       };
 
       const result = await this.ethersService.getProvider().call(callTransaction);
+      if (!result || result === '0x') {
+        this.logger.warning(`No target found for ${contractAddress}`, {
+          contract: contractAddress,
+        });
+        return null;
+      }
 
       // If the "target" function returns an address, decode the result like this:
       const targetAddress = ethers.getAddress('0x' + result.slice(26)); // remove the first 12 bytes (24 characters) from the returned data
