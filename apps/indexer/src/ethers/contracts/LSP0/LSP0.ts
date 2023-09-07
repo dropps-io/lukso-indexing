@@ -24,53 +24,47 @@ export class LSP0 {
    *
    * @returns {Promise<MetadataResponse>} A promise that resolves to a MetadataResponse object.
    */
+  @ExceptionHandler(false, null)
   public async fetchData(address: string): Promise<MetadataResponse | null> {
-    try {
-      this.logger.debug(`Fetching LSP0 data for ${address}`, { address });
+    this.logger.debug(`Fetching LSP0 data for ${address}`, { address });
 
-      // Fetch the LSP3Profile data from the contract.
-      const response = await erc725yGetData(address, ERC725Y_KEY.LSP3_PROFILE);
+    // Fetch the LSP3Profile data from the contract.
+    const response = await erc725yGetData(address, ERC725Y_KEY.LSP3_PROFILE);
 
-      if (!response) {
-        this.logger.debug(`No LSP0 data found for ${address}`, { address });
-        return null;
-      }
-
-      const url = decodeJsonUrl(response);
-
-      // Extract the LSP3Profile from the fetched data, if available.
-      const lsp3Profile = await this.fetchLsp3ProfileFromUrl(url);
-
-      // Return null if LSP3Profile data is not found.
-      if (!lsp3Profile) {
-        this.logger.debug(`No LSP0 data found for ${address}`, { address });
-        return null;
-      }
-
-      // Return the MetadataResponse object containing the extracted metadata.
-      return {
-        metadata: {
-          address,
-          tokenId: null,
-          name: lsp3Profile.name,
-          description: lsp3Profile.description,
-          symbol: null,
-          isNFT: null,
-        },
-        images: [
-          ...formatMetadataImages(lsp3Profile.profileImage, METADATA_IMAGE_TYPE.PROFILE),
-          ...formatMetadataImages(lsp3Profile.backgroundImage, METADATA_IMAGE_TYPE.BACKGROUND),
-        ],
-        tags: lsp3Profile.tags || [],
-        links: lsp3Profile.links || [],
-        assets: [],
-      };
-    } catch (e) {
-      this.logger.error(`Error while fetching LSP0 data for ${address}: ${e.message}`, {
-        address,
-      });
+    if (!response) {
+      this.logger.debug(`No LSP0 data found for ${address}`, { address });
       return null;
     }
+
+    const url = decodeJsonUrl(response);
+
+    // Extract the LSP3Profile from the fetched data, if available.
+    const lsp3Profile = await this.fetchLsp3ProfileFromUrl(url);
+
+    // Return null if LSP3Profile data is not found.
+    if (!lsp3Profile) {
+      this.logger.debug(`No LSP0 data found for ${address}`, { address });
+      return null;
+    }
+
+    // Return the MetadataResponse object containing the extracted metadata.
+    return {
+      metadata: {
+        address,
+        tokenId: null,
+        name: lsp3Profile.name,
+        description: lsp3Profile.description,
+        symbol: null,
+        isNFT: null,
+      },
+      images: [
+        ...formatMetadataImages(lsp3Profile.profileImage, METADATA_IMAGE_TYPE.PROFILE),
+        ...formatMetadataImages(lsp3Profile.backgroundImage, METADATA_IMAGE_TYPE.BACKGROUND),
+      ],
+      tags: lsp3Profile.tags || [],
+      links: lsp3Profile.links || [],
+      assets: [],
+    };
   }
 
   /**

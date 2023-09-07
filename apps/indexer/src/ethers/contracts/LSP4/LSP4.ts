@@ -20,77 +20,71 @@ export class LSP4 {
     protected readonly logger: winston.Logger,
   ) {}
 
+  @ExceptionHandler(false, null)
   public async fetchData(address: string): Promise<MetadataResponse | null> {
+    this.logger.debug(`Fetching LSP4 data for ${address}`, { address });
+    let name: string | null = null;
+    let symbol: string | null = null;
+    let lsp4DigitalAsset: LSP4DigitalAsset | null = null;
+    let images: Omit<MetadataImageTable, 'metadataId'>[] = [];
+
+    // each of these fetchData can fail, so we need to catch them separately
+
     try {
-      this.logger.debug(`Fetching LSP4 data for ${address}`, { address });
-      let name: string | null = null;
-      let symbol: string | null = null;
-      let lsp4DigitalAsset: LSP4DigitalAsset | null = null;
-      let images: Omit<MetadataImageTable, 'metadataId'>[] = [];
-
-      // each of these fetchData can fail, so we need to catch them separately
-
-      try {
-        const fetchedName = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_NAME);
-        assertNonEmptyString(fetchedName, `Invalid token name format: ${fetchedName}`);
-        name = toUtf8String(fetchedName);
-      } catch (e) {
-        this.logger.warn(`Failed to fetch lsp4 name for ${address}: ${e.message}`, { address });
-      }
-
-      try {
-        const fetchedSymbol = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_SYMBOL);
-        assertNonEmptyString(fetchedSymbol, 'Invalid token symbol format');
-        symbol = toUtf8String(fetchedSymbol);
-      } catch (e) {
-        this.logger.warn(`Failed to fetch lsp4 symbol for ${address}: ${e.message}`, { address });
-      }
-
-      try {
-        const response = await erc725yGetData(address, ERC725Y_KEY.LSP4_METADATA);
-
-        if (response) {
-          const url = decodeJsonUrl(response);
-          lsp4DigitalAsset = await this.fetchLsp4MetadataFromUrl(url);
-
-          if (lsp4DigitalAsset) {
-            images = [
-              ...formatMetadataImages(lsp4DigitalAsset.images, null),
-              ...formatMetadataImages(lsp4DigitalAsset.icon, METADATA_IMAGE_TYPE.ICON),
-            ];
-          }
-        }
-      } catch (e) {
-        this.logger.error(`Failed to fetch lsp4 metadata for ${address}: ${e.message}`, {
-          address,
-        });
-      }
-
-      if (!name && !symbol && !lsp4DigitalAsset) {
-        this.logger.debug(`No LSP4 data found for ${address}`, { address });
-        return null;
-      }
-
-      return {
-        metadata: {
-          address,
-          tokenId: null,
-          name,
-          description: lsp4DigitalAsset?.description || null,
-          symbol: symbol,
-          isNFT: null,
-        },
-        images,
-        tags: [],
-        links: lsp4DigitalAsset?.links || [],
-        assets: lsp4DigitalAsset?.assets || [],
-      };
+      const fetchedName = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_NAME);
+      assertNonEmptyString(fetchedName, `Invalid token name format: ${fetchedName}`);
+      name = toUtf8String(fetchedName);
     } catch (e) {
-      this.logger.error(`Error while fetching LSP4 data for ${address}: ${e.message}`, {
+      this.logger.warn(`Failed to fetch lsp4 name for ${address}: ${e.message}`, { address });
+    }
+
+    try {
+      const fetchedSymbol = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_SYMBOL);
+      assertNonEmptyString(fetchedSymbol, 'Invalid token symbol format');
+      symbol = toUtf8String(fetchedSymbol);
+    } catch (e) {
+      this.logger.warn(`Failed to fetch lsp4 symbol for ${address}: ${e.message}`, { address });
+    }
+
+    try {
+      const response = await erc725yGetData(address, ERC725Y_KEY.LSP4_METADATA);
+
+      if (response) {
+        const url = decodeJsonUrl(response);
+        lsp4DigitalAsset = await this.fetchLsp4MetadataFromUrl(url);
+
+        if (lsp4DigitalAsset) {
+          images = [
+            ...formatMetadataImages(lsp4DigitalAsset.images, null),
+            ...formatMetadataImages(lsp4DigitalAsset.icon, METADATA_IMAGE_TYPE.ICON),
+          ];
+        }
+      }
+    } catch (e) {
+      this.logger.error(`Failed to fetch lsp4 metadata for ${address}: ${e.message}`, {
         address,
       });
+    }
+
+    if (!name && !symbol && !lsp4DigitalAsset) {
+      this.logger.debug(`No LSP4 data found for ${address}`, { address });
       return null;
     }
+
+    return {
+      metadata: {
+        address,
+        tokenId: null,
+        name,
+        description: lsp4DigitalAsset?.description || null,
+        symbol: symbol,
+        isNFT: null,
+      },
+      images,
+      tags: [],
+      links: lsp4DigitalAsset?.links || [],
+      assets: lsp4DigitalAsset?.assets || [],
+    };
   }
 
   /**

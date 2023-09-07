@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ethers } from 'ethers';
+import { ethers, TransactionReceipt, TransactionResponse } from 'ethers';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
 import winston from 'winston';
 import { LoggerService } from '@libs/logger/logger.service';
@@ -54,13 +54,13 @@ export class EthersService {
     else return block.timestamp * 1000;
   }
 
-  public async getTransaction(transactionHash: string): Promise<ethers.TransactionResponse> {
+  public async getTransaction(transactionHash: string): Promise<TransactionResponse> {
     const tx = await this.provider.getTransaction(transactionHash);
     if (!tx) throw new Error(`Transaction ${transactionHash} not found`);
     else return tx;
   }
 
-  public async getTransactionReceipt(transactionHash: string): Promise<ethers.TransactionReceipt> {
+  public async getTransactionReceipt(transactionHash: string): Promise<TransactionReceipt> {
     const tx = await this.provider.getTransactionReceipt(transactionHash);
     if (!tx) throw new Error(`Transaction ${transactionHash} not found`);
     else return tx;
