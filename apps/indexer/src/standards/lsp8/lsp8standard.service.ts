@@ -32,18 +32,18 @@ export class Lsp8standardService {
       const newOwner = parameters.to.value;
 
       if (!tokenId) return;
-      else
-        await this.dataDB.insertContractToken(
-          {
-            address: event.address,
-            tokenId,
-            id: buildTokenUniqueId(event.address, tokenId),
-            decodedTokenId: null,
-            interfaceCode: SUPPORTED_STANDARD.LSP8,
-            latestKnownOwner: newOwner || null,
-          },
-          'update',
-        );
+
+      await this.dataDB.insertContractToken(
+        {
+          address: event.address,
+          tokenId,
+          id: buildTokenUniqueId(event.address, tokenId),
+          decodedTokenId: null,
+          interfaceCode: SUPPORTED_STANDARD.LSP8,
+          latestKnownOwner: newOwner || null,
+        },
+        'update',
+      );
     } catch (e) {
       this.logger.error(`Error while processing token related event: ${e.message}`, {
         stack: e.stack,

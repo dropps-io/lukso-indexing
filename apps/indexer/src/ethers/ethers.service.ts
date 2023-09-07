@@ -7,8 +7,6 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import LSP0ERC725Account from '@lukso/lsp-smart-contracts/artifacts/LSP0ERC725Account.json';
 
 import { RPC_URL } from '../globals';
-import { SUPPORTED_STANDARD } from './types/enums';
-import { MetadataResponse } from './types/metadata-response';
 import { LSP0 } from './contracts/LSP0/LSP0';
 import { LSP7 } from './contracts/LSP7/LSP7';
 import { LSP4 } from './contracts/LSP4/LSP4';
@@ -129,53 +127,5 @@ export class EthersService {
     }
 
     return null;
-  }
-
-  public async fetchContractMetadata(
-    address: string,
-    interfaceCode?: string,
-  ): Promise<MetadataResponse | null> {
-    this.logger.debug(`Fetching metadata for ${address}`, { address });
-
-    const interfaceCodeToUse =
-      interfaceCode || (await this.identifyContractInterface(address))?.code;
-
-    switch (interfaceCodeToUse) {
-      case SUPPORTED_STANDARD.LSP0:
-        return await this.lsp0.fetchData(address);
-      case SUPPORTED_STANDARD.LSP7:
-        return await this.lsp7.fetchData(address);
-      case SUPPORTED_STANDARD.LSP8:
-        return await this.lsp4.fetchData(address);
-      default:
-        return null;
-    }
-  }
-
-  public async fetchContractTokenMetadata(
-    address: string,
-    tokenId: string,
-    interfaceCode?: string,
-  ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
-    this.logger.debug(
-      `Fetching token metadata for ${address}:${tokenId}, ${
-        interfaceCode ? `interface code ${interfaceCode}` : ''
-      }`,
-      {
-        address,
-        tokenId,
-        interfaceCode,
-      },
-    );
-
-    const interfaceCodeToUse =
-      interfaceCode || (await this.identifyContractInterface(address))?.code;
-
-    switch (interfaceCodeToUse) {
-      case SUPPORTED_STANDARD.LSP8:
-        return await this.lsp8.fetchTokenData(address, tokenId);
-      default:
-        return null;
-    }
   }
 }

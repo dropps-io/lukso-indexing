@@ -385,7 +385,7 @@ export class DecodingService {
 
       const result = await this.ethersService.getProvider().call(callTransaction);
       if (!result || result === '0x') {
-        this.logger.warning(`No target found for ${contractAddress}`, {
+        this.logger.warn(`No target found for ${contractAddress}`, {
           contract: contractAddress,
         });
         return null;
