@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "precommit": "npm run build:indexer&&npm run lint:fix&&npm run test",
+    "pre-commit": "npm run build:indexer&&npm run lint:fix&&npm run test",
     "indexer:dev": "nest start indexer",
     "indexer:start": "nest build indexer&& node dist/apps/indexer/main.js",
     "indexer:prod": "nest build indexer&&SET NODE_ENV=prod&& node dist/apps/indexer/main.js",

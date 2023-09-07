@@ -79,14 +79,16 @@ export class LSP0 {
   protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
     const profileMetadata = await this.fetcherService.fetch<LSP3ProfileJson>(url, {}, 3, 0, 5000);
 
-    if ('LSP3Profile' in profileMetadata) {
-      // Case when profileMetadata has the shape { LSP3Profile: LSP3Profile }
-      return profileMetadata.LSP3Profile;
-    } else if (profileMetadata.name || profileMetadata.description) {
-      // Case when profileMetadata has the shape of LSP3Profile
-      return profileMetadata;
-    } else {
-      return null;
+    if (typeof profileMetadata === 'object' && profileMetadata !== null) {
+      if ('LSP3Profile' in profileMetadata) {
+        // Case when profileMetadata has the shape { LSP3Profile: LSP3Profile }
+        return profileMetadata.LSP3Profile;
+      } else if (profileMetadata.name || profileMetadata.description) {
+        // Case when profileMetadata has the shape of LSP3Profile
+        return profileMetadata;
+      }
     }
+
+    return null;
   }
 }

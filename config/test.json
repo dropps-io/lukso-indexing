@@ -3,5 +3,6 @@
   "cron_process": "*/30 * * * * *",
   "p_limit": 10,
   "blocks_p_limit": 100,
-  "events_fetch_blocks_limit": 1000
+  "events_chunk_size": 5000,
+  "blocks_chunk_size": 5000
 }

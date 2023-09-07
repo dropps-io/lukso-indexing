@@ -9,7 +9,6 @@ import { EthersModule } from '../ethers/ethers.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { ContractsModule } from '../contracts/contracts.module';
 import { EventsModule } from '../events/events.module';
-import { MetadataModule } from '../metadata/metadata.module';
 import { TokensModule } from '../tokens/tokens.module';
 
 @Module({
@@ -22,7 +21,6 @@ import { TokensModule } from '../tokens/tokens.module';
     TransactionsModule,
     ContractsModule,
     EventsModule,
-    MetadataModule,
     TokensModule,
   ],
   providers: [SchedulingService],
