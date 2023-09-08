@@ -53,7 +53,7 @@ export class DecodingService {
 
       const parameters = await this.decodeParameters(methodId, '0x' + input.slice(10));
       return { methodName, parameters };
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(
         `Error decoding transaction input with methodId ${methodId}: ${e.message}`,
         { input, methodId, stack: e.stack },
@@ -115,6 +115,7 @@ export class DecodingService {
    *
    * @param {string} methodId - The methodId to identify the parameters.
    * @param {string} input - The input data string of the transaction or the data string from the log.
+   * @param {MethodParameterTable[]} parameters - The optional parameters interface to decode.
    * @returns {DecodedParameter[]} - An array of DecodedParameter objects.
    */
   private async decodeParameters(

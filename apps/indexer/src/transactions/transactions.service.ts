@@ -116,7 +116,7 @@ export class TransactionsService {
           transactionHash,
         );
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while indexing transaction: ${e.message}`, {
         transactionHash,
         stack: e.stack,
@@ -220,7 +220,7 @@ export class TransactionsService {
           );
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Failed to index wrapped transactions: ${e.message}`, {
         stack: e.stack,
         input,

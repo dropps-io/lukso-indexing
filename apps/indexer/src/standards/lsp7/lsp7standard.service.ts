@@ -48,7 +48,7 @@ export class Lsp7standardService {
 
       if (parameters.from.value) await updateBalance(parameters.from.value);
       if (parameters.to.value) await updateBalance(parameters.to.value);
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(
         `Error while processing transfer event ${event.transactionHash}:${event.logIndex}: ${e.message}`,
         {

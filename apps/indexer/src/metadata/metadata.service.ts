@@ -50,7 +50,7 @@ export class MetadataService {
       await this.dataDB.insertMetadataTags(id, metadata.tags, 'do nothing');
       await this.dataDB.insertMetadataLinks(id, metadata.links, 'do nothing');
       await this.dataDB.insertMetadataAssets(id, metadata.assets, 'do nothing');
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while indexing metadata: ${e.message}`, {
         address: metadata.metadata.address,
         tokenId: metadata.metadata.tokenId,

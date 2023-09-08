@@ -58,7 +58,7 @@ export class Erc725StandardService {
       // Iterate through the data keys and values, and index the data changes
       for (let i = 0; i < dataKeys.length; i++)
         await this.indexDataChanged(address, dataKeys[i], dataValues[i], blockNumber);
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(
         `Error while processing setData batch transaction on ${address} at block ${blockNumber}: ${e.message}`,
         {
@@ -94,7 +94,7 @@ export class Erc725StandardService {
         (parameters.dataValue || parameters.value).value,
         blockNumber,
       );
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Processing setData transaction on ${address}: ${e.message}`, {
         stack: e.stack,
         address,

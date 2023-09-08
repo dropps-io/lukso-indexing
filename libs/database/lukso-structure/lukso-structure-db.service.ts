@@ -177,7 +177,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     try {
       const result = await this.client.query(query, values);
       return result.rows as T[];
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(
         `Error executing a query: ${error.message}, query: ${query}, values: ${values}`,
       );

@@ -44,7 +44,7 @@ export class Lsp8standardService {
         },
         'update',
       );
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while processing token related event: ${e.message}`, {
         stack: e.stack,
         ...event,

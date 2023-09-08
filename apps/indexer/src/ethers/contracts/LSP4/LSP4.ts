@@ -34,7 +34,7 @@ export class LSP4 {
       const fetchedName = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_NAME);
       assertNonEmptyString(fetchedName, `Invalid token name format: ${fetchedName}`);
       name = toUtf8String(fetchedName);
-    } catch (e) {
+    } catch (e: any) {
       this.logger.warn(`Failed to fetch lsp4 name for ${address}: ${e.message}`, { address });
     }
 
@@ -42,7 +42,7 @@ export class LSP4 {
       const fetchedSymbol = await erc725yGetData(address, ERC725Y_KEY.LSP4_TOKEN_SYMBOL);
       assertNonEmptyString(fetchedSymbol, 'Invalid token symbol format');
       symbol = toUtf8String(fetchedSymbol);
-    } catch (e) {
+    } catch (e: any) {
       this.logger.warn(`Failed to fetch lsp4 symbol for ${address}: ${e.message}`, { address });
     }
 
@@ -60,7 +60,7 @@ export class LSP4 {
           ];
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Failed to fetch lsp4 metadata for ${address}: ${e.message}`, {
         address,
       });

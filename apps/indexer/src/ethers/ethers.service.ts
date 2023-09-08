@@ -114,14 +114,14 @@ export class EthersService {
           if (await contract.supportsInterface(contractInterface.id)) {
             return contractInterface;
           }
-        } catch (e) {
+        } catch (e: any) {
           this.logger.warn(`Error while checking contract interface support: ${e.message}`, {
             address,
           });
           return null;
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while finding contract interface: ${e.message}`, { address });
       return null;
     }

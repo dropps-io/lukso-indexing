@@ -57,7 +57,7 @@ export class LSP8 {
         metadata: this.buildMetadataResponse(metadata, address, tokenId),
         decodedTokenId,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.warn(`Failed to fetch lsp8 token metadata: ${error.message}`, { address });
       return null;
     }
@@ -128,7 +128,7 @@ export class LSP8 {
         if (parsedData >= LSP8_TOKEN_ID_TYPE.unknown && parsedData <= LSP8_TOKEN_ID_TYPE.string)
           tokenIdType = parsedData as LSP8_TOKEN_ID_TYPE;
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Failed to fetch lsp8 token id type for ${address}: ${e.message}`, {
         address,
       });

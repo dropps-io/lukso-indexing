@@ -101,7 +101,7 @@ export class EventsService {
         await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
         await this.routeEvent(eventRow, decodedParameters);
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while indexing log: ${e.message}`, {
         transactionHash: log.transactionHash,
         logIndex: log.index,
