@@ -7,7 +7,7 @@ import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 import { TX_METHOD_ID } from '@models/enums';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
-import { convertDecodedParamToMapping } from '../decoding/utils/convert-decoded-param-to-mapping';
+import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
 import { EthersService } from '../ethers/ethers.service';
 import { DecodingService } from '../decoding/decoding.service';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
@@ -239,7 +239,7 @@ export class TransactionsService {
     methodId: string,
     decodedParameters: DecodedParameter[],
   ): Promise<void> {
-    const paramsMap = convertDecodedParamToMapping(decodedParameters);
+    const paramsMap = decodedParamToMapping(decodedParameters);
     switch (methodId) {
       case TX_METHOD_ID.SET_DATA:
         await this.erc725Service.processSetDataTx(to, blockNumber, paramsMap);

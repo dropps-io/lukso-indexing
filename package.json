@@ -33,7 +33,7 @@
     "@nestjs/schedule": "^2.1.0",
     "@nestjs/swagger": "^6.1.4",
     "@nestjs/websockets": "^9.4.0",
-    "@openzeppelin/contracts": "^4.8.2",
+    "@openzeppelin/contracts": "^4.9.3",
     "class-validator": "^0.14.0",
     "config": "^3.3.9",
     "dotenv": "^16.0.3",

@@ -8,7 +8,7 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
-import { convertDecodedParamToMapping } from '../decoding/utils/convert-decoded-param-to-mapping';
+import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
 import { Lsp7standardService } from '../standards/lsp7/lsp7standard.service';
 import { Lsp8standardService } from '../standards/lsp8/lsp8standard.service';
 import { buildLogId } from '../utils/build-log-id';
@@ -120,7 +120,7 @@ export class EventsService {
       },
     );
 
-    const paramsMap = convertDecodedParamToMapping(decodedParameters);
+    const paramsMap = decodedParamToMapping(decodedParameters);
     switch (event.topic0) {
       case EVENT_TOPIC.DATA_CHANGED:
         break;
