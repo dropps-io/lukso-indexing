@@ -172,9 +172,9 @@ export async function populateLuksoStructure() {
       ERC721.abi as AbiItem[],
       ERC20.abi as AbiItem[],
     ].concat(
-      (
-        await readJsonFiles(path.join(__dirname, '../../../shared/abi'))
-      ).map((result) => result.abi),
+      (await readJsonFiles(path.join(__dirname, '../../../shared/abi'))).map(
+        (result) => result.abi,
+      ),
     ) as AbiItem[][],
   );
 
