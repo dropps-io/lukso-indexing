@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
 
 import { LuksoStructureDbService } from './lukso-structure-db.service';
-import { ConfigTable } from './entities/config.table';
 import { executeQuery } from '../../../test/utils/db-helpers';
 import { DB_STRUCTURE_TABLE } from './config';
 import {
@@ -28,45 +27,6 @@ describe('LuksoStructureDbService', () => {
 
   afterEach(async () => {
     await service.disconnect();
-  });
-
-  describe('getConfig', () => {
-    it('should be able to get the default values', async () => {
-      const config: ConfigTable = {
-        blockIteration: 5000,
-        nbrOfThreads: 20,
-        paused: false,
-        sleepBetweenIteration: 2000,
-        latestIndexedBlock: 0,
-        latestIndexedEventBlock: 0,
-      };
-
-      const fetchedConfig = await service.getConfig();
-      expect(fetchedConfig).toEqual(config);
-    });
-
-    it('should throw an error if the config does not exist', async () => {
-      await executeQuery(`DELETE FROM ${DB_STRUCTURE_TABLE.CONFIG}`, 'STRUCTURE');
-      await expect(service.getConfig()).rejects.toEqual('Config table need to be initialized');
-    });
-  });
-
-  describe('updateLatestIndexedBlock', () => {
-    it('should update the latestIndexedBlock', async () => {
-      await service.updateLatestIndexedBlock(123);
-
-      const fetchedConfig = await service.getConfig();
-      expect(fetchedConfig.latestIndexedBlock).toEqual(123);
-    });
-  });
-
-  describe('updateLatestIndexedEventBlock', () => {
-    it('should update the latestIndexedEventBlock', async () => {
-      await service.updateLatestIndexedEventBlock(456);
-
-      const fetchedConfig = await service.getConfig();
-      expect(fetchedConfig.latestIndexedEventBlock).toEqual(456);
-    });
   });
 
   describe('insertErc725ySchema', () => {

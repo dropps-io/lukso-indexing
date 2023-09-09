@@ -34,13 +34,5 @@ Table method_parameter {
 }
 
 Ref: method_parameter.(methodId) > method_interface.(id)
-
-Table config {
-  blockIteration integer
-  sleepBetweenIteration integer
-  nbrOfThreads integer
-  paused boolean
-  latestIndexedBlock integer
-}
 ```
 

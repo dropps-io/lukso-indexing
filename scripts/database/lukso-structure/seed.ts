@@ -2,13 +2,14 @@ import { config } from 'dotenv';
 import path from 'path';
 import pg from 'pg';
 import { DB_STRUCTURE_TABLE, DB_STRUCTURE_TYPE } from '@db/lukso-structure/config';
+import { getEnvOrThrow } from '@utils/get-or-throw';
 
 if (process.env.NODE_ENV === 'test') config({ path: path.resolve(process.cwd(), '.env.test') });
 
 config();
 
 const client = new pg.Client({
-  connectionString: process.env.LUKSO_STRUCTURE_CONNECTION_STRING,
+  connectionString: getEnvOrThrow('LUKSO_STRUCTURE_CONNECTION_STRING'),
 });
 
 export const seedLuksoStructure = async (dropTables?: boolean) => {
@@ -82,27 +83,6 @@ CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.METHOD_PARAMETER} (
 	FOREIGN KEY("methodId") REFERENCES ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}("id") ON DELETE CASCADE,
 	UNIQUE ("methodId", "position")
 )`);
-
-  await client.query(`
-CREATE TABLE IF NOT EXISTS ${DB_STRUCTURE_TABLE.CONFIG} (
-	"blockIteration" INTEGER NOT NULL DEFAULT 5000,
-	"sleepBetweenIteration" INTEGER NOT NULL DEFAULT 2000,
-	"nbrOfThreads" INTEGER NOT NULL DEFAULT 20,
-	"paused" BOOLEAN NOT NULL DEFAULT false,
-	"latestIndexedBlock" INTEGER NOT NULL DEFAULT 0,
-	"latestIndexedEventBlock" INTEGER NOT NULL DEFAULT 0
-	)`);
-
-  try {
-    const { rowCount } = await client.query(`SELECT * FROM ${DB_STRUCTURE_TABLE.CONFIG}`);
-    if (rowCount === 0)
-      await client.query(`INSERT INTO ${DB_STRUCTURE_TABLE.CONFIG} DEFAULT VALUES`);
-    // eslint-disable-next-line no-console
-    else console.log('Config already initialized');
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(e);
-  }
 
   await client.end();
   // eslint-disable-next-line no-console
