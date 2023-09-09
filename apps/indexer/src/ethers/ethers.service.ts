@@ -5,6 +5,7 @@ import winston from 'winston';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import LSP0ERC725Account from '@lukso/lsp-smart-contracts/artifacts/LSP0ERC725Account.json';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 
 import { RPC_URL } from '../globals';
 import { LSP0 } from './contracts/LSP0/LSP0';
@@ -12,6 +13,7 @@ import { LSP7 } from './contracts/LSP7/LSP7';
 import { LSP4 } from './contracts/LSP4/LSP4';
 import { LSP8 } from './contracts/LSP8/LSP8';
 import { FetcherService } from '../fetcher/fetcher.service';
+import { eoaContractInterface } from './utils/eoa-interface';
 
 @Injectable()
 export class EthersService {
@@ -79,53 +81,41 @@ export class EthersService {
    *
    * @returns {Promise<ContractInterfaceTable|null>} The contract interface for the provided address, or null if not found.
    */
+  @ExceptionHandler(false, true, null)
   public async identifyContractInterface(address: string): Promise<ContractInterfaceTable | null> {
-    try {
-      this.logger.debug(`Identifying contract interface for address ${address}`, { address });
-      // Get the bytecode of the contract.
-      const contractCode = await this.provider.getCode(address);
+    this.logger.debug(`Identifying contract interface for address ${address}`, { address });
+    // Get the bytecode of the contract.
+    const contractCode = await this.provider.getCode(address);
 
-      // If no bytecode is found, then it's an EOA.
-      if (contractCode === '0x')
-        return {
-          id: '0x00000000',
-          code: 'EOA',
-          name: 'Externally Owned Account',
-          version: '0',
-          type: null,
-        };
+    // If no bytecode is found, then it's an EOA.
+    if (contractCode === '0x') return eoaContractInterface;
 
-      const contractInterfaces = await this.structureDB.getContractInterfaces();
+    const contractInterfaces = await this.structureDB.getContractInterfaces();
 
-      for (const contractInterface of contractInterfaces) {
-        // Check if the contract bytecode contains the contract interface id.
-        if (contractCode.includes(contractInterface.id.slice(2, 10))) {
-          // If there is a match, return the contract interface.
-          return contractInterface;
-        }
+    for (const contractInterface of contractInterfaces) {
+      // Check if the contract bytecode contains the contract interface id.
+      if (contractCode.includes(contractInterface.id.slice(2, 10))) {
+        // If there is a match, return the contract interface.
+        return contractInterface;
       }
-
-      // If a match was not found, try to get the contract interface using the contract instance.
-      const contract = new ethers.Contract(address, LSP0ERC725Account.abi, this.provider);
-
-      for (const contractInterface of contractInterfaces) {
-        // Check if the contract instance supports the contract interface.
-        try {
-          if (await contract.supportsInterface(contractInterface.id)) {
-            return contractInterface;
-          }
-        } catch (e: any) {
-          this.logger.warn(`Error while checking contract interface support: ${e.message}`, {
-            address,
-          });
-          return null;
-        }
-      }
-    } catch (e: any) {
-      this.logger.error(`Error while finding contract interface: ${e.message}`, { address });
-      return null;
     }
 
+    // If a match was not found, try to get the contract interface using the contract instance.
+    const contract = new ethers.Contract(address, LSP0ERC725Account.abi, this.provider);
+
+    for (const contractInterface of contractInterfaces) {
+      // Check if the contract instance supports the contract interface.
+      try {
+        if (await contract.supportsInterface(contractInterface.id)) {
+          return contractInterface;
+        }
+      } catch (e: any) {
+        this.logger.warn(`Error while checking contract interface support: ${e.message}`, {
+          address,
+        });
+        return null;
+      }
+    }
     return null;
   }
 }

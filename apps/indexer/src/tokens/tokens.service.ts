@@ -3,6 +3,7 @@ import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
@@ -20,9 +21,8 @@ export class TokensService {
     this.logger = this.loggerService.getChildLogger('TokensService');
   }
 
+  @DebugLogger()
   public async indexToken(token: ContractTokenTable) {
-    this.logger.debug(`Indexing token ${token.tokenId} from ${token.address}`, { ...token });
-
     // Fetch the metadata of the contract token
     const decodedTokenId = await this.metadataService.indexContractTokenMetadata(
       token.address,

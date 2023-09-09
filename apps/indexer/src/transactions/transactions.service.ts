@@ -5,12 +5,17 @@ import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
 import { TX_METHOD_ID } from '@models/enums';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { TransactionReceipt, TransactionResponse } from 'ethers';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
 import { EthersService } from '../ethers/ethers.service';
 import { DecodingService } from '../decoding/decoding.service';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
+import { methodIdFromInput } from '../utils/method-id-from-input';
+import { WrappedTransaction } from '../decoding/types/wrapped-tx';
 
 @Injectable()
 export class TransactionsService {
@@ -32,96 +37,116 @@ export class TransactionsService {
    *
    * @param {string} transactionHash - The transaction hash to index.
    */
+  @DebugLogger()
+  @ExceptionHandler(false, true)
   public async indexTransaction(transactionHash: string) {
-    try {
-      this.logger.debug(`Indexing transaction ${transactionHash}`, { transactionHash });
+    if (await this.isTransactionIndexed(transactionHash)) return;
 
-      // Check if the transaction has already been indexed
-      const transactionAlreadyIndexed = await this.dataDB.getTransactionByHash(transactionHash);
-      if (transactionAlreadyIndexed) {
-        this.logger.debug(`Transaction ${transactionHash} already indexed, exiting...`, {
-          transactionHash,
-        });
-        return;
-      }
+    const { transaction, transactionReceipt, decodedTxInput, timestamp } =
+      await this.fetchTransactionData(transactionHash);
+    const transactionRow = this.buildTransactionRow(
+      transaction,
+      transactionReceipt,
+      decodedTxInput,
+      timestamp,
+    );
 
-      // Retrieve the transaction details using EthersService
-      const transaction = await this.ethersService.getTransaction(transactionHash);
-      const transactionReceipt = await this.ethersService.getTransactionReceipt(transactionHash);
+    await this.handleContracts(transaction.from, transaction.to);
+    await this.insertTransactionDetails(transactionRow, transaction.data);
 
-      // Extract the method ID from the transaction input
-      const methodId = transaction.data.slice(0, 10);
-      // Decode the transaction input using DecodingService
-      const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.data);
+    if (decodedTxInput?.parameters) {
+      await this.processDecodedParameters(
+        decodedTxInput.parameters,
+        transactionRow,
+        transaction.data,
+      );
+    }
+  }
 
-      const blockNumber = transaction.blockNumber ?? 0;
-      const timestamp = await this.ethersService.getBlockTimestamp(blockNumber);
+  private async isTransactionIndexed(transactionHash: string): Promise<boolean> {
+    return Boolean(await this.dataDB.getTransactionByHash(transactionHash));
+  }
 
-      // Create a transaction row object with the retrieved and decoded data
-      const transactionRow: TransactionTable = {
-        ...transaction,
-        methodId,
-        blockHash: transaction.blockHash ?? '',
-        blockNumber,
-        date: new Date(timestamp),
-        transactionIndex: transaction.index ?? 0,
-        to: transaction.to ?? '',
-        methodName: decodedTxInput?.methodName || null,
-        gas: parseInt(transactionReceipt.gasUsed.toString()),
-        value: transaction.value.toString(),
-        gasPrice: transaction.gasPrice.toString(),
-      };
+  private async fetchTransactionData(transactionHash: string): Promise<{
+    transaction: TransactionResponse;
+    transactionReceipt: TransactionReceipt;
+    decodedTxInput: { parameters: DecodedParameter[]; methodName: string } | null;
+    timestamp: number;
+  }> {
+    const transaction = await this.ethersService.getTransaction(transactionHash);
+    const transactionReceipt = await this.ethersService.getTransactionReceipt(transactionHash);
+    const decodedTxInput = await this.decodingService.decodeTransactionInput(transaction.data);
+    const timestamp = await this.ethersService.getBlockTimestamp(transaction.blockNumber ?? 0);
 
-      // Insert the contracts if they don't exist without an interface, so they will be treated by the other recursive process
+    return { transaction, transactionReceipt, decodedTxInput, timestamp };
+  }
+
+  private buildTransactionRow(
+    transaction: TransactionResponse,
+    transactionReceipt: TransactionReceipt,
+    decodedTxInput: { parameters: DecodedParameter[]; methodName: string } | null,
+    timestamp: number,
+  ): TransactionTable {
+    const methodId = transaction.data.slice(0, 10);
+    return {
+      ...transaction,
+      methodId,
+      blockHash: transaction.blockHash ?? '',
+      blockNumber: transaction.blockNumber ?? 0,
+      date: new Date(timestamp),
+      transactionIndex: transaction.index ?? 0,
+      to: transaction.to ?? '',
+      methodName: decodedTxInput?.methodName || null,
+      gas: parseInt(transactionReceipt.gasUsed.toString()),
+      value: transaction.value.toString(),
+      gasPrice: transaction.gasPrice.toString(),
+    };
+  }
+
+  private async handleContracts(from: string, to: string | null): Promise<void> {
+    await this.dataDB.insertContract(
+      { address: from, interfaceVersion: null, interfaceCode: null, type: null },
+      'do nothing',
+    );
+    if (to) {
       await this.dataDB.insertContract(
-        { address: transaction.from, interfaceVersion: null, interfaceCode: null, type: null },
+        { address: to, interfaceVersion: null, interfaceCode: null, type: null },
         'do nothing',
       );
-      if (transaction.to)
-        await this.dataDB.insertContract(
-          { address: transaction.to, interfaceVersion: null, interfaceCode: null, type: null },
-          'do nothing',
-        );
-
-      // Insert the transaction row into the database
-      await this.dataDB.insertTransaction(transactionRow);
-
-      // Insert transaction input into the database
-      await this.dataDB.insertTransactionInput({ transactionHash, input: transaction.data });
-
-      // If decoded input parameters are present, process them further
-      if (decodedTxInput?.parameters) {
-        // Insert transaction parameters into the database
-        await this.dataDB.insertTransactionParameters(
-          transactionHash,
-          decodedTxInput.parameters,
-          'do nothing',
-        );
-
-        await this.routeTransaction(
-          transactionRow.from,
-          transactionRow.to,
-          transactionRow.blockNumber,
-          transactionRow.methodId,
-          decodedTxInput.parameters,
-        );
-
-        // Index wrapped transactions based on the input parameters
-        await this.indexWrappedTransactions(
-          transaction.data,
-          transactionRow.blockNumber,
-          decodedTxInput.parameters,
-          transactionRow.to,
-          null,
-          transactionHash,
-        );
-      }
-    } catch (e: any) {
-      this.logger.error(`Error while indexing transaction: ${e.message}`, {
-        transactionHash,
-        stack: e.stack,
-      });
     }
+  }
+
+  private async insertTransactionDetails(txRow: TransactionTable, txInput: string) {
+    await this.dataDB.insertTransaction(txRow);
+    await this.dataDB.insertTransactionInput({ transactionHash: txRow.hash, input: txInput });
+  }
+
+  private async processDecodedParameters(
+    decodedParameters: DecodedParameter[],
+    transactionRow: TransactionTable,
+    transactionInput: string,
+  ) {
+    await this.dataDB.insertTransactionParameters(
+      transactionRow.hash,
+      decodedParameters,
+      'do nothing',
+    );
+    await this.routeTransaction(
+      transactionRow.from,
+      transactionRow.to,
+      transactionRow.blockNumber,
+      transactionRow.methodId,
+      decodedParameters,
+    );
+
+    await this.indexWrappedTransactions(
+      transactionInput,
+      transactionRow.blockNumber,
+      decodedParameters,
+      transactionRow.to,
+      null,
+      transactionRow.hash,
+    );
   }
 
   /**
@@ -136,6 +161,8 @@ export class TransactionsService {
    * @param {number|null} parentId - The parent ID of the wrapped transaction.
    * @param {string} transactionHash - The hash of the parent transaction.
    */
+  @DebugLogger()
+  @ExceptionHandler(false, true)
   protected async indexWrappedTransactions(
     input: string,
     blockNumber: number,
@@ -144,94 +171,114 @@ export class TransactionsService {
     parentId: number | null,
     transactionHash: string,
   ) {
-    this.logger.debug(
-      `Indexing wrapped transactions from the ${transactionHash} with parentID ${parentId}`,
-      {
-        parentId,
-        transactionHash,
-      },
+    const unwrappedTransactions = await this.getUnwrappedTransactions(
+      input,
+      decodedParams,
+      contractAddress,
     );
 
-    try {
-      // Unwrap the transaction to identify any wrapped transactions within the current transaction
-      const unwrappedTransactions = await this.decodingService.unwrapTransaction(
-        input.slice(0, 10),
-        decodedParams,
-        contractAddress,
-      );
+    if (!unwrappedTransactions) return;
 
-      // If there are wrapped transactions, process and insert them into the database
-      if (unwrappedTransactions) {
-        for (const unwrappedTransaction of unwrappedTransactions) {
-          // Insert the wrapped transaction data into the database
-
-          const wrappedTxRow: Omit<WrappedTxTable, 'id'> = {
-            blockNumber,
-            from: contractAddress,
-            to: unwrappedTransaction.to,
-            value: unwrappedTransaction.value,
-            parentId: parentId,
-            transactionHash,
-            methodId: unwrappedTransaction.input.slice(0, 10),
-            methodName: unwrappedTransaction.methodName,
-          };
-          const { id } = await this.dataDB.insertWrappedTx(wrappedTxRow);
-
-          // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
-          await this.dataDB.insertContract(
-            {
-              address: unwrappedTransaction.to,
-              interfaceVersion: null,
-              interfaceCode: null,
-              type: null,
-            },
-            'do nothing',
-          );
-
-          // Insert the wrapped transaction input data into the database
-          await this.dataDB.insertWrappedTxInput({
-            wrappedTransactionId: id,
-            input: unwrappedTransaction.input,
-          });
-
-          // Insert the wrapped transaction parameters into the database
-          await this.dataDB.insertWrappedTxParameters(
-            id,
-            unwrappedTransaction.parameters,
-            'do nothing',
-          );
-
-          await this.routeTransaction(
-            wrappedTxRow.from,
-            wrappedTxRow.to,
-            wrappedTxRow.blockNumber,
-            wrappedTxRow.methodId,
-            unwrappedTransaction.parameters,
-          );
-
-          // Recursively index any nested wrapped transactions within the current wrapped transaction
-          await this.indexWrappedTransactions(
-            unwrappedTransaction.input,
-            wrappedTxRow.blockNumber,
-            unwrappedTransaction.parameters,
-            unwrappedTransaction.to,
-            id,
-            transactionHash,
-          );
-        }
-      }
-    } catch (e: any) {
-      this.logger.error(`Failed to index wrapped transactions: ${e.message}`, {
-        stack: e.stack,
-        input,
-        decodedParams,
+    for (const unwrappedTransaction of unwrappedTransactions) {
+      const wrappedTxRow = this.buildWrappedTransactionRow(
+        unwrappedTransaction,
+        blockNumber,
         contractAddress,
         parentId,
         transactionHash,
-      });
+      );
+      await this.handleWrappedTransactionData(wrappedTxRow, unwrappedTransaction);
+      await this.processNestedWrappedTransactions(
+        unwrappedTransaction,
+        wrappedTxRow,
+        transactionHash,
+      );
     }
   }
 
+  private async getUnwrappedTransactions(
+    input: string,
+    decodedParams: DecodedParameter[],
+    contractAddress: string,
+  ) {
+    return this.decodingService.unwrapTransaction(
+      methodIdFromInput(input),
+      decodedParams,
+      contractAddress,
+    );
+  }
+
+  private buildWrappedTransactionRow(
+    unwrappedTransaction: WrappedTransaction,
+    blockNumber: number,
+    contractAddress: string,
+    parentId: number | null,
+    transactionHash: string,
+  ): Omit<WrappedTxTable, 'id'> {
+    return {
+      blockNumber,
+      from: contractAddress,
+      to: unwrappedTransaction.to,
+      value: unwrappedTransaction.value,
+      parentId: parentId,
+      transactionHash,
+      methodId: unwrappedTransaction.input.slice(0, 10),
+      methodName: unwrappedTransaction.methodName,
+    };
+  }
+
+  private async handleWrappedTransactionData(
+    wrappedTxRow: Omit<WrappedTxTable, 'id'>,
+    unwrappedTransaction: WrappedTransaction,
+  ) {
+    const { id } = await this.dataDB.insertWrappedTx(wrappedTxRow);
+
+    await this.insertWrappedContract(unwrappedTransaction);
+
+    await this.dataDB.insertWrappedTxInput({
+      wrappedTransactionId: id,
+      input: unwrappedTransaction.input,
+    });
+
+    await this.dataDB.insertWrappedTxParameters(id, unwrappedTransaction.parameters, 'do nothing');
+
+    await this.routeTransaction(
+      wrappedTxRow.from,
+      wrappedTxRow.to,
+      wrappedTxRow.blockNumber,
+      wrappedTxRow.methodId,
+      unwrappedTransaction.parameters,
+    );
+  }
+
+  private async insertWrappedContract(unwrappedTransaction: WrappedTransaction) {
+    await this.dataDB.insertContract(
+      {
+        address: unwrappedTransaction.to,
+        interfaceVersion: null,
+        interfaceCode: null,
+        type: null,
+      },
+      'do nothing',
+    );
+  }
+
+  private async processNestedWrappedTransactions(
+    unwrappedTransaction: WrappedTransaction,
+    wrappedTxRow: Omit<WrappedTxTable, 'id'>,
+    transactionHash: string,
+  ) {
+    await this.indexWrappedTransactions(
+      unwrappedTransaction.input,
+      wrappedTxRow.blockNumber,
+      unwrappedTransaction.parameters,
+      unwrappedTransaction.to,
+      wrappedTxRow.parentId,
+      transactionHash,
+    );
+  }
+
+  @ExceptionHandler(false, true)
   async routeTransaction(
     from: string,
     to: string,

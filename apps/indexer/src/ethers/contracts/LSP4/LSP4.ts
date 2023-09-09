@@ -20,7 +20,7 @@ export class LSP4 {
     protected readonly logger: winston.Logger,
   ) {}
 
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     this.logger.debug(`Fetching LSP4 data for ${address}`, { address });
     let name: string | null = null;
@@ -95,7 +95,7 @@ export class LSP4 {
    * @returns {Promise<(LSP4DigitalAsset & { name?: string }) | null>} -
    * A promise that resolves to an object containing the digital asset's metadata, or null if an error occurs.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   public async fetchLsp4MetadataFromUrl(
     url: string,
   ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {

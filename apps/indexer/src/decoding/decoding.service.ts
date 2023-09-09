@@ -66,12 +66,12 @@ export class DecodingService {
    * Decodes log parameters from the provided data and topics.
    *
    * @param {string} data - The encoded data string.
-   * @param {string[]} topics - An array of topics, where the first element is the method hash (containing the methodId).
+   * @param {string[]} topics - An array of topics, where the first element is the method hash (containing the methodIdFromInput).
    *
    * @returns {Promise<DecodedParameter[] | null>} A Promise that resolves to an array of DecodedParameter objects,
    *          containing the decoded parameter values, positions, names, and types, or null if an error occurs.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   public async decodeLogParameters(
     data: string,
     topics: string[],
@@ -111,9 +111,9 @@ export class DecodingService {
   }
 
   /**
-   * Decode parameters using provided methodId and input.
+   * Decode parameters using provided methodIdFromInput and input.
    *
-   * @param {string} methodId - The methodId to identify the parameters.
+   * @param {string} methodId - The methodIdFromInput to identify the parameters.
    * @param {string} input - The input data string of the transaction or the data string from the log.
    * @param {MethodParameterTable[]} parameters - The optional parameters interface to decode.
    * @returns {DecodedParameter[]} - An array of DecodedParameter objects.
@@ -148,7 +148,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction[] | null>} - An array containing the wrapped transaction object(s), or null if the method ID is not recognized.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   public async unwrapTransaction(
     methodId: string,
     decodedParameters: DecodedParameter[],
@@ -195,7 +195,7 @@ export class DecodingService {
    * @param {string} value - The value to decode.
    * @returns {Promise<{ value: string; keyParameters: string[]; keyIndex: number | null } | null>} A Promise that resolves to an object containing the decoded value, key parameters, and key index. If the value cannot be decoded, it resolves to null.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   public async decodeErc725YKeyValuePair(
     key: string,
     value: string,
@@ -292,7 +292,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   protected async unwrapErc725XExecute(
     parametersMap: Record<string, string>,
   ): Promise<WrappedTransaction | null> {
@@ -315,7 +315,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   protected async unwrapLSP6Execute(
     contractAddress: string,
     parametersMap: Record<string, string>,

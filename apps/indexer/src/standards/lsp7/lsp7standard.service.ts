@@ -4,6 +4,8 @@ import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { formatEther } from 'ethers';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
 
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { EthersService } from '../../ethers/ethers.service';
@@ -19,44 +21,36 @@ export class Lsp7standardService {
     this.logger = this.loggerService.getChildLogger('Erc725Standard');
   }
 
+  @DebugLogger()
   public async processTransferEvent(
     event: EventTable,
     parameters: { [name: string]: DecodedParameter },
   ): Promise<void> {
-    try {
-      this.logger.debug(`Processing transfer event ${event.transactionHash}:${event.logIndex}`, {
-        transactionHash: event.transactionHash,
-        logIndex: event.logIndex,
-      });
-      const updateBalance = async (holderAddress: string) => {
-        this.logger.debug(`Updating balance of ${event.address} for ${holderAddress}`);
+    const { address, blockNumber } = event;
+    if (parameters.from.value)
+      await this.updateBalance(address, parameters.from.value, blockNumber);
+    if (parameters.to.value) await this.updateBalance(address, parameters.to.value, blockNumber);
+  }
 
-        const balance = await this.ethersService.lsp7.balanceOf(event.address, holderAddress);
-        const isNFT = await this.ethersService.lsp7.isNFT(event.address);
-        await this.dataDB.insertTokenHolder(
-          {
-            holderAddress,
-            contractAddress: event.address,
-            tokenId: null,
-            balanceInWei: balance,
-            balanceInEth: isNFT ? balance : formatEther(balance),
-            holderSinceBlock: event.blockNumber,
-          },
-          'update',
-        );
-      };
-
-      if (parameters.from.value) await updateBalance(parameters.from.value);
-      if (parameters.to.value) await updateBalance(parameters.to.value);
-    } catch (e: any) {
-      this.logger.error(
-        `Error while processing transfer event ${event.transactionHash}:${event.logIndex}: ${e.message}`,
-        {
-          stack: e.stack,
-          ...event,
-          ...parameters,
-        },
-      );
-    }
+  @DebugLogger()
+  @ExceptionHandler(false, true)
+  protected async updateBalance(
+    tokenAddress: string,
+    holderAddress: string,
+    blockNumber: number,
+  ): Promise<void> {
+    const balance = await this.ethersService.lsp7.balanceOf(tokenAddress, holderAddress);
+    const isNFT = await this.ethersService.lsp7.isNFT(tokenAddress);
+    await this.dataDB.insertTokenHolder(
+      {
+        holderAddress,
+        contractAddress: tokenAddress,
+        tokenId: null,
+        balanceInWei: balance,
+        balanceInEth: isNFT ? balance : formatEther(balance),
+        holderSinceBlock: blockNumber,
+      },
+      'update',
+    );
   }
 }

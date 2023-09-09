@@ -6,6 +6,9 @@ import { EVENT_TOPIC } from '@models/enums';
 import { Log } from 'ethers';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
@@ -15,6 +18,7 @@ import { buildLogId } from '../utils/build-log-id';
 import { DecodingService } from '../decoding/decoding.service';
 import { IndexingWsGateway } from '../indexing-ws/indexing-ws.gateway';
 import { EthersService } from '../ethers/ethers.service';
+import { methodIdFromInput } from '../utils/method-id-from-input';
 
 @Injectable()
 export class EventsService {
@@ -39,74 +43,77 @@ export class EventsService {
    *
    * @param {Log} log - The log object containing event data.
    */
+  @DebugLogger()
+  @ExceptionHandler(false, true)
   public async indexEvent(log: Log) {
-    try {
-      this.logger.debug(`Indexing log ${log.transactionHash}:${log.index}`, {
+    const logId = buildLogId(log.transactionHash, log.index);
+    const methodId = methodIdFromInput(log.topics[0]);
+
+    if (await this.eventAlreadyIndexed(logId, log)) return;
+
+    const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
+    const timestamp = await this.ethersService.getBlockTimestamp(log.blockNumber);
+    const eventRow = this.prepareEventRow(log, logId, methodId, eventInterface, timestamp);
+
+    await this.insertEventData(eventRow, log);
+
+    const decodedParameters = await this.decodingService.decodeLogParameters(log.data, [
+      ...log.topics,
+    ]);
+    await this.handleDecodedParameters(logId, eventRow, decodedParameters);
+
+    this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
+  }
+
+  private async eventAlreadyIndexed(logId: string, log: Log): Promise<boolean> {
+    const eventAlreadyIndexed = await this.dataDB.getEventById(logId);
+    if (eventAlreadyIndexed) {
+      this.logger.debug(`Log ${log.transactionHash}:${log.index} already indexed, exiting...`, {
         transactionHash: log.transactionHash,
         logIndex: log.index,
       });
+      return true;
+    }
+    return false;
+  }
 
-      // Generate a unique log ID based on the transaction hash and log index
-      const logId = buildLogId(log.transactionHash, log.index);
+  private prepareEventRow(
+    log: Log,
+    logId: string,
+    methodId: string,
+    eventInterface: MethodInterfaceTable | null,
+    timestamp: number,
+  ): EventTable {
+    return {
+      ...log,
+      logIndex: log.index,
+      date: new Date(timestamp),
+      id: logId,
+      eventName: eventInterface?.name || null,
+      methodId,
+      topic0: log.topics[0],
+      topic1: log.topics.length > 1 ? log.topics[1] : null,
+      topic2: log.topics.length > 2 ? log.topics[2] : null,
+      topic3: log.topics.length > 3 ? log.topics[3] : null,
+    };
+  }
 
-      // Extract the method ID from the log topics
-      const methodId = log.topics[0].slice(0, 10);
+  private async insertEventData(eventRow: EventTable, log: Log) {
+    await this.dataDB.insertEvent(eventRow);
+    await this.dataDB.insertContract(
+      { address: log.address, interfaceVersion: null, interfaceCode: null, type: null },
+      'do nothing',
+    );
+  }
 
-      // Check if the event has already been indexed
-      const eventAlreadyIndexed = await this.dataDB.getEventById(logId);
-      if (eventAlreadyIndexed) {
-        this.logger.debug(`Log ${log.transactionHash}:${log.index} already indexed, exiting...`, {
-          transactionHash: log.transactionHash,
-          logIndex: log.index,
-        });
-        return;
-      }
-
-      // Retrieve the event interface using the method ID
-      const eventInterface = await this.structureDB.getMethodInterfaceById(methodId);
-
-      const timestamp = await this.ethersService.getBlockTimestamp(log.blockNumber);
-
-      const eventRow: EventTable = {
-        ...log,
-        logIndex: log.index,
-        date: new Date(timestamp),
-        id: logId,
-        eventName: eventInterface?.name || null,
-        methodId,
-        topic0: log.topics[0],
-        topic1: log.topics.length > 1 ? log.topics[1] : null,
-        topic2: log.topics.length > 2 ? log.topics[2] : null,
-        topic3: log.topics.length > 3 ? log.topics[3] : null,
-      };
-
-      // Insert the event data into the database
-      await this.dataDB.insertEvent(eventRow);
-
-      // Insert the contract without interface if it doesn't exist, so it will be treated by the other recursive process
-      await this.dataDB.insertContract(
-        { address: log.address, interfaceVersion: null, interfaceCode: null, type: null },
-        'do nothing',
-      );
-
-      // Decode the log parameters using DecodingService
-      const decodedParameters = await this.decodingService.decodeLogParameters(log.data, [
-        ...log.topics,
-      ]);
-
-      this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
-
-      // If decoded parameters are present, insert them into the database
-      if (decodedParameters) {
-        await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
-        await this.routeEvent(eventRow, decodedParameters);
-      }
-    } catch (e: any) {
-      this.logger.error(`Error while indexing log: ${e.message}`, {
-        transactionHash: log.transactionHash,
-        logIndex: log.index,
-        stack: e.stack,
-      });
+  private async handleDecodedParameters(
+    logId: string,
+    eventRow: EventTable,
+    decodedParameters: any,
+  ) {
+    if (decodedParameters) {
+      await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');
+      await this.routeEvent(eventRow, decodedParameters);
     }
   }
 
