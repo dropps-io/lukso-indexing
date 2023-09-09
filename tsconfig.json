@@ -16,6 +16,7 @@
     "skipLibCheck": true,
     "strictNullChecks": true,
     "noImplicitAny": false,
+    "strict": true,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,

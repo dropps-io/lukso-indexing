@@ -24,7 +24,7 @@ export class LSP0 {
    *
    * @returns {Promise<MetadataResponse>} A promise that resolves to a MetadataResponse object.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   public async fetchData(address: string): Promise<MetadataResponse | null> {
     this.logger.debug(`Fetching LSP0 data for ${address}`, { address });
 
@@ -75,7 +75,7 @@ export class LSP0 {
    * @returns {Promise<(LSP3Profile & { name?: string }) | null>} -
    * A promise that resolves to an object containing the profile's metadata, or null if an error occurs.
    */
-  @ExceptionHandler(false, null)
+  @ExceptionHandler(false, true, null)
   protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
     const profileMetadata = await this.fetcherService.fetch<LSP3ProfileJson>(url, {}, 3, 0, 5000);
 

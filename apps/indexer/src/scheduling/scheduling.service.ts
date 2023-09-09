@@ -108,22 +108,11 @@ export class SchedulingService {
     // Retrieve logs from the specified block range
     const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
-    // Split transaction hashes and logs into chunks for batch processing
-    const txHashes = logs
-      .map((log) => log.transactionHash)
-      .filter((transactionHash, index, self) => self.indexOf(transactionHash) === index);
-
     // Process transactions and events in batches concurrently
-    await Promise.all([
-      this.promiseAllPLimit(
-        logs.map((log) => this.eventsService.indexEvent(log)),
-        P_LIMIT,
-      ),
-      this.promiseAllPLimit(
-        txHashes.map((txHash) => this.transactionsService.indexTransaction(txHash)),
-        P_LIMIT,
-      ),
-    ]);
+    await this.promiseAllPLimit(
+      logs.map((log) => this.eventsService.indexEvent(log)),
+      P_LIMIT,
+    );
 
     // Update the latest indexed event block in the database and logger
     await this.structureDB.updateLatestIndexedEventBlock(toBlock);

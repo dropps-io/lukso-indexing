@@ -139,7 +139,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
         tokenHolder.balanceInEth,
         tokenHolder.holderSinceBlock,
       ]);
-    } catch (error) {
+    } catch (error: any) {
       if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
         // Do nothing
       } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
@@ -194,7 +194,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
         metadata.description,
         metadata.isNFT,
       ]);
-    } catch (error) {
+    } catch (error: any) {
       if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
         const id = (await this.getMetadata(metadata.address, metadata.tokenId || undefined))?.id;
         if (!id) throw new Error('Could not get id of metadata');
@@ -700,7 +700,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
     try {
       const result = await this.client.query(query, values);
       return result.rows as T[];
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Error executing query: ${query}\n\nError details: ${error.message}`);
     }
   }

@@ -37,7 +37,7 @@ export class LSP7 {
         links: lsp4Data?.links || [],
         assets: lsp4Data?.assets || [],
       };
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while fetching LSP7 data for ${address}: ${e.message}`, {
         address,
       });

@@ -3,6 +3,7 @@ import { ContractTokenTable } from '@db/lukso-data/entities/contract-token.table
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
@@ -20,37 +21,22 @@ export class TokensService {
     this.logger = this.loggerService.getChildLogger('TokensService');
   }
 
+  @DebugLogger()
   public async indexToken(token: ContractTokenTable) {
-    this.logger.debug(`Indexing token ${token.tokenId} from ${token.address}`, { ...token });
-
     // Fetch the metadata of the contract token
-    const tokenData = await this.ethersService.fetchContractTokenMetadata(
+    const decodedTokenId = await this.metadataService.indexContractTokenMetadata(
       token.address,
       token.tokenId,
     );
 
     // If metadata is available, insert or update the token in the database
-    // and index the metadata
-    if (tokenData) {
+    if (decodedTokenId)
       await this.dataDB.insertContractToken(
         {
           ...token,
-          decodedTokenId: tokenData.decodedTokenId,
+          decodedTokenId,
         },
         'update',
       );
-      await this.metadataService.indexMetadata(tokenData.metadata);
-    } else {
-      this.logger.debug(`No metadata found for token ${token.tokenId} from ${token.address}`, {
-        ...token,
-      });
-      await this.dataDB.insertContractToken(
-        {
-          ...token,
-          decodedTokenId: token.tokenId,
-        },
-        'update',
-      );
-    }
   }
 }
