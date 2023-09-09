@@ -10,6 +10,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 import { ContractsModule } from '../contracts/contracts.module';
 import { EventsModule } from '../events/events.module';
 import { TokensModule } from '../tokens/tokens.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TokensModule } from '../tokens/tokens.module';
     ContractsModule,
     EventsModule,
     TokensModule,
+    RedisModule,
   ],
   providers: [SchedulingService],
   exports: [SchedulingService],

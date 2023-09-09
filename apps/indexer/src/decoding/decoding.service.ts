@@ -6,6 +6,7 @@ import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import { ethers, getAddress } from 'ethers';
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { EthersService } from '../ethers/ethers.service';
@@ -253,6 +254,7 @@ export class DecodingService {
    * @param {ERC725JSONSchema} schema - The schema associated with the value.
    * @returns {string | null} The decoded value or null if the value cannot be decoded.
    */
+  @DebugLogger()
   protected decodeErc725YValue(
     value: string,
     dynamicKeyParts: string[],

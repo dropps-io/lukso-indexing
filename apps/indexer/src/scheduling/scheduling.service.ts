@@ -20,6 +20,8 @@ import {
   P_LIMIT,
 } from '../globals';
 import { TokensService } from '../tokens/tokens.service';
+import { RedisService } from '../redis/redis.service';
+import { REDIS_KEY } from '../redis/redis-keys';
 
 @Injectable()
 export class SchedulingService {
@@ -34,6 +36,7 @@ export class SchedulingService {
     private readonly contractsService: ContractsService,
     private readonly eventsService: EventsService,
     private readonly tokensService: TokensService,
+    protected readonly redisService: RedisService,
   ) {
     this.logger = loggerService.getChildLogger('SchedulingService');
     this.logger.info('Indexer starting...');
@@ -50,9 +53,8 @@ export class SchedulingService {
   @ExceptionHandler(false)
   protected async indexByBlock() {
     // Retrieve configuration and block data
-    const config = await this.structureDB.getConfig();
     const lastBlock = await this.ethersService.getLastBlock();
-    const fromBlock = config.latestIndexedBlock + 1;
+    const fromBlock = (await this.getLatestTxIndexedBlock()) + 1;
 
     // Function to index all transactions within a block
     const indexBlock = async (blockNumber: number) => {
@@ -80,7 +82,7 @@ export class SchedulingService {
     await this.promiseAllPLimit(promises, BLOCKS_P_LIMIT);
 
     // Update the latest indexed block for the current chunk
-    await this.structureDB.updateLatestIndexedBlock(toBlock);
+    await this.redisService.setNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK, toBlock);
   }
 
   /**
@@ -94,8 +96,7 @@ export class SchedulingService {
   @ExceptionHandler(false)
   protected async indexByEvents() {
     // Retrieve configuration and block data
-    const config = await this.structureDB.getConfig();
-    const fromBlock: number = config.latestIndexedEventBlock + 1;
+    const fromBlock: number = (await this.getLatestEventIndexedBlock()) + 1;
 
     const lastBlock = await this.ethersService.getLastBlock();
     // Determine the block number until which we should index in this iteration
@@ -115,7 +116,7 @@ export class SchedulingService {
     );
 
     // Update the latest indexed event block in the database and logger
-    await this.structureDB.updateLatestIndexedEventBlock(toBlock);
+    await this.redisService.setNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK, toBlock);
   }
 
   /**
@@ -169,5 +170,15 @@ export class SchedulingService {
   private async promiseAllPLimit(promises: Promise<any>[], pLimit_: number) {
     const limit = pLimit(pLimit_);
     return await Promise.all(promises.map((promise) => () => limit(() => promise)));
+  }
+
+  protected async getLatestTxIndexedBlock(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK);
+    return value || 0;
+  }
+
+  protected async getLatestEventIndexedBlock(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK);
+    return value || 0;
   }
 }
