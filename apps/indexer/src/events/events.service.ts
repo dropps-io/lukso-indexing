@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
-import { EVENT_TOPIC } from '@models/enums';
+import { EVENT_TOPIC } from '@shared/types/enums';
 import { Log } from 'ethers';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
@@ -19,6 +19,7 @@ import { DecodingService } from '../decoding/decoding.service';
 import { IndexingWsGateway } from '../indexing-ws/indexing-ws.gateway';
 import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
+import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 
 @Injectable()
 export class EventsService {
@@ -27,6 +28,7 @@ export class EventsService {
     protected readonly loggerService: LoggerService,
     protected readonly lsp8Service: Lsp8standardService,
     protected readonly lsp7Service: Lsp7standardService,
+    protected readonly erc725Service: Erc725StandardService,
     protected readonly decodingService: DecodingService,
     protected readonly dataDB: LuksoDataDbService,
     protected readonly structureDB: LuksoStructureDbService,
@@ -130,6 +132,7 @@ export class EventsService {
     const paramsMap = decodedParamToMapping(decodedParameters);
     switch (event.topic0) {
       case EVENT_TOPIC.DATA_CHANGED:
+        await this.erc725Service.processDataChangedEvent(event, paramsMap);
         break;
       case EVENT_TOPIC.LSP8_TRANSFER:
         await this.lsp8Service.processTokenRelatedEvent(event, paramsMap);

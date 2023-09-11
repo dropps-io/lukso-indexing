@@ -9,12 +9,14 @@ import { Lsp7standardModule } from '../standards/lsp7/lsp7standard.module';
 import { DecodingModule } from '../decoding/decoding.module';
 import { IndexingWsModule } from '../indexing-ws/indexing-ws.module';
 import { EthersModule } from '../ethers/ethers.module';
+import { Erc725StandardModule } from '../standards/erc725/erc725-standard.module';
 
 @Module({
   imports: [
     LoggerModule,
     Lsp8standardModule,
     Lsp7standardModule,
+    Erc725StandardModule,
     DecodingModule,
     LuksoDataDbModule,
     LuksoStructureDbModule,

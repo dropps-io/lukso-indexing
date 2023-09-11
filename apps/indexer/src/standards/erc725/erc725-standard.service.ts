@@ -5,10 +5,15 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { assertNonEmptyString, assertString } from '@utils/validators';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { EventTable } from '@db/lukso-data/entities/event.table';
 
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { DecodingService } from '../../decoding/decoding.service';
 import { parseArrayString } from '../../utils/parse-array-string';
+import { ERC725Y_KEY } from '../../ethers/contracts/config';
+import { MetadataService } from '../../metadata/metadata.service';
+import { SUPPORTED_STANDARD } from '../../ethers/types/enums';
+import { Lsp8standardService } from '../lsp8/lsp8standard.service';
 
 @Injectable()
 export class Erc725StandardService {
@@ -17,8 +22,24 @@ export class Erc725StandardService {
     private readonly loggerService: LoggerService,
     private readonly dataDB: LuksoDataDbService,
     private readonly decodingService: DecodingService,
+    protected readonly metadataService: MetadataService,
+    protected readonly lsp8Service: Lsp8standardService,
   ) {
     this.logger = this.loggerService.getChildLogger('Erc725Standard');
+  }
+
+  @DebugLogger()
+  @ExceptionHandler(false, true)
+  public async processDataChangedEvent(
+    event: EventTable,
+    parameters: { [name: string]: DecodedParameter },
+  ) {
+    const dataKey = parameters.dataKey.value;
+    const dataValue = parameters.dataValue.value;
+    assertNonEmptyString(dataKey);
+    assertString(dataValue);
+
+    await this.indexDataChanged(event.address, dataKey, dataValue, event.blockNumber);
   }
 
   /**
@@ -80,18 +101,28 @@ export class Erc725StandardService {
    */
   @DebugLogger()
   @ExceptionHandler(false, true)
-  public async indexDataChanged(address: string, key: string, value: string, blockNumber: number) {
-    // Decode the key-value pair
+  protected async indexDataChanged(
+    address: string,
+    key: string,
+    value: string,
+    blockNumber: number,
+  ) {
     const decodedKeyValue = await this.decodingService.decodeErc725YKeyValuePair(key, value);
 
-    // Insert the data change into the database
-    await this.dataDB.insertDataChanged({
-      address,
-      key,
-      value,
-      blockNumber,
-      decodedValue: decodedKeyValue?.value || null,
-    });
+    try {
+      // Insert the data change into the database
+      await this.dataDB.insertDataChanged({
+        address,
+        key,
+        value,
+        blockNumber,
+        decodedValue: decodedKeyValue?.value || null,
+      });
+    } catch (error: any) {
+      if (!JSON.stringify(error.message).includes('duplicate')) throw error;
+    }
+
+    await this.routeDataChanged(address, blockNumber, key, value, decodedKeyValue?.value);
   }
 
   protected validateBatchDataKeysAndValues(dataKeys: string[], dataValues: string[]): void {
@@ -102,6 +133,31 @@ export class Erc725StandardService {
       dataKeys.length === 0
     ) {
       throw 'No data keys or values, or dataKeys.length !== dataValues.length';
+    }
+  }
+
+  protected async routeDataChanged(
+    address: string,
+    blockNumber: number,
+    key: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    value: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    decodedValue?: string,
+  ): Promise<void> {
+    switch (key.slice(0, 26)) {
+      case ERC725Y_KEY.LSP3_PROFILE.slice(0, 26):
+        return await this.metadataService.indexContractMetadata(address, SUPPORTED_STANDARD.LSP0);
+      case ERC725Y_KEY.LSP4_METADATA.slice(0, 26):
+        return await this.metadataService.indexContractMetadata(address, undefined);
+      case ERC725Y_KEY.LSP4_TOKEN_NAME.slice(0, 26):
+      case ERC725Y_KEY.LSP4_TOKEN_SYMBOL.slice(0, 26):
+        return await this.metadataService.indexContractMetadata(address);
+      case ERC725Y_KEY.LSP8_METADATA_JSON.slice(0, 26):
+      case ERC725Y_KEY.LSP8_METADATA_JSON_LEGACY.slice(0, 26):
+        return await this.lsp8Service.processTokensMetadataChanges(address, key.slice(26));
+      case ERC725Y_KEY.LSP8_TOKEN_METADATA_BASE_URI.slice(0, 26):
+        return await this.lsp8Service.processTokensMetadataChanges(address);
     }
   }
 }

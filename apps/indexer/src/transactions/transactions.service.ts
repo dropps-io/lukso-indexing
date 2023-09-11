@@ -4,7 +4,7 @@ import winston from 'winston';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { WrappedTxTable } from '@db/lukso-data/entities/wrapped-tx.table';
-import { TX_METHOD_ID } from '@models/enums';
+import { TX_METHOD_ID } from '@shared/types/enums';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { TransactionReceipt, TransactionResponse } from 'ethers';

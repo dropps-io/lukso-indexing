@@ -12,31 +12,40 @@ import { ADDRESS1 } from '../../../../../test/utils/test-values';
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { executeQuery } from '../../../../../test/utils/db-helpers';
 import { FetcherService } from '../../fetcher/fetcher.service';
+import { MetadataService } from '../../metadata/metadata.service';
+import { Lsp8standardService } from '../lsp8/lsp8standard.service';
+
+class TestErc725StandardService extends Erc725StandardService {
+  testIndexDataChanged = this.indexDataChanged;
+}
 
 describe('Erc725StandardService', () => {
-  let service: Erc725StandardService;
+  let service: TestErc725StandardService;
   const logger = new LoggerService();
   const dataDB = new LuksoDataDbService(logger);
   const structureDB = new LuksoStructureDbService(logger);
+  const ethersService = new EthersService(new FetcherService(), logger, structureDB);
+  const metadataService = new MetadataService(logger, dataDB, ethersService);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
-        Erc725StandardService,
+        TestErc725StandardService,
         { provide: LoggerService, useValue: logger },
         { provide: LuksoDataDbService, useValue: dataDB },
+        { provide: MetadataService, useValue: metadataService },
+        {
+          provide: Lsp8standardService,
+          useValue: new Lsp8standardService(logger, dataDB, metadataService),
+        },
         {
           provide: DecodingService,
-          useValue: new DecodingService(
-            structureDB,
-            new EthersService(new FetcherService(), logger, structureDB),
-            logger,
-          ),
+          useValue: new DecodingService(structureDB, ethersService, logger),
         },
       ],
     }).compile();
 
-    service = moduleRef.get<Erc725StandardService>(Erc725StandardService);
+    service = moduleRef.get<TestErc725StandardService>(TestErc725StandardService);
   });
 
   describe('indexDataChanged', () => {
@@ -49,7 +58,7 @@ describe('Erc725StandardService', () => {
         valueContent: 'Address',
       });
 
-      await service.indexDataChanged(
+      await service.testIndexDataChanged(
         ADDRESS1,
         '0x0cfc51aec37c55a4d0b1a65c6255c4bf2fbdf6277f3cc0730c45b828b6db8b47',
         '0x76aeb1274d6486be066e653605b25ddccf0e2f18',
@@ -80,7 +89,7 @@ describe('Erc725StandardService', () => {
         valueContent: 'BitArray',
       });
 
-      await service.indexDataChanged(
+      await service.testIndexDataChanged(
         ADDRESS1,
         '0x4b80742de2bf82acb3630000d0a434abaa20e8f9627ab2afac944a1264f264d6',
         '0x0000000000000000000000000000000000000000000000000000000000000a11',
@@ -111,7 +120,7 @@ describe('Erc725StandardService', () => {
         valueContent: 'Address',
       });
 
-      await service.indexDataChanged(
+      await service.testIndexDataChanged(
         ADDRESS1,
         '0x6460ee3c0aac563ccbf76d6e1d07bada00000000000000000000000000000003',
         '0x21d69022dfa30d8e1388388798b28386b2dd9a78',
@@ -142,7 +151,7 @@ describe('Erc725StandardService', () => {
         valueContent: 'Address',
       });
 
-      await service.indexDataChanged(
+      await service.testIndexDataChanged(
         ADDRESS1,
         '0x6460ee3c0aac563ccbf76d6e1d07bada78e3a9514e6382b736ed3f478ab7b90b',
         '0x0000000000000000000000000000000000000000000000000000000000000003',
@@ -165,7 +174,7 @@ describe('Erc725StandardService', () => {
     });
 
     it('should have null decodedValue if could not decode', async () => {
-      await service.indexDataChanged(
+      await service.testIndexDataChanged(
         ADDRESS1,
         '0x6460ee3c0aac563ccbf76d6e1d07bada78e3a9514e6382b736ed3f478ab7b90b',
         '0x0000000000000000000000000000000000000000000000000000000000000003',

@@ -3,8 +3,10 @@ import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
 import { toUtf8String } from 'ethers';
 import { keccak } from '@utils/keccak';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
-import { MetadataResponse } from '../../types/metadata-response';
 import { RPC_URL } from '../../../globals';
 import LSP8IdentifiableDigitalAssetSchema from '../schemas/LSP8IdentifiableDigitalAssetSchema.json';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
@@ -33,34 +35,21 @@ export class LSP8 {
    *
    * @returns {Promise<MetadataResponse | null>} - The metadata and images associated with the LSP8 token or null if an error occurs.
    */
-  public async fetchTokenData(
-    address: string,
-    tokenId: string,
-  ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
-    try {
-      this.logger.debug(`Fetching LSP8 data for ${address}:${tokenId}`, { address, tokenId });
+  @DebugLogger()
+  @ExceptionHandler(false, true, null)
+  public async fetchTokenData(address: string, tokenId: string): Promise<MetadataResponse | null> {
+    const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.fetchTokenIdType(address);
+    const decodedTokenId = decodeLsp8TokenId(tokenId, tokenIdType);
 
-      // Determine the tokenId type.
-      const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.fetchTokenIdType(address);
-      // Generate the dynamic key for fetching the token metadata.
-      const decodedTokenId = decodeLsp8TokenId(tokenId, tokenIdType);
+    let metadata = await this.fetchDataFromBaseURI(address, decodedTokenId);
 
-      let metadata = await this.fetchDataFromBaseURI(address, decodedTokenId);
+    if (!metadata)
+      metadata = await this.fetchDataFromMetadataURI(address, decodedTokenId, tokenIdType);
 
-      if (!metadata)
-        metadata = await this.fetchDataFromMetadataURI(address, decodedTokenId, tokenIdType);
+    if (!metadata)
+      metadata = await this.fetchDataFromMetadataURI(address, decodedTokenId, tokenIdType, true);
 
-      if (!metadata)
-        metadata = await this.fetchDataFromMetadataURI(address, decodedTokenId, tokenIdType, true);
-
-      return {
-        metadata: this.buildMetadataResponse(metadata, address, tokenId),
-        decodedTokenId,
-      };
-    } catch (error: any) {
-      this.logger.warn(`Failed to fetch lsp8 token metadata: ${error.message}`, { address });
-      return null;
-    }
+    return this.buildMetadataResponse(metadata, address, tokenId);
   }
 
   protected async fetchDataFromMetadataURI(
@@ -116,7 +105,7 @@ export class LSP8 {
    *
    * @throws Will throw an error if the contract do no implements ERC725Y contract.
    */
-  protected async fetchTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
+  public async fetchTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
     this.logger.debug(`Fetching LSP8 token id type for ${address}`, { address });
     let tokenIdType: LSP8_TOKEN_ID_TYPE = LSP8_TOKEN_ID_TYPE.unknown;
 

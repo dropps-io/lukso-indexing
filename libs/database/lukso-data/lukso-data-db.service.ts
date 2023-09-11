@@ -45,6 +45,18 @@ export class LuksoDataDbService implements OnModuleDestroy {
     await this.client.end();
   }
 
+  async startTransaction(): Promise<void> {
+    await this.executeQuery('BEGIN');
+  }
+
+  async commitTransaction(): Promise<void> {
+    await this.executeQuery('COMMIT');
+  }
+
+  async rollbackTransaction(): Promise<void> {
+    await this.executeQuery('ROLLBACK');
+  }
+
   // Contract table functions
   public async insertContract(
     contract: ContractTable,
@@ -90,6 +102,18 @@ export class LuksoDataDbService implements OnModuleDestroy {
   public async getTokensToIndex(): Promise<ContractTokenTable[]> {
     return await this.executeQuery<ContractTokenTable>(
       `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "decodedTokenId" IS NULL`,
+    );
+  }
+
+  public async getContractTokens(
+    address: string,
+    tokenIdSearch?: string,
+  ): Promise<ContractTokenTable[]> {
+    return await this.executeQuery<ContractTokenTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "address"= $1 ${
+        tokenIdSearch ? 'AND LOWER("tokenId") LIKE LOWER($2)' : ''
+      }`,
+      tokenIdSearch ? [address, `%${tokenIdSearch}%`] : [address],
     );
   }
 
@@ -284,6 +308,24 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
 
     await this.executeQuery(query);
+  }
+
+  public async deleteMetadataTableItems(
+    metadataId: number,
+    table:
+      | DB_DATA_TABLE.METADATA_IMAGE
+      | DB_DATA_TABLE.METADATA_ASSET
+      | DB_DATA_TABLE.METADATA_LINK
+      | DB_DATA_TABLE.METADATA_TAG,
+  ): Promise<void> {
+    const query = format(
+      `
+        DELETE FROM %I
+        WHERE "metadataId" = $1
+      `,
+      table,
+    );
+    await this.executeQuery(query, [metadataId]);
   }
 
   // MetadataLink table functions

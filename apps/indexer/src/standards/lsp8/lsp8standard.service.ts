@@ -9,6 +9,9 @@ import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { buildTokenUniqueId } from '../../utils/build-token-unique-id';
 import { SUPPORTED_STANDARD } from '../../ethers/types/enums';
+import { promiseAllSettledPLimit } from '../../utils/promise-p-limit';
+import { P_LIMIT } from '../../globals';
+import { MetadataService } from '../../metadata/metadata.service';
 
 @Injectable()
 export class Lsp8standardService {
@@ -16,6 +19,7 @@ export class Lsp8standardService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly dataDB: LuksoDataDbService,
+    private readonly metadataService: MetadataService,
   ) {
     this.logger = this.loggerService.getChildLogger('Erc725Standard');
   }
@@ -41,6 +45,17 @@ export class Lsp8standardService {
         latestKnownOwner: newOwner || null,
       },
       'update',
+    );
+  }
+
+  public async processTokensMetadataChanges(address: string, partTokenId?: string) {
+    const tokens = await this.dataDB.getContractTokens(address, partTokenId);
+    const tokenIds = tokens.map((token) => token.tokenId);
+    await promiseAllSettledPLimit(
+      tokenIds.map((tokenId) =>
+        this.metadataService.indexContractTokenMetadata(address, tokenId, SUPPORTED_STANDARD.LSP8),
+      ),
+      P_LIMIT,
     );
   }
 }
