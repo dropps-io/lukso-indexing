@@ -2,11 +2,12 @@ import winston from 'winston';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
 import { MetadataImageTable } from '@db/lukso-data/entities/metadata-image.table';
 import { toUtf8String } from 'ethers';
-import { LSP4DigitalAssetJSON } from '@models/lsp4-digital-asset-json';
+import { Lsp4DigitalAssetJson } from '@shared/types/lsp4-digital-asset-json';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { assertNonEmptyString } from '@utils/validators';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
-import { MetadataResponse } from '../../types/metadata-response';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
@@ -20,9 +21,9 @@ export class LSP4 {
     protected readonly logger: winston.Logger,
   ) {}
 
+  @DebugLogger()
   @ExceptionHandler(false, true, null)
   public async fetchData(address: string): Promise<MetadataResponse | null> {
-    this.logger.debug(`Fetching LSP4 data for ${address}`, { address });
     let name: string | null = null;
     let symbol: string | null = null;
     let lsp4DigitalAsset: LSP4DigitalAsset | null = null;
@@ -99,7 +100,7 @@ export class LSP4 {
   public async fetchLsp4MetadataFromUrl(
     url: string,
   ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
-    const tokenMetadata = await this.fetcherService.fetch<LSP4DigitalAssetJSON>(
+    const tokenMetadata = await this.fetcherService.fetch<Lsp4DigitalAssetJson>(
       url,
       {},
       3,

@@ -24,7 +24,7 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { LoggerService } from '@libs/logger/logger.service';
 import fs from 'fs';
 import path from 'path';
-import { CONTRACT_TYPE } from '@models/enums';
+import { CONTRACT_TYPE } from '@shared/types/enums';
 import { tryExecuting } from '@utils/try-executing';
 
 const standardInterfaces = [

@@ -2,7 +2,7 @@ import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterfa
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
-import { CONTRACT_TYPE } from '@models/enums';
+import { CONTRACT_TYPE } from '@shared/types/enums';
 
 export const ADDRESS1 = '0xD692Ba892a902810a2EE3fA41C1D8DcD652D47Ab';
 export const ADDRESS2 = '0xA8f668006AeD69BB42F0A4458ced8B2ab744bfb7';

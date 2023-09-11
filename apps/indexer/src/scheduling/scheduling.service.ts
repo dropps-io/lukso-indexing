@@ -6,7 +6,6 @@ import { LoggerService } from '@libs/logger/logger.service';
 import { Cron } from '@nestjs/schedule';
 import { PreventOverlap } from '@decorators/prevent-overlap.decorator';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
-import pLimit from 'p-limit';
 
 import { EthersService } from '../ethers/ethers.service';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -22,6 +21,7 @@ import {
 import { TokensService } from '../tokens/tokens.service';
 import { RedisService } from '../redis/redis.service';
 import { REDIS_KEY } from '../redis/redis-keys';
+import { promiseAllPLimit } from '../utils/promise-p-limit';
 
 @Injectable()
 export class SchedulingService {
@@ -62,7 +62,7 @@ export class SchedulingService {
       const txHashes = await this.ethersService.getBlockTransactions(blockNumber);
       this.logger.debug(`Indexing ${txHashes.length} transactions from block ${blockNumber}`);
 
-      await this.promiseAllPLimit(
+      await promiseAllPLimit(
         txHashes.map((txHash) => this.transactionsService.indexTransaction(txHash)),
         P_LIMIT,
       );
@@ -79,7 +79,7 @@ export class SchedulingService {
     );
 
     // Wait for all promises in the current chunk to resolve
-    await this.promiseAllPLimit(promises, BLOCKS_P_LIMIT);
+    await promiseAllPLimit(promises, BLOCKS_P_LIMIT);
 
     // Update the latest indexed block for the current chunk
     await this.redisService.setNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK, toBlock);
@@ -110,7 +110,7 @@ export class SchedulingService {
     const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
     // Process transactions and events in batches concurrently
-    await this.promiseAllPLimit(
+    await promiseAllPLimit(
       logs.map((log) => this.eventsService.indexEvent(log)),
       P_LIMIT,
     );
@@ -139,7 +139,7 @@ export class SchedulingService {
     else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
 
     // Process contract chunks concurrently
-    await this.promiseAllPLimit(
+    await promiseAllPLimit(
       contractsToIndex.map((contract) => this.contractsService.indexContract(contract)),
       P_LIMIT,
     );
@@ -161,15 +161,10 @@ export class SchedulingService {
       this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
     else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
 
-    await this.promiseAllPLimit(
+    await promiseAllPLimit(
       tokensToIndex.map((token) => this.tokensService.indexToken(token)),
       P_LIMIT,
     );
-  }
-
-  private async promiseAllPLimit(promises: Promise<any>[], pLimit_: number) {
-    const limit = pLimit(pLimit_);
-    return await Promise.all(promises.map((promise) => () => limit(() => promise)));
   }
 
   protected async getLatestTxIndexedBlock(): Promise<number> {

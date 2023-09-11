@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
-import { CONTRACT_TYPE } from '@models/enums';
+import { CONTRACT_TYPE } from '@shared/types/enums';
 
 import { ContractTokenTable } from './entities/contract-token.table';
 import { MetadataAssetTable } from './entities/metadata-asset.table';

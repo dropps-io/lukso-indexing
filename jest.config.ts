@@ -10,7 +10,7 @@ module.exports = {
     '^@db/utils(|/.*)$': '<rootDir>/libs/database/utils/$1',
     '^@libs/logger(|/.*)$': '<rootDir>/libs/logger/$1',
     '^@utils(|/.*)$': '<rootDir>/shared/utils/$1',
-    '^@models(|/.*)$': '<rootDir>/shared/models/$1',
+    '^@shared/types(|/.*)$': '<rootDir>/shared/types/$1',
     '^@decorators(|/.*)$': '<rootDir>/shared/decorators/$1',
   },
 };

@@ -7,6 +7,8 @@ import { DebugLogger } from '@decorators/debug-logging.decorator';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
+import { decodeLsp8TokenId } from '../decoding/utils/decode-lsp8-token-id';
 
 @Injectable()
 export class TokensService {
@@ -23,20 +25,21 @@ export class TokensService {
 
   @DebugLogger()
   public async indexToken(token: ContractTokenTable) {
-    // Fetch the metadata of the contract token
-    const decodedTokenId = await this.metadataService.indexContractTokenMetadata(
-      token.address,
-      token.tokenId,
+    const decodedTokenId = await this.getDecodedTokenId(token.address, token.tokenId);
+
+    await this.dataDB.insertContractToken(
+      {
+        ...token,
+        decodedTokenId,
+      },
+      'update',
     );
 
-    // If metadata is available, insert or update the token in the database
-    if (decodedTokenId)
-      await this.dataDB.insertContractToken(
-        {
-          ...token,
-          decodedTokenId,
-        },
-        'update',
-      );
+    await this.metadataService.indexContractTokenMetadata(token.address, token.tokenId);
+  }
+
+  protected async getDecodedTokenId(address: string, tokenId: string): Promise<string> {
+    const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.ethersService.lsp8.fetchTokenIdType(address);
+    return decodeLsp8TokenId(tokenId, tokenIdType);
   }
 }

@@ -1,9 +1,9 @@
 import { LSP3Profile } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp3-profile';
 import winston from 'winston';
-import { LSP3ProfileJson } from '@models/lsp3-profile-json';
+import { Lsp3ProfileJson } from '@shared/types/lsp3-profile-json';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
-import { MetadataResponse } from '../../types/metadata-response';
 import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
@@ -77,7 +77,7 @@ export class LSP0 {
    */
   @ExceptionHandler(false, true, null)
   protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
-    const profileMetadata = await this.fetcherService.fetch<LSP3ProfileJson>(url, {}, 3, 0, 5000);
+    const profileMetadata = await this.fetcherService.fetch<Lsp3ProfileJson>(url, {}, 3, 0, 5000);
 
     if (typeof profileMetadata === 'object' && profileMetadata !== null) {
       if ('LSP3Profile' in profileMetadata) {

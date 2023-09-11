@@ -1,9 +1,9 @@
 import winston from 'winston';
 import LSP7DigitalAsset from '@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json';
 import { ethers } from 'ethers';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
 import { EthersService } from '../../ethers.service';
-import { MetadataResponse } from '../../types/metadata-response';
 import { LSP4 } from '../LSP4/LSP4';
 import { FetcherService } from '../../../fetcher/fetcher.service';
 export class LSP7 {

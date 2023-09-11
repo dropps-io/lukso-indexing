@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import winston from 'winston';
 import { LoggerService } from '@libs/logger/logger.service';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { DB_DATA_TABLE } from '@db/lukso-data/config';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
-import { MetadataResponse } from '../ethers/types/metadata-response';
 import { SUPPORTED_STANDARD } from '../ethers/types/enums';
 import { EthersService } from '../ethers/ethers.service';
 import { defaultMetadata } from '../ethers/utils/default-metadata-response';
@@ -28,10 +31,9 @@ export class MetadataService {
     address: string,
     tokenId: string,
     interfaceCode?: string,
-  ): Promise<string> {
+  ): Promise<void> {
     const res = await this.fetchContractTokenMetadata(address, tokenId, interfaceCode);
-    await this.insertMetadata(res?.metadata || defaultMetadata(address));
-    return res?.decodedTokenId || tokenId;
+    await this.insertMetadata(res || defaultMetadata(address));
   }
 
   /**
@@ -40,22 +42,22 @@ export class MetadataService {
    * @param {MetadataResponse} metadata - The metadata object containing data to be indexed.
    * @returns {Promise<void>}
    */
+  @ExceptionHandler(false, true)
   protected async insertMetadata(metadata: MetadataResponse): Promise<void> {
-    try {
-      // Insert the main metadata and retrieve the generated ID
-      const { id } = await this.dataDB.insertMetadata(metadata.metadata, 'update');
+    const { id } = await this.dataDB.insertMetadata(metadata.metadata, 'update');
 
-      // Insert related metadata objects into the database
-      await this.dataDB.insertMetadataImages(id, metadata.images, 'do nothing');
-      await this.dataDB.insertMetadataTags(id, metadata.tags, 'do nothing');
-      await this.dataDB.insertMetadataLinks(id, metadata.links, 'do nothing');
-      await this.dataDB.insertMetadataAssets(id, metadata.assets, 'do nothing');
-    } catch (e: any) {
-      this.logger.error(`Error while indexing metadata: ${e.message}`, {
-        address: metadata.metadata.address,
-        tokenId: metadata.metadata.tokenId,
-      });
-    }
+    // Insert related metadata objects into the database
+    await this.dataDB.deleteMetadataTableItems(id, DB_DATA_TABLE.METADATA_IMAGE);
+    await this.dataDB.insertMetadataImages(id, metadata.images, 'do nothing');
+
+    await this.dataDB.deleteMetadataTableItems(id, DB_DATA_TABLE.METADATA_TAG);
+    await this.dataDB.insertMetadataTags(id, metadata.tags, 'do nothing');
+
+    await this.dataDB.deleteMetadataTableItems(id, DB_DATA_TABLE.METADATA_LINK);
+    await this.dataDB.insertMetadataLinks(id, metadata.links, 'do nothing');
+
+    await this.dataDB.deleteMetadataTableItems(id, DB_DATA_TABLE.METADATA_ASSET);
+    await this.dataDB.insertMetadataAssets(id, metadata.assets, 'do nothing');
   }
 
   protected async fetchContractMetadata(
@@ -79,22 +81,12 @@ export class MetadataService {
     }
   }
 
+  @DebugLogger()
   protected async fetchContractTokenMetadata(
     address: string,
     tokenId: string,
     interfaceCode?: string,
-  ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
-    this.logger.debug(
-      `Fetching token metadata for ${address}:${tokenId}, ${
-        interfaceCode ? `interface code ${interfaceCode}` : ''
-      }`,
-      {
-        address,
-        tokenId,
-        interfaceCode,
-      },
-    );
-
+  ): Promise<MetadataResponse | null> {
     const interfaceCodeToUse =
       interfaceCode || (await this.ethersService.identifyContractInterface(address))?.code;
 

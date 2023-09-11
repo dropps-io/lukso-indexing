@@ -31,8 +31,8 @@
       "@libs/logger/*": ["libs/logger/*"],
       "@utils": ["shared/utils"],
       "@utils/*": ["shared/utils/*"],
-      "@models": ["shared/models"],
-      "@models/*": ["shared/models/*"],
+      "@shared/types": ["shared/types"],
+      "@shared/types/*": ["shared/types/*"],
       "@decorators": ["shared/decorators"],
       "@decorators/*": ["shared/decorators/*"]
     },
