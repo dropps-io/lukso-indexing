@@ -39,6 +39,7 @@ const setDataMethodInterface: MethodInterfaceTable = {
   hash: '0x7f23690cc80a596acdae0a51503f8066ffd79ab76fd5c929578309d2e2883b77',
   name: 'setData',
   type: 'function',
+  createdAt: new Date('2021-01-01'),
 };
 const setDataMethodParameters: MethodParameterTable[] = [
   {
@@ -158,6 +159,7 @@ describe('DecodingService', () => {
         hash: '0x44c028fee1c693348483835b83daaff8050a631d70676515d1e283a5b884b4aa',
         name: 'execute',
         type: 'function',
+        createdAt: new Date('2021-01-01'),
       };
       await db.insertMethodInterface(methodInterface);
       const parameters: MethodParameterTable[] = [

@@ -62,7 +62,7 @@ export class EventsService {
     const decodedParameters = await this.decodingService.decodeLogParameters(log.data, [
       ...log.topics,
     ]);
-    await this.handleDecodedParameters(logId, eventRow, decodedParameters);
+    await this.handleDecodedParameters(logId, eventRow, decodedParameters || []);
 
     this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
   }
@@ -111,7 +111,7 @@ export class EventsService {
   private async handleDecodedParameters(
     logId: string,
     eventRow: EventTable,
-    decodedParameters: any,
+    decodedParameters: DecodedParameter[],
   ) {
     if (decodedParameters) {
       await this.dataDB.insertEventParameters(logId, decodedParameters, 'do nothing');

@@ -30,6 +30,12 @@ export class RedisService implements OnModuleDestroy {
     else return null;
   }
 
+  async getDate(key: REDIS_KEY): Promise<Date | null> {
+    const value = await this.client.get(key);
+    if (value) return new Date(value);
+    else return null;
+  }
+
   async set(key: REDIS_KEY, value: string): Promise<void> {
     await this.client.set(key, value);
   }
@@ -38,7 +44,12 @@ export class RedisService implements OnModuleDestroy {
     await this.client.set(key, value.toString());
   }
 
+  async setDate(key: REDIS_KEY, value: Date): Promise<void> {
+    await this.client.set(key, value.toISOString());
+  }
+
   async reset(): Promise<void> {
     await this.client.flushall();
+    await this.setDate(REDIS_KEY.LATEST_UPDATE_DATE, new Date(Date.now()));
   }
 }

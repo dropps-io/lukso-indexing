@@ -3,4 +3,5 @@ export interface MethodInterfaceTable {
   hash: string;
   name: string;
   type: 'event' | 'function';
+  createdAt: Date;
 }

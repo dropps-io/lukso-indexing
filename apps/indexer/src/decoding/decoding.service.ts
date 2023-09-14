@@ -7,6 +7,7 @@ import { ethers, getAddress } from 'ethers';
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { EthersService } from '../ethers/ethers.service';
@@ -32,11 +33,15 @@ export class DecodingService {
    * Identifies and decodes the transaction input data.
    *
    * @param {string} input - The input data string of the transaction.
+   * @param _methodInterface
+   * @param _methodParameters
    * @returns {Promise<{parameters: DecodedParameter[]; methodName: string;} | null>} - An object containing the decoded
    * parameters and the method name, or null if the method interface is not found.
    */
   public async decodeTransactionInput(
     input: string,
+    _methodInterface?: MethodInterfaceTable,
+    _methodParameters?: MethodParameterTable[],
   ): Promise<{ parameters: DecodedParameter[]; methodName: string } | null> {
     let methodName: string | null = null;
     const methodId = input.slice(0, 10);
@@ -44,7 +49,9 @@ export class DecodingService {
     try {
       this.logger.debug(`Decoding transaction input for methodId ${methodId}`);
 
-      const methodInterface = await this.structureDB.getMethodInterfaceById(methodId);
+      const methodInterface =
+        _methodInterface || (await this.structureDB.getMethodInterfaceById(methodId));
+
       if (!methodInterface) {
         this.logger.debug(`Method interface not found for methodId ${methodId}, exiting...`);
         return null;
@@ -52,7 +59,11 @@ export class DecodingService {
 
       methodName = methodInterface.name;
 
-      const parameters = await this.decodeParameters(methodId, '0x' + input.slice(10));
+      const parameters = await this.decodeParameters(
+        methodId,
+        '0x' + input.slice(10),
+        _methodParameters,
+      );
       return { methodName, parameters };
     } catch (e: any) {
       this.logger.error(
@@ -69,6 +80,7 @@ export class DecodingService {
    * @param {string} data - The encoded data string.
    * @param {string[]} topics - An array of topics, where the first element is the method hash (containing the methodIdFromInput).
    *
+   * @param _methodParameters
    * @returns {Promise<DecodedParameter[] | null>} A Promise that resolves to an array of DecodedParameter objects,
    *          containing the decoded parameter values, positions, names, and types, or null if an error occurs.
    */
@@ -76,12 +88,14 @@ export class DecodingService {
   public async decodeLogParameters(
     data: string,
     topics: string[],
+    _methodParameters?: MethodParameterTable[],
   ): Promise<DecodedParameter[] | null> {
     const methodId = topics[0].slice(0, 10);
 
     this.logger.debug(`Decoding log parameters for methodId ${methodId}`);
 
-    const methodParameters = await this.structureDB.getMethodParametersByMethodId(methodId);
+    const methodParameters =
+      _methodParameters || (await this.structureDB.getMethodParametersByMethodId(methodId));
     if (!methodParameters) {
       this.logger.debug(`Method parameters not found for methodId ${methodId}, exiting...`);
       return null;

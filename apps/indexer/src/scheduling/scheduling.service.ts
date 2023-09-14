@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import winston from 'winston';
-import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
 import { Cron } from '@nestjs/schedule';
@@ -15,20 +14,21 @@ import {
   BLOCKS_CHUNK_SIZE,
   BLOCKS_P_LIMIT,
   CRON_PROCESS,
+  CRON_UPDATE,
   EVENTS_CHUNK_SIZE,
   P_LIMIT,
 } from '../globals';
 import { TokensService } from '../tokens/tokens.service';
 import { RedisService } from '../redis/redis.service';
 import { REDIS_KEY } from '../redis/redis-keys';
-import { promiseAllPLimit } from '../utils/promise-p-limit';
+import { promiseAllPLimit, promiseAllSettledPLimit } from '../utils/promise-p-limit';
+import { UpdateService } from '../update/update.service';
 
 @Injectable()
 export class SchedulingService {
   private readonly logger: winston.Logger;
 
   constructor(
-    private readonly structureDB: LuksoStructureDbService,
     private readonly dataDB: LuksoDataDbService,
     private readonly ethersService: EthersService,
     private readonly loggerService: LoggerService,
@@ -37,6 +37,7 @@ export class SchedulingService {
     private readonly eventsService: EventsService,
     private readonly tokensService: TokensService,
     protected readonly redisService: RedisService,
+    protected readonly updateService: UpdateService,
   ) {
     this.logger = loggerService.getChildLogger('SchedulingService');
     this.logger.info('Indexer starting...');
@@ -62,9 +63,10 @@ export class SchedulingService {
       const txHashes = await this.ethersService.getBlockTransactions(blockNumber);
       this.logger.debug(`Indexing ${txHashes.length} transactions from block ${blockNumber}`);
 
-      await promiseAllPLimit(
+      await promiseAllSettledPLimit(
         txHashes.map((txHash) => this.transactionsService.indexTransaction(txHash)),
         P_LIMIT,
+        { logger: this.logger },
       );
     };
 
@@ -139,9 +141,10 @@ export class SchedulingService {
     else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
 
     // Process contract chunks concurrently
-    await promiseAllPLimit(
+    await promiseAllSettledPLimit(
       contractsToIndex.map((contract) => this.contractsService.indexContract(contract)),
       P_LIMIT,
+      { logger: this.logger },
     );
   }
 
@@ -161,10 +164,25 @@ export class SchedulingService {
       this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
     else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
 
-    await promiseAllPLimit(
+    await promiseAllSettledPLimit(
       tokensToIndex.map((token) => this.tokensService.indexToken(token)),
       P_LIMIT,
+      { logger: this.logger },
     );
+  }
+
+  @Cron(CRON_UPDATE)
+  @PreventOverlap()
+  @ExceptionHandler(false)
+  protected async updateContracts() {
+    await this.updateService.updateContracts();
+  }
+
+  @Cron(CRON_UPDATE)
+  @PreventOverlap()
+  @ExceptionHandler(false)
+  protected async updateTxAndEvents() {
+    await this.updateService.updateTransactionsAndEvents();
   }
 
   protected async getLatestTxIndexedBlock(): Promise<number> {

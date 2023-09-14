@@ -21,7 +21,7 @@ const db = new LuksoStructureDbService(new LoggerService());
  * @returns {Promise<void>} Resolves when the operation is complete.
  */
 export async function generateAndPersistMethodInterfaces(contractAbis: AbiItem[][]): Promise<void> {
-  const interfaces: MethodInterfaceWithParams[] = [];
+  const interfaces: Omit<MethodInterfaceWithParams, 'createdAt'>[] = [];
 
   // Iterate through contract ABIs and build the interfaces array
   contractAbis.forEach((abis) => {
