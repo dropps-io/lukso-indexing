@@ -1,8 +1,8 @@
 import { binding, given, before, then } from 'cucumber-tsflow';
-import axios from 'axios';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { assert } from 'chai';
+import * as request from 'supertest';
 import ScenarioScopes from './scenarioScopes';
 @binding([ScenarioScopes])
 export class CommonsSetps {
@@ -20,14 +20,9 @@ export class CommonsSetps {
 
   @given(/the API is running/)
   public async callToAPI() {
-    let serviceStatus;
-    try {
-      const response = await axios.get('http://localhost:3000/health'); // Replace with the actual URL of your service's health check endpoint
-      serviceStatus = response.status;
-    } catch (error) {
-      serviceStatus = error.response ? error.response.status : 500;
-    }
-    assert.equal(serviceStatus, 200);
+    const get = request(this.context.app.getHttpServer()).get('/health');
+    this.context.response = await get.send();
+    assert.equal(this.context.response.status, 200);
   }
 
   @then(/^the service should return HTTP (\d+)$/)

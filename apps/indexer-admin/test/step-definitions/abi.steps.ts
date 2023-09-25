@@ -4,8 +4,9 @@ import { AppModule } from '../../src/app.module';
 import { AbiItem } from 'web3-utils';
 import { assert } from 'chai';
 import LSP8MintableABI from './mocks/LSP8MintableABI.json';
-import axios from 'axios';
 import ScenarioScopes from './scenarioScopes';
+import * as request from 'supertest';
+
 @binding([ScenarioScopes])
 export class HelloWorldSteps {
   private ABIs: Array<AbiItem> = [];
@@ -32,18 +33,14 @@ export class HelloWorldSteps {
   @when(/i call the endPoint uploadAbi/)
   public async uploadAbi() {
     try {
-      this.context.response = await axios.post(
-        'http://localhost:3000/abi',
-        this.ABIs,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
+      const body = this.ABIs;
+      const post = request(this.context.app.getHttpServer()).post('/abi');
       this.context.serviceStatus = this.context.response.status;
+      this.context.response = await post.send(body);
     } catch (error) {
-      this.context.serviceStatus = error.response ? error.response.status : 200;
+      this.context.response.status = error.response
+        ? error.response.status
+        : 200;
     }
   }
 }
