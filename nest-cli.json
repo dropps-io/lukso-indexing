@@ -18,6 +18,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/indexer/tsconfig.app.json"
       }
+    },
+    "indexer-admin": {
+      "type": "application",
+      "root": "apps/indexer-admin",
+      "entryFile": "main",
+      "sourceRoot": "apps/indexer-admin/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/indexer-admin/tsconfig.app.json"
+      }
     }
   }
 }

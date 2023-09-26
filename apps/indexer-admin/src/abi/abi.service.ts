@@ -8,9 +8,7 @@ export class AbiService {
     try {
       await generateAndPersistMethodInterfaces(abiItems);
     } catch (error) {
-      throw new Error(
-        'Failed to process and upload ABI items: ' + error.message,
-      );
+      throw new Error('Failed to process and upload ABI items: ' + (error as Error).message);
     }
   }
 }
