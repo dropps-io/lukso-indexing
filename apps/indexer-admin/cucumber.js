@@ -4,6 +4,7 @@ let common = [
   '--require test/step-definitions/**/*.ts', // Load step definitions
   '--format progress-bar', // Load custom formatter
   '--format @cucumber/pretty-formatter',
+  '--require @db/lukso-structure/utils/generate-method-interfaces',
 ].join(' ');
 
 module.exports = { default: common };

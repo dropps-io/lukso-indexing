@@ -17,6 +17,22 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@db/lukso-data": ["../../libs/database/lukso-data"],
+      "@db/lukso-data/*": ["../../libs/database/lukso-data/*"],
+      "@db/lukso-structure": ["../../libs/database/lukso-structure"],
+      "@db/lukso-structure/*": ["../../libs/database/lukso-structure/*"],
+      "@db/utils": ["../../libs/database/utils"],
+      "@db/utils/*": ["../../libs/database/utils/*"],
+      "@libs/logger": ["../../libs/logger"],
+      "@libs/logger/*": ["../../libs/logger/*"],
+      "@utils": ["../../shared/utils"],
+      "@utils/*": ["../../shared/utils/*"],
+      "@shared/types": ["vshared/types"],
+      "@shared/types/*": ["../../shared/types/*"],
+      "@decorators": ["../../shared/decorators"],
+      "@decorators/*": ["../../shared/decorators/*"]
+    }
   }
 }

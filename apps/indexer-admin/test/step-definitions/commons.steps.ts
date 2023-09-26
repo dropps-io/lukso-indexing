@@ -20,7 +20,7 @@ export class CommonsSetps {
 
   @given(/the API is running/)
   public async callToAPI() {
-    const get = request(this.context.app.getHttpServer()).get('/health');
+    const get = request(this.context.app.getHttpServer()).get('/abi');
     this.context.response = await get.send();
     assert.equal(this.context.response.status, 200);
   }

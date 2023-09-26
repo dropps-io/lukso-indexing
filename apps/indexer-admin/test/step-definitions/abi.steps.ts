@@ -4,6 +4,7 @@ import { AppModule } from '../../src/app.module';
 import { AbiItem } from 'web3-utils';
 import { assert } from 'chai';
 import LSP8MintableABI from './mocks/LSP8MintableABI.json';
+import BrokenAbiItem from './mocks/BrokenAbiItem.json';
 import ScenarioScopes from './scenarioScopes';
 import * as request from 'supertest';
 
@@ -28,6 +29,15 @@ export class HelloWorldSteps {
     // @ts-ignore
     this.ABIs.push([LSP8MintableABI]);
     assert.equal(this.ABIs.length, 1);
+  }
+
+  @when(/i have a un-valid array of ABIs/)
+  public async testBadABIArray() {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    this.ABIs.push([BrokenAbiItem]);
+    assert.equal(this.ABIs.length, 1);
+    assert.equal(this.ABIs[1].inputs.length, 0);
   }
 
   @when(/i call the endPoint uploadAbi/)
