@@ -20,6 +20,16 @@ const db = new LuksoStructureDbService(new LoggerService());
  * @param {AbiItem[][]} contractAbis - An array of arrays of contract ABIs.
  * @returns {Promise<void>} Resolves when the operation is complete.
  */
+
+let isDbDisconnected = false;
+
+// Function to disconnect from the database
+async function disconnectFromDatabase() {
+  if (!isDbDisconnected) {
+    await db.disconnect();
+    isDbDisconnected = true;
+  }
+}
 export async function generateAndPersistMethodInterfaces(contractAbis: AbiItem[][]): Promise<void> {
   const interfaces: MethodInterfaceWithParams[] = [];
 
@@ -69,6 +79,5 @@ export async function generateAndPersistMethodInterfaces(contractAbis: AbiItem[]
       n++;
     }
   }
-
-  await db.disconnect();
+  await disconnectFromDatabase();
 }

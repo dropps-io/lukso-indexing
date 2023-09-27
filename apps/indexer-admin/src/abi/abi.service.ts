@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { AbiItem } from 'web3-utils';
 import { generateAndPersistMethodInterfaces } from '@db/lukso-structure/utils/generate-method-interfaces';
+import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
+import { LoggerService } from '@libs/logger/logger.service';
 
 @Injectable()
 export class AbiService {
