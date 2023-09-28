@@ -2,10 +2,10 @@ import { binding, before, when } from 'cucumber-tsflow';
 import { Test, TestingModule } from '@nestjs/testing';
 import { assert } from 'chai';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
+import * as request from 'supertest';
 
 import { AppModule } from '../../src/app.module';
 import ScenarioScopes from './scenarioScopes';
-import * as request from "supertest";
 
 @binding([ScenarioScopes])
 export class ContractInterfacesSteps {
@@ -32,7 +32,7 @@ export class ContractInterfacesSteps {
   public async uploadContractInterfaces() {
     try {
       const body = this.contractInterfaces;
-      const post = request.default(this.context.app.getHttpServer()).post('/contractInterfaces');
+      const post = request.default(this.context.app.getHttpServer()).post('/contractInterface');
       this.context.serviceStatus = this.context.response.status;
       this.context.response = await post.send(body);
     } catch (error: any) {
