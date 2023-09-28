@@ -1,12 +1,11 @@
 Feature: Auth Scenarios
 
-#  Scenario: Successful Batch Insertion of Interfaces
-#    Given the API is running
-#    When a user sends an array of contract interfaces to the endpoint for batch insertion
-#    Then the service should return HTTP 201
-#    And it should insert all the provided interfaces into the database using the new optimized batch insertion function
-#    And it should respond with a success message indicating that the batch insertion was successful
-#
+  Scenario: Successful Batch Insertion of Interfaces
+    Given the API is running
+    And i have a valid array of contract interfaces
+    When i call the endPoint uploadContractInterfaces
+    Then the service should return HTTP 200
+
 #  Scenario: Validation of Input Data
 #    Given the API is running
 #    When a user sends an array of contract interfaces to the endpoint for batch insertion

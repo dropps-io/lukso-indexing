@@ -1,8 +1,9 @@
 import { binding, given, before, then } from 'cucumber-tsflow';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppModule } from '../../src/app.module';
 import { assert } from 'chai';
 import * as request from 'supertest';
+
+import { AppModule } from '../../src/app.module';
 import ScenarioScopes from './scenarioScopes';
 @binding([ScenarioScopes])
 export class CommonsSetps {
@@ -20,7 +21,7 @@ export class CommonsSetps {
 
   @given(/the API is running/)
   public async callToAPI() {
-    const get = request(this.context.app.getHttpServer()).get('/abi');
+    const get = request.default(this.context.app.getHttpServer()).get('/abi');
     this.context.response = await get.send();
     assert.equal(this.context.response.status, 200);
   }
