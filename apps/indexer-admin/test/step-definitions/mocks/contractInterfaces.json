@@ -1,0 +1,7 @@
+[
+  {"id": "0x66767497", "code": "LSP0", "name": "Universal Profile", "version": "0.8", "type": "profile"},
+  {"id": "0x06561226", "code": "LSP6", "name": "Key Manager", "version": "0.7", "type": null},
+  {"id": "0x7050cee9", "code": "LSP6", "name": "Key Manager", "version": "0.8", "type": null},
+  {"id": "0xfb437414", "code": "LSP6", "name": "Key Manager", "version": "0.9", "type": null},
+  {"id": "0x28af17e6", "code": "LSP6", "name": "Key Manager", "version": "0.8", "type": null}
+  ]

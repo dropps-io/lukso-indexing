@@ -10,7 +10,7 @@ import BrokenAbiItem from './mocks/BrokenAbiItem.json';
 import ScenarioScopes from './scenarioScopes';
 
 @binding([ScenarioScopes])
-export class HelloWorldSteps {
+export class AbiSteps {
   private ABIs: Array<AbiItem> = [];
   constructor(protected context: ScenarioScopes) {}
 
