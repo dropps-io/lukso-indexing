@@ -1,15 +1,15 @@
 import { binding, before, when } from 'cucumber-tsflow';
 import { Test, TestingModule } from '@nestjs/testing';
 import { assert } from 'chai';
-import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
 import * as request from 'supertest';
 
+import contractInterfaces from './mocks/contractInterfaces.json';
 import { AppModule } from '../../src/app.module';
 import ScenarioScopes from './scenarioScopes';
 
 @binding([ScenarioScopes])
 export class ContractInterfacesSteps {
-  private contractInterfaces: Array<ContractInterfaceTable> = [];
+  private contractInterfaces: Array<any> = [];
   constructor(protected context: ScenarioScopes) {}
 
   @before()
@@ -24,7 +24,7 @@ export class ContractInterfacesSteps {
 
   @when(/i have a valid array of contract interfaces/)
   public async testContractInterfacesArray() {
-    this.contractInterfaces.push();
+    this.contractInterfaces.push([contractInterfaces]);
     assert.equal(this.contractInterfaces.length, 1);
   }
 

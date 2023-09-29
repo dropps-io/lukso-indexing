@@ -1,4 +1,4 @@
-Feature: Auth Scenarios
+Feature: ContractInterfaces Scenarios
 
   Scenario: Successful Batch Insertion of Interfaces
     Given the API is running
