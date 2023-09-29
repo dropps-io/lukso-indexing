@@ -1,11 +1,11 @@
 import { binding, before, when } from 'cucumber-tsflow';
 import { Test, TestingModule } from '@nestjs/testing';
 import { assert } from 'chai';
+import * as request from 'supertest';
 
 import ERC725ySchemas from './mocks/ERC725ySchemas.json';
 import { AppModule } from '../../src/app.module';
 import ScenarioScopes from './scenarioScopes';
-import * as request from "supertest";
 
 @binding([ScenarioScopes])
 export class ERC725ySchemasSteps {
