@@ -9,9 +9,7 @@ import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.t
 export class ERC725ySchemasService {
   async uploadERC725ySchemas(erc725ySchemas: Array<ERC725YSchemaTable>): Promise<void> {
     try {
-      for (const erc725ySchema of erc725ySchemas) {
-        await tryExecuting(db.insertErc725ySchema(erc725ySchema));
-      }
+      await tryExecuting(db.batchInsertErc725ySchemas(erc725ySchemas));
     } catch (error) {
       throw new Error('Failed to process and upload erc725ySchemas: ' + (error as Error).message);
     }

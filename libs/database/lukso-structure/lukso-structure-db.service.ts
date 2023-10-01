@@ -57,6 +57,38 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     );
   }
 
+  async batchInsertErc725ySchemas(schemas: ERC725YSchemaTable[]): Promise<void> {
+    if (schemas.length === 0) {
+      return;
+    }
+
+    const values = schemas.map((schema) => [
+      schema.key,
+      schema.name,
+      schema.keyType,
+      schema.valueType,
+      schema.valueContent,
+    ]);
+
+    const query = `
+    INSERT INTO ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA}
+    ("key", "name", "keyType", "valueType", "valueContent")
+    VALUES ${values
+      .map(
+        (_, index) =>
+          `($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${
+            index * 5 + 5
+          })`,
+      )
+      .join(', ')}
+  `;
+
+    //Here we flatten the array, because the executeQuery expects a flat array of values
+    const flattenedValues = values.flat();
+
+    await this.executeQuery(query, flattenedValues);
+  }
+
   async getErc725ySchemaByKey(key: string): Promise<ERC725YSchemaTable | null> {
     const rows = await this.executeQuery<ERC725YSchemaTable>(
       'SELECT * FROM "erc725y_schema" WHERE LOWER(key) LIKE LOWER($1)',
@@ -80,6 +112,39 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
     // Update cache with the new value
     this.cache.contractInterfaces.values.push(contractInterface);
+  }
+
+  async batchInsertContractInterfaces(contractInterfaces: ContractInterfaceTable[]): Promise<void> {
+    if (contractInterfaces.length === 0) {
+      return;
+    }
+
+    const values = contractInterfaces.map((contractInterface) => [
+      contractInterface.id,
+      contractInterface.code,
+      contractInterface.name,
+      contractInterface.version,
+      contractInterface.type,
+    ]);
+
+    const query = `
+    INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version", "type")
+    VALUES ${values
+      .map(
+        (_, index) =>
+          `($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${
+            index * 5 + 5
+          })`,
+      )
+      .join(', ')}
+  `;
+    //Here we flatten the array, because the executeQuery expects a flat array of values
+    const flattenedValues = values.flat();
+
+    await this.executeQuery(query, flattenedValues);
+
+    // Update cache with the new values
+    this.cache.contractInterfaces.values.push(...contractInterfaces);
   }
 
   async getContractInterfaceById(id: string): Promise<ContractInterfaceTable | null> {
