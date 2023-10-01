@@ -9,9 +9,7 @@ import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInt
 export class ContractInterfacesService {
   async uploadContractInterfaces(contractInterfaces: Array<ContractInterfaceTable>): Promise<void> {
     try {
-      for (const contractInterface of contractInterfaces) {
-        await tryExecuting(db.insertContractInterface(contractInterface));
-      }
+      await tryExecuting(db.batchInsertContractInterfaces(contractInterfaces));
     } catch (error) {
       throw new Error('Failed to process and upload ABI items: ' + (error as Error).message);
     }
