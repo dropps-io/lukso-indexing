@@ -183,6 +183,30 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       [methodInterface.id, methodInterface.hash, methodInterface.name, methodInterface.type],
     );
   }
+
+  async batchInsertMethodInterfaces(methodInterfaces: MethodInterfaceTable[]): Promise<void> {
+    const values = methodInterfaces.map((methodInterface) => [
+      methodInterface.id,
+      methodInterface.hash,
+      methodInterface.name,
+      methodInterface.type,
+    ]);
+
+    const query = `
+    INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} ("id", "hash", "name", "type")
+    VALUES ${values
+      .map(
+        (_, index) =>
+          `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`,
+      )
+      .join(', ')}
+  `;
+
+    const flatValues = values.flat();
+
+    await this.executeQuery(query, flatValues);
+  }
+
   async getMethodInterfaceById(id: string): Promise<MethodInterfaceTable | null> {
     const rows = await this.executeQuery<MethodInterfaceTable>(
       `SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "id" = $1`,
@@ -202,6 +226,34 @@ export class LuksoStructureDbService implements OnModuleDestroy {
         methodParameter.position,
       ],
     );
+  }
+
+  async batchInsertMethodParameters(methodParameters: MethodParameterTable[]): Promise<void> {
+    const values = methodParameters.map((methodParameter) => [
+      methodParameter.methodId,
+      methodParameter.name,
+      methodParameter.type,
+      methodParameter.indexed,
+      methodParameter.position,
+    ]);
+
+    const query = `
+    INSERT INTO ${
+      DB_STRUCTURE_TABLE.METHOD_PARAMETER
+    } ("methodId", "name", "type", "indexed", "position")
+    VALUES ${values
+      .map(
+        (_, index) =>
+          `($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${
+            index * 5 + 5
+          })`,
+      )
+      .join(', ')}
+  `;
+
+    const flatValues = values.flat();
+
+    await this.executeQuery(query, flatValues);
   }
 
   async getMethodParametersByMethodId(methodId: string): Promise<MethodParameterTable[]> {
