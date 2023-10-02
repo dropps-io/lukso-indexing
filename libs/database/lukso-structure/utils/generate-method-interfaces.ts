@@ -81,24 +81,5 @@ export async function generateAndPersistMethodInterfaces(contractAbis: AbiItem[]
   //Batch insert method parameters
   await tryExecuting(db.batchInsertMethodParameters(methodParameters));
 
-  // // Persist the method interfaces and their parameters in the database
-  // for (const methodInterface of interfaces) {
-  //   // Insert the method interface into the database
-  //   await tryExecuting(db.insertMethodInterface(methodInterface));
-  //
-  //   // Insert the method parameters into the database
-  //   let n = 0;
-  //   for (const parameter of methodInterface.parameters) {
-  //     await tryExecuting(
-  //       db.insertMethodParameter({
-  //         methodId: methodInterface.id,
-  //         ...parameter,
-  //         position: n,
-  //         indexed: parameter.indexed || false,
-  //       }),
-  //     );
-  //     n++;
-  //   }
-  // }
   await disconnectFromDatabase();
 }
