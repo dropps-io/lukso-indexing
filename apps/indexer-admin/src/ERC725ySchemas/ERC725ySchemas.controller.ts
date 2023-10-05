@@ -1,5 +1,5 @@
-import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
+import {ApiQuery, ApiTags} from '@nestjs/swagger';
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 
 import { ERC725ySchemasService } from './ERC725ySchemas.service';
@@ -10,7 +10,11 @@ export class ERC725ySchemasController {
   constructor(private readonly erc725ySchemasService: ERC725ySchemasService) {}
 
   @Post()
-  async uploadERC725ySchemas(@Body() erc725ySchemas: Array<ERC725YSchemaTable>) {
+  @ApiQuery({ name: 'accessToken', required: true })
+  async uploadERC725ySchemas(
+    @Body() erc725ySchemas: Array<ERC725YSchemaTable>, // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    @Query('accessToken') accessToken,
+  ) {
     try {
       await this.erc725ySchemasService.uploadERC725ySchemas(erc725ySchemas);
     } catch {
