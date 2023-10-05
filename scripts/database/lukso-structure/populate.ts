@@ -139,7 +139,9 @@ const readJsonFiles = async (dir: string): Promise<any[]> => {
 const db = new LuksoStructureDbService(new LoggerService());
 
 export async function populateLuksoStructure() {
-  await tryExecuting(db.batchInsertContractInterfaces(standardInterfaces));
+  for (const standardInterface of standardInterfaces) {
+    await tryExecuting(db.insertContractInterface(standardInterface));
+  }
 
   for (const schemaList of [
     JSONSCHEMALSP1 as ERC725JSONSchema[],
@@ -151,7 +153,9 @@ export async function populateLuksoStructure() {
     JSONSCHEMALSP10 as ERC725JSONSchema[],
     JSONSCHEMALSP12 as ERC725JSONSchema[],
   ]) {
-    await tryExecuting(db.batchInsertErc725ySchemas(schemaList));
+    for (const schema of schemaList) {
+      await tryExecuting(db.insertErc725ySchema(schema));
+    }
   }
 
   await generateAndPersistMethodInterfaces(

@@ -57,38 +57,6 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     );
   }
 
-  async batchInsertErc725ySchemas(schemas: ERC725YSchemaTable[]): Promise<void> {
-    if (schemas.length === 0) {
-      return;
-    }
-
-    const values = schemas.map((schema) => [
-      schema.key,
-      schema.name,
-      schema.keyType,
-      schema.valueType,
-      schema.valueContent,
-    ]);
-
-    const query = `
-    INSERT INTO ${DB_STRUCTURE_TABLE.ERC725Y_SCHEMA}
-    ("key", "name", "keyType", "valueType", "valueContent")
-    VALUES ${values
-      .map(
-        (_, index) =>
-          `($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${
-            index * 5 + 5
-          })`,
-      )
-      .join(', ')}
-  `;
-
-    //Here we flatten the array, because the executeQuery expects a flat array of values
-    const flattenedValues = values.flat();
-
-    await this.executeQuery(query, flattenedValues);
-  }
-
   async getErc725ySchemaByKey(key: string): Promise<ERC725YSchemaTable | null> {
     const rows = await this.executeQuery<ERC725YSchemaTable>(
       'SELECT * FROM "erc725y_schema" WHERE LOWER(key) LIKE LOWER($1)',
@@ -112,39 +80,6 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
     // Update cache with the new value
     this.cache.contractInterfaces.values.push(contractInterface);
-  }
-
-  async batchInsertContractInterfaces(contractInterfaces: ContractInterfaceTable[]): Promise<void> {
-    if (contractInterfaces.length === 0) {
-      return;
-    }
-
-    const values = contractInterfaces.map((contractInterface) => [
-      contractInterface.id,
-      contractInterface.code,
-      contractInterface.name,
-      contractInterface.version,
-      contractInterface.type,
-    ]);
-
-    const query = `
-    INSERT INTO ${DB_STRUCTURE_TABLE.CONTRACT_INTERFACE} ("id", "code", "name", "version", "type")
-    VALUES ${values
-      .map(
-        (_, index) =>
-          `($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${
-            index * 5 + 5
-          })`,
-      )
-      .join(', ')}
-  `;
-    //Here we flatten the array, because the executeQuery expects a flat array of values
-    const flattenedValues = values.flat();
-
-    await this.executeQuery(query, flattenedValues);
-
-    // Update cache with the new values
-    this.cache.contractInterfaces.values.push(...contractInterfaces);
   }
 
   async getContractInterfaceById(id: string): Promise<ContractInterfaceTable | null> {
@@ -183,30 +118,6 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       [methodInterface.id, methodInterface.hash, methodInterface.name, methodInterface.type],
     );
   }
-
-  async batchInsertMethodInterfaces(methodInterfaces: MethodInterfaceTable[]): Promise<void> {
-    const values = methodInterfaces.map((methodInterface) => [
-      methodInterface.id,
-      methodInterface.hash,
-      methodInterface.name,
-      methodInterface.type,
-    ]);
-
-    const query = `
-    INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} ("id", "hash", "name", "type")
-    VALUES ${values
-      .map(
-        (_, index) =>
-          `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`,
-      )
-      .join(', ')}
-  `;
-
-    const flatValues = values.flat();
-
-    await this.executeQuery(query, flatValues);
-  }
-
   async getMethodInterfaceById(id: string): Promise<MethodInterfaceTable | null> {
     const rows = await this.executeQuery<MethodInterfaceTable>(
       `SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "id" = $1`,
@@ -226,34 +137,6 @@ export class LuksoStructureDbService implements OnModuleDestroy {
         methodParameter.position,
       ],
     );
-  }
-
-  async batchInsertMethodParameters(methodParameters: MethodParameterTable[]): Promise<void> {
-    const values = methodParameters.map((methodParameter) => [
-      methodParameter.methodId,
-      methodParameter.name,
-      methodParameter.type,
-      methodParameter.indexed,
-      methodParameter.position,
-    ]);
-
-    const query = `
-    INSERT INTO ${
-      DB_STRUCTURE_TABLE.METHOD_PARAMETER
-    } ("methodId", "name", "type", "indexed", "position")
-    VALUES ${values
-      .map(
-        (_, index) =>
-          `($${index * 5 + 1}, $${index * 5 + 2}, $${index * 5 + 3}, $${index * 5 + 4}, $${
-            index * 5 + 5
-          })`,
-      )
-      .join(', ')}
-  `;
-
-    const flatValues = values.flat();
-
-    await this.executeQuery(query, flatValues);
   }
 
   async getMethodParametersByMethodId(methodId: string): Promise<MethodParameterTable[]> {
