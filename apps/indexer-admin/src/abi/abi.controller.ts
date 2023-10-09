@@ -13,6 +13,7 @@ export class AbiController {
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
+    required: true,
   })
   async processAndUploadAbiItems(@Body() abiItems: Array<AbiItem>) {
     try {
