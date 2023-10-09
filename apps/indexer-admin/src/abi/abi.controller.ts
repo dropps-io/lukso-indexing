@@ -1,6 +1,6 @@
-import { Body, Controller, HttpException, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/common';
 import { AbiItem } from 'web3-utils';
-import { ApiProperty, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiTags } from '@nestjs/swagger';
 
 import { AbiService } from './abi.service';
 
@@ -10,12 +10,11 @@ export class AbiController {
   constructor(private readonly abiService: AbiService) {}
 
   @Post()
-  @ApiQuery({ name: 'accessToken', required: true })
-  async processAndUploadAbiItems(
-    @Body() abiItems: Array<AbiItem>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    @Query('accessToken') accessToken: string,
-  ) {
+  @ApiHeader({
+    name: 'accessToken',
+    description: 'Google Auth token',
+  })
+  async processAndUploadAbiItems(@Body() abiItems: Array<AbiItem>) {
     try {
       await this.abiService.processAndUploadAbiItems(abiItems);
     } catch {

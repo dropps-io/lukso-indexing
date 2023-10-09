@@ -6,7 +6,7 @@ import { isEmail } from '@nestjs/class-validator';
 @Injectable()
 export class GoogleAuthMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction) {
-    const access_token = req.query.accessToken;
+    const access_token = req.headers.accessToken;
     try {
       if (access_token === null) {
         throw new Error('Access token not provided.');
