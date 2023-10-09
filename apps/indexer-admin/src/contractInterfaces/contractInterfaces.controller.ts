@@ -1,5 +1,5 @@
-import { Body, Controller, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
-import {ApiQuery, ApiTags} from '@nestjs/swagger';
+import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/common';
+import { ApiHeader, ApiTags } from '@nestjs/swagger';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
 
 import { ContractInterfacesService } from './contractInterfaces.service';
@@ -10,10 +10,12 @@ export class ContractInterfacesController {
   constructor(private readonly contractInterfaceService: ContractInterfacesService) {}
 
   @Post()
-  @ApiQuery({ name: 'accessToken', required: true })
+  @ApiHeader({
+    name: 'accessToken',
+    description: 'Google Auth token',
+  })
   async uploadContractInterfaces(
     @Body() contractInterfaces: Array<ContractInterfaceTable>, // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    @Query('accessToken') accessToken,
   ) {
     try {
       await this.contractInterfaceService.uploadContractInterfaces(contractInterfaces);
