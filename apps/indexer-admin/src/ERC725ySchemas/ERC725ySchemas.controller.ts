@@ -13,6 +13,7 @@ export class ERC725ySchemasController {
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
+    required: true,
   })
   async uploadERC725ySchemas(@Body() erc725ySchemas: Array<ERC725YSchemaTable>) {
     try {

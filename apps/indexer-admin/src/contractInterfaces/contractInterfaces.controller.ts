@@ -13,6 +13,7 @@ export class ContractInterfacesController {
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
+    required: true,
   })
   async uploadContractInterfaces(
     @Body() contractInterfaces: Array<ContractInterfaceTable>, // eslint-disable-next-line @typescript-eslint/no-unused-vars

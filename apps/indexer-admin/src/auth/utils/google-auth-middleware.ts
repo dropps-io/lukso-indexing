@@ -3,17 +3,17 @@ import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { isEmail } from '@nestjs/class-validator';
 
+import { OAuthGoogleAPI } from '../../../global';
+
 @Injectable()
 export class GoogleAuthMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: NextFunction) {
-    const access_token = req.headers.accessToken;
+    const access_token = req.headers.accesstoken;
     try {
       if (access_token === null) {
         throw new Error('Access token not provided.');
       }
-      const response: any = await axios.get(
-        `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${access_token}`,
-      );
+      const response: any = await axios.get(`${OAuthGoogleAPI + access_token}`);
 
       const email = response.data.email;
 
