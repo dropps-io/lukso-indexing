@@ -5,7 +5,7 @@ import { assert } from 'chai';
 import * as request from 'supertest';
 
 import { AppModule } from '../../src/app.module';
-import LSP8MintableABI from './mocks/LSP8MintableABI.json';
+import LSP8MintableABI from './mocks/ABIMock.json';
 import BrokenAbiItem from './mocks/BrokenAbiItem.json';
 import ScenarioScopes from './scenarioScopes';
 
