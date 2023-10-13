@@ -1,8 +1,7 @@
 import winston from 'winston';
-import LSP7DigitalAsset from '@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json';
 import { ethers } from 'ethers';
-import { MetadataResponse } from '@shared/types/metadata-response';
 
+import ERC20Abi from '../../utils/abis/ERC20Abi.json';
 import { EthersService } from '../../ethers.service';
 import { FetcherService } from '../../../fetcher/fetcher.service';
 export class ERC20 {
@@ -15,10 +14,10 @@ export class ERC20 {
     this.erc20 = new ERC20(ethersService, fetcherService, this.logger);
   }
 
-  public async fetchData(address: string): Promise<MetadataResponse | null> {
+  //Promise type any, need to create new MetadataResponse to erc20
+  public async fetchData(address: string): Promise<any | null> {
     try {
       const erc20Data = await this.erc20.fetchData(address);
-      //Here need to fecthData using the FetcherService
       return {
         metadata: {
           address,
@@ -42,7 +41,6 @@ export class ERC20 {
   }
 
   private getERC20Contract(address: string) {
-    //Here i should add the ERC20 ABI
-    return new ethers.Contract(address, LSP7DigitalAsset.abi, this.ethersService.getProvider());
+    return new ethers.Contract(address, ERC20Abi, this.ethersService.getProvider());
   }
 }
