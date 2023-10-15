@@ -99,6 +99,13 @@ export class LuksoDataDbService implements OnModuleDestroy {
     return rows.map((row) => row.address);
   }
 
+  public async getUnidentifiedContracts(): Promise<string[]> {
+    const rows = await this.executeQuery<ContractTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.CONTRACT} WHERE "interfaceCode"=''`,
+    );
+    return rows.map((row) => row.address);
+  }
+
   public async getTokensToIndex(): Promise<ContractTokenTable[]> {
     return await this.executeQuery<ContractTokenTable>(
       `SELECT * FROM ${DB_DATA_TABLE.CONTRACT_TOKEN} WHERE "decodedTokenId" IS NULL`,
@@ -500,6 +507,14 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
   }
 
+  public async updateTransactionMethodName(hash: string, methodName: string): Promise<void> {
+    await this.executeQuery(
+      `
+      UPDATE ${DB_DATA_TABLE.TRANSACTION} SET "methodName" = $2 WHERE "hash" = $1`,
+      [hash, methodName],
+    );
+  }
+
   public async getTransactionByHash(hash: string): Promise<TransactionTable | null> {
     const rows = await this.executeQuery<TransactionTable>(
       `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION} WHERE "hash" = $1`,
@@ -526,6 +541,17 @@ export class LuksoDataDbService implements OnModuleDestroy {
       [transactionHash],
     );
     return rows.length > 0 ? rows[0].input : null;
+  }
+
+  public async getTransactionsWithInputByMethodId(
+    methodId: string,
+  ): Promise<(TransactionTable & TxInputTable)[]> {
+    return await this.executeQuery<TransactionTable & TxInputTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.TRANSACTION_INPUT} INNER JOIN ${DB_DATA_TABLE.TRANSACTION} 
+             ON ${DB_DATA_TABLE.TRANSACTION_INPUT}."transactionHash" = ${DB_DATA_TABLE.TRANSACTION}."hash"
+             WHERE "methodId" = $1`,
+      [methodId],
+    );
   }
 
   // TransactionParameter table functions
@@ -690,12 +716,30 @@ export class LuksoDataDbService implements OnModuleDestroy {
     );
   }
 
+  public async updateEventName(eventId: string, eventName: string): Promise<void> {
+    await this.executeQuery(
+      `
+      UPDATE ${DB_DATA_TABLE.EVENT}
+      SET "eventName" = $2
+      WHERE "id" = $1
+    `,
+      [eventId, eventName],
+    );
+  }
+
   public async getEventById(id: string): Promise<EventTable | null> {
     const rows = await this.executeQuery<EventTable>(
       `SELECT * FROM ${DB_DATA_TABLE.EVENT} WHERE "id" = $1`,
       [id],
     );
     return rows.length > 0 ? rows[0] : null;
+  }
+
+  public async getEventByMethodId(methodId: string): Promise<EventTable[]> {
+    return await this.executeQuery<EventTable>(
+      `SELECT * FROM ${DB_DATA_TABLE.EVENT} WHERE "methodId" = $1`,
+      [methodId],
+    );
   }
 
   // EventParameter table functions

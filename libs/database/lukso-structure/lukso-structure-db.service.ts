@@ -110,7 +110,9 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     return this.cache.contractInterfaces.values;
   }
 
-  async insertMethodInterface(methodInterface: MethodInterfaceTable): Promise<void> {
+  async insertMethodInterface(
+    methodInterface: Omit<MethodInterfaceTable, 'createdAt'>,
+  ): Promise<void> {
     await this.executeQuery(
       `
       INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}
@@ -124,6 +126,13 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       [id],
     );
     return rows.length > 0 ? rows[0] : null;
+  }
+
+  async getMethodInterfaceCreatedAfter(date: Date): Promise<MethodInterfaceTable[]> {
+    return await this.executeQuery<MethodInterfaceTable>(
+      `SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "createdAt" > $1`,
+      [date],
+    );
   }
 
   async insertMethodParameter(methodParameter: MethodParameterTable): Promise<void> {
