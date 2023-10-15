@@ -33,3 +33,15 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: RPC_URL
+            - name: IPFS_GATEWAYS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: IPFS_GATEWAYS
+            - name: ARWEAVE_GATEWAY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ARWEAVE_GATEWAY
+            - name: REDIS_URI
+              value: redis://redis-headless:6379
