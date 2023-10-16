@@ -1,9 +1,17 @@
 grafanaHost: 'metrics.dropps.io'
 grafanaStaticIPName: 'grafana-prod'
-persistence:
-  enabled: true
-  type: pvc
-  size: 10Gi  # You can specify the size according to your needs.
-  accessModes:
-    - ReadWriteOnce
-  annotations: {}
+grafana:
+  persistence:
+    type: pvc
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+    # annotations: {}
+    finalizers:
+      - kubernetes.io/pvc-protection
+    # selectorLabels: {}
+    # subPath: ""
+    # existingClaim:
+    # extraPvcLabels: {}
+
