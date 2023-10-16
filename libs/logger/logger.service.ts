@@ -39,7 +39,7 @@ export class LoggerService {
 
     const fileFormat = format.combine(format.timestamp(), format.metadata(), format.json());
 
-    const prod = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+    const debug = process.env.DEBUG === 'true';
     const fileLogging = process.env.FILE_LOGGING === 'true';
 
     const fileTransport = fileLogging
@@ -62,7 +62,7 @@ export class LoggerService {
       format: format.combine(format.timestamp(), format.errors({ stack: true })),
       transports: [
         new transports.Console({
-          level: prod ? 'info' : 'debug',
+          level: debug ? 'debug' : 'info',
           format: format.combine(consoleFormat),
         }),
         ...fileTransport,
