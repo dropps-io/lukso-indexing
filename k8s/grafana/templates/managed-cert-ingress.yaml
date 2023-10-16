@@ -19,7 +19,3 @@ spec:
                 name: grafana
                 port:
                   number: 80
-  tls:
-    - hosts:
-        - {{ .Values.grafanaHost }}
-      secretName: grafana-tls
