@@ -1,0 +1,9 @@
+grafanaHost: 'metrics.dropps.io'
+grafanaStaticIPName: 'grafana-prod'
+persistence:
+  enabled: true
+  type: pvc
+  size: 10Gi  # You can specify the size according to your needs.
+  accessModes:
+    - ReadWriteOnce
+  annotations: {}
