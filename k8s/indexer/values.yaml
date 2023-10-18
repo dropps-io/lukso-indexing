@@ -22,7 +22,7 @@ redis:
         memory: 256Mi
 
   replica:
-    replicaCount: 0
+    replicaCount: 1
     persistence: *redis-size
     resources: *redis-resources
 
