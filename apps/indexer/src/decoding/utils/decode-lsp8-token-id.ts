@@ -28,6 +28,6 @@ export const decodeLsp8TokenId = (tokenId: string, tokenIdType?: LSP8_TOKEN_ID_T
         return tokenId;
     }
   } catch (error) {
-    return 'Error: Unable to decode tokenId';
+    return tokenId; //If an error occurs, we return the non-decoded tokenId
   }
 };
