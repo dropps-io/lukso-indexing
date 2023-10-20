@@ -25,17 +25,21 @@ export class TokensService {
 
   @DebugLogger()
   public async indexToken(token: ContractTokenTable) {
-    const decodedTokenId = await this.getDecodedTokenId(token.address, token.tokenId);
+    try {
+      const decodedTokenId = await this.getDecodedTokenId(token.address, token.tokenId);
 
-    await this.dataDB.insertContractToken(
-      {
-        ...token,
-        decodedTokenId,
-      },
-      'update',
-    );
+      await this.dataDB.insertContractToken(
+        {
+          ...token,
+          decodedTokenId,
+        },
+        'update',
+      );
 
-    await this.metadataService.indexContractTokenMetadata(token.address, token.tokenId);
+      await this.metadataService.indexContractTokenMetadata(token.address, token.tokenId);
+    } catch (error) {
+      this.logger.error(`Decoding token for ${token.tokenId} ${error}`);
+    }
   }
 
   protected async getDecodedTokenId(address: string, tokenId: string): Promise<string> {
