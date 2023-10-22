@@ -1,5 +1,9 @@
 import winston from 'winston';
 import { ethers } from 'ethers';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { MetadataResponse } from '@shared/types/metadata-response';
+import { ERC20MetadataResponse } from '@shared/types/erc20-metadata-response';
 
 import ERC20Abi from '../../utils/abis/ERC20Abi.json';
 import { EthersService } from '../../ethers.service';
@@ -14,8 +18,17 @@ export class ERC20 {
     this.erc20 = new ERC20(ethersService, fetcherService, this.logger);
   }
 
-  //Promise type any, need to create new MetadataResponse to erc20
-  public async fetchData(address: string): Promise<any | null> {
+  /**
+   * Decodes an ERC20 token ID based on its type.
+   *
+   * @param {string} address - The contract address of the ERC20 collection.
+
+   * @returns {Promise<ERC20MetadataResponse | null>} - The metadata and images associated with the ERC20 token or null if an error occurs.
+   */
+
+  @DebugLogger()
+  @ExceptionHandler(false, true, null)
+  public async fetchData(address: string): Promise<ERC20MetadataResponse | null> {
     try {
       const erc20Data = await this.erc20.fetchData(address);
       return {
@@ -24,6 +37,7 @@ export class ERC20 {
           tokenId: null,
           name: erc20Data?.metadata.name || null,
           symbol: erc20Data?.metadata.symbol || null,
+          description: erc20Data?.metadata.description || null,
         },
       };
     } catch (e: any) {
