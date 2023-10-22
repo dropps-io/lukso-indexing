@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: leequid-protocol-monitoring
+  labels:
+    prometheus: main
+spec:
+  selector:
+    matchLabels:
+      app: leequid-monitoring-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 2m

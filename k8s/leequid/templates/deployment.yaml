@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: leequid-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: leequid-monitoring
+  template:
+    metadata:
+      labels:
+        app: leequid-monitoring
+    spec:
+      containers:
+        - name: monitoring-app
+          image: europe-west1-docker.pkg.dev/dropps-indexing/leequid/monitoring-app:latest
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.targetPort }}
+            initialDelaySeconds: 200
+          ports:
+            - containerPort: {{ .Values.targetPort }}
+          env:
+            - name: MONITORING_PORT
+              value: {{ .Values.targetPort | quote }}
+            - name: RPC_URL
+              value: {{ .Values.RPC_URL }}
+            - name: CONTRACT_REWARDS
+              value: {{ .Values.CONTRACT_REWARDS }}
+            - name: CONTRACT_SLYX
+              value: {{ .Values.CONTRACT_SLYX }}
+            - name: CONTRACT_POOL
+              value: {{ .Values.CONTRACT_POOL }}
+            - name: LIQUIDITY_POOLS
+              value: {{ .Values.LIQUIDITY_POOLS }}
+            - name: ORCHESTRATOR_KEY_ADDRESS
+              value: {{ .Values.ORCHESTRATOR_KEY_ADDRESS }}
+            - name: INDEXING_CONNECTION_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: monitoring-config
+                  key: LUKSO_DATA_CONNECTION_STRING
