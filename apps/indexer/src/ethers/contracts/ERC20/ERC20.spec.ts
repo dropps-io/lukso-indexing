@@ -36,7 +36,7 @@ describe('ERC20', () => {
       expect(res).toBeNull();
     });
 
-    it('should fetch data for a LSP7 token', async () => {
+    it('should fetch data for a ERC20 token', async () => {
       const res = await service.fetchData(erc20TokenContract);
       expect(res).toEqual({
         metadata: {
