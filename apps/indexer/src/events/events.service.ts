@@ -20,6 +20,7 @@ import { IndexingWsGateway } from '../indexing-ws/indexing-ws.gateway';
 import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
+import { Erc20standardService } from '../standards/erc20/erc20standard.service';
 
 @Injectable()
 export class EventsService {
@@ -28,6 +29,7 @@ export class EventsService {
     protected readonly loggerService: LoggerService,
     protected readonly lsp8Service: Lsp8standardService,
     protected readonly lsp7Service: Lsp7standardService,
+    protected readonly erc20Service: Erc20standardService,
     protected readonly erc725Service: Erc725StandardService,
     protected readonly decodingService: DecodingService,
     protected readonly dataDB: LuksoDataDbService,
@@ -139,6 +141,9 @@ export class EventsService {
         break;
       case EVENT_TOPIC.LSP7_TRANSFER:
         await this.lsp7Service.processTransferEvent(event, paramsMap);
+        break;
+      case EVENT_TOPIC.ERC20_TRANSFER:
+        await this.erc20Service.processTransferEvent(event, paramsMap);
         break;
     }
   }
