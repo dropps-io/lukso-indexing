@@ -6,12 +6,10 @@ import { MetadataResponse } from '@shared/types/metadata-response';
 
 import ERC20Abi from '../../utils/abis/ERC20Abi.json';
 import { EthersService } from '../../ethers.service';
-import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class ERC20 {
   constructor(
     protected readonly ethersService: EthersService,
-    protected readonly fetcherService: FetcherService,
     protected readonly logger: winston.Logger,
   ) {}
 
@@ -20,7 +18,7 @@ export class ERC20 {
    *
    * @param {string} address - The contract address of the ERC20 collection.
 
-   * @returns {Promise<ERC20MetadataResponse | null>} - The metadata and images associated with the ERC20 token or null if an error occurs.
+   * @returns {Promise<MetadataResponse | null>} - The metadata and images associated with the ERC20 token or null if an error occurs.
    */
 
   @DebugLogger()

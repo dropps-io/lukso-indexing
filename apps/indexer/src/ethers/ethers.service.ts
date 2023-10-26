@@ -39,7 +39,7 @@ export class EthersService {
     this.lsp4 = new LSP4(fetcherService, this.logger);
     this.lsp7 = new LSP7(this, fetcherService, this.logger);
     this.lsp8 = new LSP8(fetcherService, this.logger);
-    this.erc20 = new ERC20(this, fetcherService, this.logger);
+    this.erc20 = new ERC20(this, this.logger);
   }
 
   public getProvider(): ethers.JsonRpcProvider {

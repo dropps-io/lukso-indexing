@@ -18,7 +18,7 @@ export class Erc20standardService {
     private readonly ethersService: EthersService,
     private readonly dataDB: LuksoDataDbService,
   ) {
-    this.logger = this.loggerService.getChildLogger('Erc725Standard');
+    this.logger = this.loggerService.getChildLogger('ERC20Standard');
   }
 
   @DebugLogger()
@@ -45,8 +45,8 @@ export class Erc20standardService {
         holderAddress,
         contractAddress: tokenAddress,
         tokenId: null,
-        balanceInWei: balance,
-        balanceInEth: formatEther(balance),
+        balanceInWei: balance!,
+        balanceInEth: formatEther(balance!),
         holderSinceBlock: blockNumber,
       },
       'update',
