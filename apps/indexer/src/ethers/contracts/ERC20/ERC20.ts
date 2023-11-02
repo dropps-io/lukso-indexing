@@ -41,20 +41,17 @@ export class ERC20 {
   }
 
   @DebugLogger()
-  @ExceptionHandler(false, true, null)
   public async balanceOf(address: string, holderAddress: string): Promise<string | null> {
     const erc20contract = this.getERC20Contract(address);
     return await erc20contract.balanceOf(holderAddress);
   }
 
   @DebugLogger()
-  @ExceptionHandler(false, true, null)
   public async getName(address: string): Promise<string | null> {
     const erc20contract = this.getERC20Contract(address);
     return await erc20contract.name();
   }
   @DebugLogger()
-  @ExceptionHandler(false, true, null)
   public async getSymbol(address: string): Promise<string | null> {
     const erc20contract = this.getERC20Contract(address);
     return await erc20contract.symbol();
