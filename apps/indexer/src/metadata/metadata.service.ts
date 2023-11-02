@@ -87,14 +87,19 @@ export class MetadataService {
     tokenId: string,
     interfaceCode?: string,
   ): Promise<MetadataResponse | null> {
-    const interfaceCodeToUse =
-      interfaceCode || (await this.ethersService.identifyContractInterface(address))?.code;
+    try {
+      const interfaceCodeToUse =
+        interfaceCode || (await this.ethersService.identifyContractInterface(address))?.code;
 
-    switch (interfaceCodeToUse) {
-      case SUPPORTED_STANDARD.LSP8:
-        return await this.ethersService.lsp8.fetchTokenData(address, tokenId);
-      default:
-        return null;
+      switch (interfaceCodeToUse) {
+        case SUPPORTED_STANDARD.LSP8:
+          return await this.ethersService.lsp8.fetchTokenData(address, tokenId);
+        default:
+          return null;
+      }
+    } catch (error) {
+      this.logger.error(`Fetching token metadata for ${tokenId} ${error}`);
+      return null;
     }
   }
 }
