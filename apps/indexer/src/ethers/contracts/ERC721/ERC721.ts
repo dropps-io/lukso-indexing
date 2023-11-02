@@ -51,21 +51,11 @@ export class ERC721 {
     }
   }
   protected async fetchDataFromBaseURI(address: string, tokenId: string): Promise<any | null> {
-    try {
-      const response = await this.erc721GetData(address, tokenId);
-      if (!response) {
-        throw new Error('Failed to fetch ERC721 data from base URI');
-      }
-      return response;
-    } catch (e: any) {
-      this.logger.error(
-        `Error while fetching ERC721 data from base URI for ${address}: ${e.message}`,
-        {
-          address,
-        },
-      );
-      return null;
+    const response = await this.erc721GetData(address, tokenId);
+    if (!response) {
+      throw new Error('Failed to fetch ERC721 data from base URI');
     }
+    return response;
   }
 
   erc721GetData = async (address: string, tokenId: string): Promise<any | null> => {
@@ -79,8 +69,7 @@ export class ERC721 {
           `Failed to fetch data from IPFS: ${response.status} ${response.statusText}`,
         );
       }
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (e: any) {
       this.logger.error(`Error while fetching ERC721 data from IPFS for ${address}: ${e.message}`, {
         address,
