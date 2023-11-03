@@ -12,6 +12,7 @@ export const erc725yGetData = async (address: string, dataKey: string): Promise<
   else return response;
 };
 
+//TODO Are we using this function?
 export const erc725yGetDataBatch = async (
   address: string,
   dataKeys: string[],

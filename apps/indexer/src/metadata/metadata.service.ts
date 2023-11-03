@@ -76,6 +76,8 @@ export class MetadataService {
         return await this.ethersService.lsp7.fetchData(address);
       case SUPPORTED_STANDARD.LSP8:
         return await this.ethersService.lsp4.fetchData(address);
+      case SUPPORTED_STANDARD.ERC20:
+        return await this.ethersService.erc20.fetchData(address);
       default:
         return null;
     }
