@@ -420,7 +420,6 @@ export class LuksoDataDbService implements OnModuleDestroy {
       metadataId,
       metadataAsset.url,
       metadataAsset.fileType,
-      metadataAsset.hash,
     ]);
 
     const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
