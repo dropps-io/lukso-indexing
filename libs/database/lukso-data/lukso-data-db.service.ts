@@ -297,7 +297,6 @@ export class LuksoDataDbService implements OnModuleDestroy {
       metadataImage.width,
       metadataImage.height,
       metadataImage.type,
-      metadataImage.hash,
     ]);
 
     const conflictAction = onConflict === 'do nothing' ? 'ON CONFLICT DO NOTHING' : '';
