@@ -233,4 +233,5 @@ const expectedMetadata: MetadataResponse = {
   tags: [],
   links: [{ title: 'LUKSO Docs', url: 'https://docs.lukso.tech' }],
   assets: [],
+  attributes: [],
 };

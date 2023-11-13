@@ -14,5 +14,6 @@ export const defaultMetadata = (address: string): MetadataResponse => {
     assets: [],
     images: [],
     links: [],
+    attributes: [],
   };
 };

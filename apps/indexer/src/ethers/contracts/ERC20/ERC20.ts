@@ -38,6 +38,7 @@ export class ERC20 {
         tags: [],
         images: [],
         links: [],
+        attributes: [],
       };
     } catch (e: any) {
       this.logger.error(`Error while fetching ERC20 data for ${address}: ${e.message}`, {

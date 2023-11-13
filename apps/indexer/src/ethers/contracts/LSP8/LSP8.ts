@@ -170,6 +170,7 @@ export class LSP8 {
       tags: [],
       links: metadata?.links || [],
       assets: metadata?.assets || [],
+      attributes: [],
     };
   }
 

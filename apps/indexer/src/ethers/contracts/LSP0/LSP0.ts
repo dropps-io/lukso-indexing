@@ -64,6 +64,7 @@ export class LSP0 {
       tags: lsp3Profile.tags || [],
       links: lsp3Profile.links || [],
       assets: [],
+      attributes: [],
     };
   }
 

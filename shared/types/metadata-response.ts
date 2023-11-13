@@ -9,4 +9,11 @@ export interface MetadataResponse {
   assets: Omit<MetadataAssetTable, 'metadataId'>[];
   images: Omit<MetadataImageTable, 'metadataId'>[];
   links: Omit<MetadataLinkTable, 'metadataId'>[];
+  attributes: MetadataAttribute[];
+}
+
+export interface MetadataAttribute {
+  metadataId: Omit<MetadataTable, 'id'> | null;
+  key: string | null;
+  value: string | null;
 }

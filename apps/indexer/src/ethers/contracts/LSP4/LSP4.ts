@@ -85,6 +85,7 @@ export class LSP4 {
       tags: [],
       links: lsp4DigitalAsset?.links || [],
       assets: lsp4DigitalAsset?.assets || [],
+      attributes: [],
     };
   }
 

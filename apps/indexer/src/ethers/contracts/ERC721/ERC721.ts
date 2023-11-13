@@ -42,6 +42,7 @@ export class ERC721 {
         tags: [],
         images: [metadata?.image || null],
         links: [],
+        attributes: metadata.attributes || [],
       };
     } catch (e: any) {
       this.logger.error(`Error while fetching ERC721 data for ${address}: ${e.message}`, {
@@ -63,6 +64,7 @@ export class ERC721 {
       const contract = new ethers.Contract(address, ERC721Abi, this.ethersService.getProvider());
       const tokenIPFS = await contract.tokenURI(tokenId);
       const [, tokenURI] = tokenIPFS.split('//');
+      //TODO HERE USE THE FETCHER SERVICE
       const response = await fetch(`${IPFS_GATEWAYS + tokenURI}`);
       if (!response.ok) {
         this.logger.error(
