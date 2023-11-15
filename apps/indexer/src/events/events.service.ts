@@ -21,6 +21,7 @@ import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 import { Erc20standardService } from '../standards/erc20/erc20standard.service';
+import { Erc721StandardService } from '../standards/erc721/erc721-standard.service';
 
 @Injectable()
 export class EventsService {
@@ -30,6 +31,7 @@ export class EventsService {
     protected readonly lsp8Service: Lsp8standardService,
     protected readonly lsp7Service: Lsp7standardService,
     protected readonly erc20Service: Erc20standardService,
+    protected readonly erc721Service: Erc721StandardService,
     protected readonly erc725Service: Erc725StandardService,
     protected readonly decodingService: DecodingService,
     protected readonly dataDB: LuksoDataDbService,
@@ -144,6 +146,9 @@ export class EventsService {
         break;
       case EVENT_TOPIC.ERC20_TRANSFER:
         await this.erc20Service.processTransferEvent(event, paramsMap);
+        break;
+      case EVENT_TOPIC.ERC721_TRANSFER:
+        await this.erc721Service.processTokenRelatedEvent(event, paramsMap);
         break;
     }
   }

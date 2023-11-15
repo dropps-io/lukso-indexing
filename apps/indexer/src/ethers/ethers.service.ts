@@ -15,6 +15,7 @@ import { LSP8 } from './contracts/LSP8/LSP8';
 import { ERC20 } from './contracts/ERC20/ERC20';
 import { FetcherService } from '../fetcher/fetcher.service';
 import { eoaContractInterface } from './utils/eoa-interface';
+import {ERC721} from "./contracts/ERC721/ERC721";
 
 @Injectable()
 export class EthersService {
@@ -26,6 +27,7 @@ export class EthersService {
   public readonly lsp7: LSP7;
   public readonly lsp8: LSP8;
   public readonly erc20: ERC20;
+  public readonly erc721: ERC721;
 
   constructor(
     protected readonly fetcherService: FetcherService,
@@ -40,6 +42,7 @@ export class EthersService {
     this.lsp7 = new LSP7(this, fetcherService, this.logger);
     this.lsp8 = new LSP8(fetcherService, this.logger);
     this.erc20 = new ERC20(this, this.logger);
+    this.erc721 = new ERC721(this, this.logger);
   }
 
   public getProvider(): ethers.JsonRpcProvider {

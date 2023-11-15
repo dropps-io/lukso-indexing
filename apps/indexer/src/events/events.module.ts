@@ -10,7 +10,8 @@ import { DecodingModule } from '../decoding/decoding.module';
 import { IndexingWsModule } from '../indexing-ws/indexing-ws.module';
 import { EthersModule } from '../ethers/ethers.module';
 import { Erc725StandardModule } from '../standards/erc725/erc725-standard.module';
-import {Erc20standardModule} from "../standards/erc20/erc20standard.module";
+import { Erc20standardModule } from '../standards/erc20/erc20standard.module';
+import { Erc721StandardModule } from '../standards/erc721/erc721-standard.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import {Erc20standardModule} from "../standards/erc20/erc20standard.module";
     Lsp7standardModule,
     Erc725StandardModule,
     Erc20standardModule,
+    Erc721StandardModule,
     DecodingModule,
     LuksoDataDbModule,
     LuksoStructureDbModule,
