@@ -10,6 +10,7 @@
     "indexer:prod": "nest build indexer&&SET NODE_ENV=production&& node dist/apps/indexer/main.js",
     "build:indexer": "nest build indexer",
     "indexer-admin:dev": "nest start indexer-admin",
+    "indexer:prod-mac": "nest build indexer && export NODE_ENV=production && node dist/apps/indexer/main.js",
     "indexer-admin:start": "nest build indexer-admin&& node dist/apps/indexer-admin/main.js",
     "build:indexer-admin": "nest build indexer-admin",
     "compile": "tsc",
