@@ -8,7 +8,7 @@ import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
-import { decodeLsp8TokenId } from '../decoding/utils/decode-lsp8-token-id';
+import {  decodeLsp8TokenId } from '../decoding/utils/decode-lsp8-token-id';
 
 @Injectable()
 export class TokensService {
