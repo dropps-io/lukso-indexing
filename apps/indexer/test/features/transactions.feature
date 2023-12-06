@@ -24,6 +24,6 @@ Feature: Validate Indexing and Decoding Processes for Various Transactions
       And a table "method_interface" exists in database "structure"
       And a table "method_parameter" exists in database "structure"
       And a script called populate is executed
-
+      And a block exists
 
   Scenario:
