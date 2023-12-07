@@ -1,7 +1,9 @@
 Feature: Validate Indexing and Decoding Processes for Various Transactions
 
   Background:
-      Given a table "contract" exists in database "data"
+      Given a database named "luksodata" exists
+      And a database "luksostructure" exists™
+      And a table "contract" exists in database "data"
       And a table "contract_token" exists in database "data"
       And a table "erc725y_data_changed" exists in database "data"
       And a table "event" exists in database "data"
