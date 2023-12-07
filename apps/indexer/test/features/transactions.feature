@@ -36,8 +36,7 @@ Feature: Validate Indexing and Decoding Processes for Various Transactions
       Then we insert a new contract
       And we insert the transactions details
 
-
-    Scenario: A single "ERC20" transaction with parameters is indexed correctly
+  Scenario: A single "ERC20" transaction with parameters is indexed correctly
         Given a "ERC20" transaction exits
         And the transaction its sended to the transactionsService
         And the transaction doesnt exists already in the database
@@ -47,7 +46,7 @@ Feature: Validate Indexing and Decoding Processes for Various Transactions
         And we insert the transactions details
         And we insert the transaction parameters
 
-    Scenario: A wrapped "ERC20" transaction with parameters is indexed correctly
+  Scenario: A wrapped "ERC20" transaction with parameters is indexed correctly
         Given a "ERC20" transaction exits
         And the transaction its sended to the transactionsService
         And the transaction doesnt exists already in the database

@@ -27,3 +27,8 @@ Feature: Validate indexing and decoding of various events
     And a table "method_parameter" exists in database "structure"
     And a script called populate is executed
     And a block exists
+
+    Scenario: Decode and index a single event correctly
+      Given a "ERC20" log event exists
+      And the event its not already indexed
+      And we fetch the
