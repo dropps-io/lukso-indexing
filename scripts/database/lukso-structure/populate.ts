@@ -7,7 +7,7 @@ import LSP1DelegateUP from '@lukso/lsp-smart-contracts/artifacts/LSP1UniversalRe
 import LSP1DelegateVault from '@lukso/lsp-smart-contracts/artifacts/LSP1UniversalReceiverDelegateVault.json';
 import { AbiItem } from 'web3-utils';
 import JSONSCHEMALSP1 from '@erc725/erc725.js/schemas/LSP1UniversalReceiverDelegate.json';
-import JSONSCHEMALSP3 from '@erc725/erc725.js/schemas/LSP3ProfileMetadata.json';
+import JSONSCHEMALSP3 from '@erc725/erc725.js/schemas/LSP3UniversalProfileMetadata.json';
 import JSONSCHEMALSP4 from '@erc725/erc725.js/schemas/LSP4DigitalAsset.json';
 import JSONSCHEMALSP5 from '@erc725/erc725.js/schemas/LSP5ReceivedAssets.json';
 import JSONSCHEMALSP6 from '@erc725/erc725.js/schemas/LSP6KeyManager.json';

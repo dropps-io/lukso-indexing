@@ -4,4 +4,5 @@ export interface MetadataImageTable {
   width: number;
   height: number;
   type: string | null;
+  hash: string;
 }
