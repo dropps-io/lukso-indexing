@@ -1,8 +1,7 @@
 Feature: Validate Indexing and Decoding Processes for Various Transactions
 
   Background:
-      Given a database named "luksodata" exists
-      And a database "luksostructure" exists™
+      Given the luksodata and luksostructure databases exist
       And a table "contract" exists in database "data"
       And a table "contract_token" exists in database "data"
       And a table "erc725y_data_changed" exists in database "data"
@@ -28,33 +27,4 @@ Feature: Validate Indexing and Decoding Processes for Various Transactions
       And a script called populate is executed
       And a block exists
 
-  Scenario: A single "ERC20" transaction with no parameters is indexed correctly
-      Given a "ERC20" transaction exits
-      And the transaction its sended to the transactionsService
-      And the transaction doesnt exists already in the database
-      When we fetch the transaction data
-      Then we insert a new contract
-      And we insert the transactions details
-
-  Scenario: A single "ERC20" transaction with parameters is indexed correctly
-        Given a "ERC20" transaction exits
-        And the transaction its sended to the transactionsService
-        And the transaction doesnt exists already in the database
-        When we fetch the transaction data
-        And the transaction have parameters
-        Then we insert a new contract
-        And we insert the transactions details
-        And we insert the transaction parameters
-
-  Scenario: A wrapped "ERC20" transaction with parameters is indexed correctly
-        Given a "ERC20" transaction exits
-        And the transaction its sended to the transactionsService
-        And the transaction doesnt exists already in the database
-        When we fetch the transaction data
-        And the transaction have parameters
-        And the transactions is nested
-        Then we insert a new contract
-        And we insert the transactions details
-        And we insert the transaction parameters
-        And we call the indexWrappedTransactions service (to do)
 

@@ -8,7 +8,7 @@
     "indexer:dev": "nest start indexer",
     "indexer:start": "nest build indexer&& node dist/apps/indexer/main.js",
     "indexer:prod": "nest build indexer&&SET NODE_ENV=production&& node dist/apps/indexer/main.js",
-    "test-indexer": "indexer-cucumber-js -p default",
+    "test-indexer": "cucumber-js -p default",
     "build:indexer": "nest build indexer",
     "indexer-admin:dev": "nest start indexer-admin",
     "indexer:prod-mac": "nest build indexer && export NODE_ENV=production && node dist/apps/indexer/main.js",
