@@ -14,18 +14,18 @@ import JSONSCHEMALSP6 from '@erc725/erc725.js/schemas/LSP6KeyManager.json';
 import JSONSCHEMALSP9 from '@erc725/erc725.js/schemas/LSP9Vault.json';
 import JSONSCHEMALSP10 from '@erc725/erc725.js/schemas/LSP10ReceivedVaults.json';
 import JSONSCHEMALSP12 from '@erc725/erc725.js/schemas/LSP12IssuedAssets.json';
-import ERC20 from '@openzeppelin/contracts/build/contracts/ERC20PresetMinterPauser.json';
-import ERC721 from '@openzeppelin/contracts/build/contracts/ERC721PresetMinterPauserAutoId.json';
-import ERC777 from '@openzeppelin/contracts/build/contracts/ERC777PresetFixedSupply.json';
-import ERC1155 from '@openzeppelin/contracts/build/contracts/ERC1155PresetMinterPauser.json';
+import ERC20 from '@openzeppelin/contracts/build/contracts/ERC20.json';
+import ERC721 from '@openzeppelin/contracts/build/contracts/ERC721.json';
+import ERC777 from 'shared/abi/ERC777PresetFixedSupply.json';
+import ERC1155 from '@openzeppelin/contracts/build/contracts/ERC1155.json';
 import { ERC725JSONSchema } from '@erc725/erc725.js';
-import { tryExecuting } from '@utils/try-executing';
 import { generateAndPersistMethodInterfaces } from '@db/lukso-structure/utils/generate-method-interfaces';
 import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.service';
 import { LoggerService } from '@libs/logger/logger.service';
-import { CONTRACT_TYPE } from '@models/enums';
 import fs from 'fs';
 import path from 'path';
+import { CONTRACT_TYPE } from '@shared/types/enums';
+import { tryExecuting } from '@utils/try-executing';
 
 const standardInterfaces = [
   {
@@ -63,10 +63,18 @@ const standardInterfaces = [
     version: '0.10',
     type: CONTRACT_TYPE.PROFILE,
   },
+  {
+    id: '0x24871b3d',
+    code: 'LSP0',
+    name: 'Universal Profile',
+    version: '0.11',
+    type: CONTRACT_TYPE.PROFILE,
+  },
   { id: '0xc403d48f', code: 'LSP6', name: 'Key Manager', version: '0.7', type: null },
   { id: '0xfb437414', code: 'LSP6', name: 'Key Manager', version: '0.8', type: null },
   { id: '0x06561226', code: 'LSP6', name: 'Key Manager', version: '0.10', type: null },
   { id: '0x38bb3cdb', code: 'LSP6', name: 'Key Manager', version: '0.10', type: null },
+  { id: '0x66918867', code: 'LSP6', name: 'Key Manager', version: '0.11', type: null },
   {
     id: '0xe33f65c3',
     code: 'LSP7',
@@ -89,6 +97,13 @@ const standardInterfaces = [
     type: CONTRACT_TYPE.ASSET,
   },
   {
+    id: '0x05519512',
+    code: 'LSP7',
+    name: 'Digital Asset',
+    version: '0.11',
+    type: CONTRACT_TYPE.ASSET,
+  },
+  {
     id: '0x49399145',
     code: 'LSP8',
     name: 'Identifiable Digital Asset',
@@ -100,6 +115,13 @@ const standardInterfaces = [
     code: 'LSP8',
     name: 'Identifiable Digital Asset',
     version: '0.8',
+    type: CONTRACT_TYPE.COLLECTION,
+  },
+  {
+    id: '0x1ae9ba1f',
+    code: 'LSP8',
+    name: 'Identifiable Digital Asset',
+    version: '0.11',
     type: CONTRACT_TYPE.COLLECTION,
   },
   { id: '0xfd4d5c50', code: 'LSP9', name: 'Vault', version: '0.7', type: null },
@@ -172,9 +194,9 @@ export async function populateLuksoStructure() {
       ERC721.abi as AbiItem[],
       ERC20.abi as AbiItem[],
     ].concat(
-      (
-        await readJsonFiles(path.join(__dirname, '../../../shared/abi'))
-      ).map((result) => result.abi),
+      (await readJsonFiles(path.join(__dirname, '../../../shared/abi'))).map(
+        (result) => result.abi,
+      ),
     ) as AbiItem[][],
   );
 

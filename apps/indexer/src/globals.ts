@@ -1,17 +1,20 @@
 import { setupEnv } from '@utils/setup-env';
+import { getEnvOrConfig, getEnvOrThrow } from '@utils/get-or-throw';
 
 setupEnv();
 
-export const RPC_URL = process.env.RPC_URL || 'https://rpc.l16.lukso.network';
-export const PORT = process.env.WS_PORT || 3002;
+export const RPC_URL = getEnvOrThrow<string>('RPC_URL');
+export const REDIS_URI = getEnvOrThrow<string>('REDIS_URI');
+export const WS_PORT = getEnvOrConfig<string>('WS_PORT', 'ws_port');
 
-export const DROP_DB_ON_START = process.env.DROP_DB_ON_START === 'true';
+export const DROP_DB_ON_START = getEnvOrThrow<boolean>('DROP_DB_ON_START', false);
 
-export const NODE_ENV = process.env.NODE_ENV || 'dev';
-export const IPFS_GATEWAY = 'https://2eff.lukso.dev/ipfs/';
-export const CONTRACTS_PROCESSING_INTERVAL = 1000;
-export const CONTRACTS_INDEXING_BATCH_SIZE = 20;
-export const TOKENS_INDEXING_BATCH_SIZE = 20;
-export const TX_INDEXING_BATCH_SIZE = 20;
-export const EVENTS_INDEXING_BATCH_SIZE = 20;
-export const BLOCKS_INDEXING_BATCH_SIZE = 100;
+export const IPFS_GATEWAYS = getEnvOrThrow<string>('IPFS_GATEWAYS').split(',');
+export const ARWEAVE_GATEWAY = getEnvOrThrow<string>('ARWEAVE_GATEWAY');
+
+export const CRON_PROCESS = getEnvOrConfig<string>('CRON_PROCESS', 'cron_process');
+export const CRON_UPDATE = getEnvOrConfig<string>('CRON_UPDATE', 'cron_update');
+export const P_LIMIT = getEnvOrConfig<number>('P_LIMIT', 'p_limit');
+export const BLOCKS_P_LIMIT = getEnvOrConfig<number>('BLOCKS_P_LIMIT', 'blocks_p_limit');
+export const EVENTS_CHUNK_SIZE = getEnvOrConfig<number>('EVENTS_CHUNK_SIZE', 'events_chunk_size');
+export const BLOCKS_CHUNK_SIZE = getEnvOrConfig<number>('BLOCKS_CHUNK_SIZE', 'blocks_chunk_size');

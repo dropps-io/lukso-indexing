@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: indexing-api
-          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing-testnet/indexing-api
+          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/api:latest
           readinessProbe:
             httpGet:
               path: /healthz

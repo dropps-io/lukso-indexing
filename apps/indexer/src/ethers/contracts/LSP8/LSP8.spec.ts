@@ -1,18 +1,14 @@
 import { LoggerService } from '@libs/logger/logger.service';
-import winston from 'winston';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
 import { LSP8 } from './LSP8';
 import { ADDRESS1, HASH1 } from '../../../../../../test/utils/test-values';
-import { MetadataResponse } from '../../types/metadata-response';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 jest.setTimeout(15_000);
 
 class TestLSP8 extends LSP8 {
-  constructor(protected readonly logger: winston.Logger) {
-    super(logger);
-  }
-
   testGetTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
     return this.fetchTokenIdType(address);
   }
@@ -38,7 +34,7 @@ describe('LSP8', () => {
   const logger = new LoggerService();
 
   beforeAll(async () => {
-    service = new TestLSP8(logger.getChildLogger('LSP8'));
+    service = new TestLSP8(new FetcherService(), logger.getChildLogger('LSP8'));
   });
 
   describe('fetchTokenData', () => {
@@ -53,7 +49,7 @@ describe('LSP8', () => {
         lsp8ContractTypeUint.tokenId,
       );
 
-      expect(res?.metadata).toMatchObject({
+      expect(res).toMatchObject({
         ...expectedMetadata,
         metadata: {
           ...expectedMetadata.metadata,
@@ -69,7 +65,7 @@ describe('LSP8', () => {
         lsp8ContractTypeBytes.tokenId,
       );
 
-      expect(res?.metadata).toMatchObject({
+      expect(res).toMatchObject({
         ...expectedMetadata,
         metadata: {
           ...expectedMetadata.metadata,
@@ -85,7 +81,7 @@ describe('LSP8', () => {
         lsp8ContractTypeNotSet.tokenId,
       );
 
-      expect(res?.metadata).toMatchObject({
+      expect(res).toMatchObject({
         ...expectedMetadata,
         metadata: {
           ...expectedMetadata.metadata,

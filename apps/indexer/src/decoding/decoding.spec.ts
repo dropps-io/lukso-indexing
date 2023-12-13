@@ -9,6 +9,8 @@ import { EthersService } from '../ethers/ethers.service';
 import { DecodingService } from './decoding.service';
 import { ADDRESS1 } from '../../../../test/utils/test-values';
 import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
+import { decodeLsp8TokenId } from './utils/decode-lsp8-token-id';
+import { FetcherService } from '../fetcher/fetcher.service';
 
 class TestDecodingService extends DecodingService {
   constructor(
@@ -37,6 +39,7 @@ const setDataMethodInterface: MethodInterfaceTable = {
   hash: '0x7f23690cc80a596acdae0a51503f8066ffd79ab76fd5c929578309d2e2883b77',
   name: 'setData',
   type: 'function',
+  createdAt: new Date('2021-01-01'),
 };
 const setDataMethodParameters: MethodParameterTable[] = [
   {
@@ -110,7 +113,10 @@ describe('DecodingService', () => {
       providers: [
         TestDecodingService,
         { provide: LuksoStructureDbService, useValue: db },
-        { provide: EthersService, useValue: new EthersService(logger, db) },
+        {
+          provide: EthersService,
+          useValue: new EthersService(new FetcherService(), logger, db),
+        },
         { provide: LoggerService, useValue: logger },
       ],
     }).compile();
@@ -153,6 +159,7 @@ describe('DecodingService', () => {
         hash: '0x44c028fee1c693348483835b83daaff8050a631d70676515d1e283a5b884b4aa',
         name: 'execute',
         type: 'function',
+        createdAt: new Date('2021-01-01'),
       };
       await db.insertMethodInterface(methodInterface);
       const parameters: MethodParameterTable[] = [
@@ -417,31 +424,31 @@ describe('DecodingService', () => {
   describe('decodeLsp8TokenId', () => {
     it('should decode LSP8 token ID of type address correctly', () => {
       const tokenId = '0x36eC763516259D4bE9EDe7cC2969969f201139dd000000000000000000000000';
-      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.address);
+      const decodedTokenId = decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.address);
       expect(decodedTokenId).toEqual('0x36eC763516259D4bE9EDe7cC2969969f201139dd');
     });
 
     it('should decode LSP8 token ID of type uint256 correctly', () => {
       const tokenId = '0x0000000000000000000000000000000000000000000000004563918244F40000';
-      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.uint256);
+      const decodedTokenId = decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.uint256);
       expect(decodedTokenId).toEqual('5000000000000000000');
     });
 
     it('should decode LSP8 token ID of type string correctly', () => {
       const tokenId = '0x68656c6c6f20776f726c64';
-      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.string);
+      const decodedTokenId = decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.string);
       expect(decodedTokenId).toEqual('hello world');
     });
 
     it('should decode LSP8 token ID of type bytes32 correctly', () => {
       const tokenId = '0x4b80742de2bf82acb3630000254bfe7e25184f72df435b5a9da39db6089dcaf5';
-      const decodedTokenId = service.decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.bytes32);
+      const decodedTokenId = decodeLsp8TokenId(tokenId, LSP8_TOKEN_ID_TYPE.bytes32);
       expect(decodedTokenId).toEqual(tokenId);
     });
 
     it('should assume LSP8 token ID type as bytes32 if no type is provided', () => {
       const tokenId = '0x4b80742de2bf82acb3630000254bfe7e25184f72df435b5a9da39db6089dcaf5';
-      const decodedTokenId = service.decodeLsp8TokenId(tokenId);
+      const decodedTokenId = decodeLsp8TokenId(tokenId);
       expect(decodedTokenId).toEqual(tokenId);
     });
   });

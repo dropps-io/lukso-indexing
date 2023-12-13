@@ -9,7 +9,8 @@ module.exports = {
     '^@db/lukso-structure(|/.*)$': '<rootDir>/libs/database/lukso-structure/$1',
     '^@db/utils(|/.*)$': '<rootDir>/libs/database/utils/$1',
     '^@libs/logger(|/.*)$': '<rootDir>/libs/logger/$1',
-    '^@utils(|/.*)$': '<rootDir>/utils/$1',
-    '^@models(|/.*)$': '<rootDir>/models/$1',
+    '^@utils(|/.*)$': '<rootDir>/shared/utils/$1',
+    '^@shared/types(|/.*)$': '<rootDir>/shared/types/$1',
+    '^@decorators(|/.*)$': '<rootDir>/shared/decorators/$1',
   },
 };

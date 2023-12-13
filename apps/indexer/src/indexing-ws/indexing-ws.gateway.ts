@@ -16,16 +16,17 @@ export class IndexingWsGateway {
   }
 
   @WebSocketServer()
-  private readonly server: Server;
+  private readonly server: Server | undefined;
 
   public emitEvent(event: EventTable, parameters: DecodedParameter[]): void {
     this.logger.debug(
       `Emitting event ${event.transactionHash}:${event.logIndex} to WS clients on channel ${WS_CHANNELS.EVENT}`,
       { transactionHash: event.transactionHash, logIndex: event.logIndex },
     );
-    this.server.emit(WS_CHANNELS.EVENT, {
-      ...event,
-      parameters,
-    });
+    if (this.server)
+      this.server.emit(WS_CHANNELS.EVENT, {
+        ...event,
+        parameters,
+      });
   }
 }

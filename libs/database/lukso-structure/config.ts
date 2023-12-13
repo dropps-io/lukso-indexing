@@ -7,7 +7,6 @@ export enum DB_STRUCTURE_TABLE {
   CONTRACT_INTERFACE = 'contract_interface',
   METHOD_INTERFACE = 'method_interface',
   METHOD_PARAMETER = 'method_parameter',
-  CONFIG = 'config',
 }
 
 export enum DB_STRUCTURE_TYPE {

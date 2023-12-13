@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@libs/logger/logger.service';
-import { CONTRACT_TYPE } from '@models/enums';
+import { CONTRACT_TYPE } from '@shared/types/enums';
 
 import { ContractTokenTable } from './entities/contract-token.table';
 import { MetadataAssetTable } from './entities/metadata-asset.table';
@@ -372,7 +372,7 @@ describe('LuksoDataDbService', () => {
         holderAddress: ADDRESS2,
         contractAddress: contractToken1.address,
         tokenId: null,
-        balanceInEth: 1,
+        balanceInEth: '1',
         balanceInWei: '1000000000000000000',
         holderSinceBlock: 1234,
       };
@@ -402,7 +402,12 @@ describe('LuksoDataDbService', () => {
       it('should be able to update balances on conflict', async () => {
         await service.insertTokenHolder(tokenHolder1);
         await service.insertTokenHolder(
-          { ...tokenHolder1, balanceInWei: 'NEW_BALANCE', balanceInEth: 999, holderSinceBlock: 2 },
+          {
+            ...tokenHolder1,
+            balanceInWei: '9999999',
+            balanceInEth: '999',
+            holderSinceBlock: 2,
+          },
           'update',
         );
         const res = await service.getTokenHolder(
@@ -413,8 +418,8 @@ describe('LuksoDataDbService', () => {
 
         expect(res).toEqual({
           ...tokenHolder1,
-          balanceInWei: 'NEW_BALANCE',
-          balanceInEth: 999,
+          balanceInWei: '9999999',
+          balanceInEth: '999',
           holderSinceBlock: tokenHolder1.holderSinceBlock,
         });
       });
@@ -444,7 +449,7 @@ describe('LuksoDataDbService', () => {
         holderAddress: ADDRESS2,
         contractAddress: contractToken1.address,
         tokenId: contractToken1.tokenId,
-        balanceInEth: 1,
+        balanceInEth: '1',
         balanceInWei: '1000000000000000000',
         holderSinceBlock: 1234,
       };
@@ -474,7 +479,12 @@ describe('LuksoDataDbService', () => {
       it('should be able to update balances on conflict', async () => {
         await service.insertTokenHolder(tokenHolder1);
         await service.insertTokenHolder(
-          { ...tokenHolder1, balanceInWei: 'NEW_BALANCE', balanceInEth: 999, holderSinceBlock: 2 },
+          {
+            ...tokenHolder1,
+            balanceInWei: '9999999',
+            balanceInEth: '999',
+            holderSinceBlock: 2,
+          },
           'update',
         );
         const res = await service.getTokenHolder(
@@ -485,8 +495,8 @@ describe('LuksoDataDbService', () => {
 
         expect(res).toEqual({
           ...tokenHolder1,
-          balanceInWei: 'NEW_BALANCE',
-          balanceInEth: 999,
+          balanceInWei: '9999999',
+          balanceInEth: '999',
           holderSinceBlock: tokenHolder1.holderSinceBlock,
         });
       });

@@ -1,14 +1,19 @@
 import winston from 'winston';
 import LSP7DigitalAsset from '@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json';
 import { ethers } from 'ethers';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
 import { EthersService } from '../../ethers.service';
-import { MetadataResponse } from '../../types/metadata-response';
 import { LSP4 } from '../LSP4/LSP4';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 export class LSP7 {
   private readonly lsp4: LSP4;
-  constructor(private ethersService: EthersService, private logger: winston.Logger) {
-    this.lsp4 = new LSP4(logger);
+  constructor(
+    protected readonly ethersService: EthersService,
+    protected readonly fetcherService: FetcherService,
+    protected readonly logger: winston.Logger,
+  ) {
+    this.lsp4 = new LSP4(fetcherService, this.logger);
   }
 
   public async fetchData(address: string): Promise<MetadataResponse | null> {
@@ -32,7 +37,7 @@ export class LSP7 {
         links: lsp4Data?.links || [],
         assets: lsp4Data?.assets || [],
       };
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`Error while fetching LSP7 data for ${address}: ${e.message}`, {
         address,
       });

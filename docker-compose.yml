@@ -1,5 +1,9 @@
 version: '3.8'
 services:
+  redis-1:
+    image: redis:7.2.0
+    ports:
+      - "6379:6379"
   lukso-db:
     image: postgres:latest
     restart: always
@@ -20,9 +24,12 @@ services:
     depends_on:
       - lukso-db
     environment:
+      REDIS_URI: redis-2:6379
       LUKSO_DATA_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-data
       LUKSO_STRUCTURE_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-structure
       RPC_URL: ${RPC_URL}
+      IPFS_GATEWAYS: ${IPFS_GATEWAYS}
+      ARWEAVE_GATEWAY: ${ARWEAVE_GATEWAY}
 
   lukso-api:
     build:

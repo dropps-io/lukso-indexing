@@ -1,0 +1,11 @@
+apiVersion: v2
+name: indexing-indexer
+description: DROPPS Indexing Indexer chart
+type: application
+version: 0.1.0
+appVersion: 1.0.0
+dependencies:
+  - name: redis
+    version: 17.15.5
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

@@ -19,13 +19,13 @@
         "tsConfigPath": "apps/indexer/tsconfig.app.json"
       }
     },
-    "api": {
+    "indexer-admin": {
       "type": "application",
-      "root": "apps/api",
+      "root": "apps/indexer-admin",
       "entryFile": "main",
-      "sourceRoot": "apps/api/src",
+      "sourceRoot": "apps/indexer-admin/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/api/tsconfig.app.json"
+        "tsConfigPath": "apps/indexer-admin/tsconfig.app.json"
       }
     }
   }

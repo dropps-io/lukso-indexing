@@ -1,4 +1,4 @@
-import { CONTRACT_TYPE } from '@models/enums';
+import { CONTRACT_TYPE } from '@shared/types/enums';
 
 export interface ContractTable {
   address: string;

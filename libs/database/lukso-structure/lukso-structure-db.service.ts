@@ -8,7 +8,6 @@ import {
   DB_STRUCTURE_TABLE,
   LUKSO_STRUCTURE_CONNECTION_STRING,
 } from './config';
-import { ConfigTable } from './entities/config.table';
 import { ERC725YSchemaTable } from './entities/erc725YSchema.table';
 import { ContractInterfaceTable } from './entities/contractInterface.table';
 import { MethodInterfaceTable } from './entities/methodInterface.table';
@@ -45,32 +44,6 @@ export class LuksoStructureDbService implements OnModuleDestroy {
 
   public async disconnect() {
     await this.client.end();
-  }
-
-  public async getConfig(): Promise<ConfigTable> {
-    const rows = await this.executeQuery<ConfigTable>(`SELECT * FROM ${DB_STRUCTURE_TABLE.CONFIG}`);
-    if (rows.length === 0) throw 'Config table need to be initialized';
-    else return rows[0];
-  }
-
-  public async updateLatestIndexedBlock(blockNumber: number): Promise<void> {
-    await this.executeQuery(
-      `
-      UPDATE ${DB_STRUCTURE_TABLE.CONFIG}
-      SET "latestIndexedBlock" = $1
-    `,
-      [blockNumber],
-    );
-  }
-
-  public async updateLatestIndexedEventBlock(blockNumber: number): Promise<void> {
-    await this.executeQuery(
-      `
-      UPDATE ${DB_STRUCTURE_TABLE.CONFIG}
-      SET "latestIndexedEventBlock" = $1
-    `,
-      [blockNumber],
-    );
   }
 
   async insertErc725ySchema(schema: ERC725YSchemaTable): Promise<void> {
@@ -137,7 +110,9 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     return this.cache.contractInterfaces.values;
   }
 
-  async insertMethodInterface(methodInterface: MethodInterfaceTable): Promise<void> {
+  async insertMethodInterface(
+    methodInterface: Omit<MethodInterfaceTable, 'createdAt'>,
+  ): Promise<void> {
     await this.executeQuery(
       `
       INSERT INTO ${DB_STRUCTURE_TABLE.METHOD_INTERFACE}
@@ -151,6 +126,13 @@ export class LuksoStructureDbService implements OnModuleDestroy {
       [id],
     );
     return rows.length > 0 ? rows[0] : null;
+  }
+
+  async getMethodInterfaceCreatedAfter(date: Date): Promise<MethodInterfaceTable[]> {
+    return await this.executeQuery<MethodInterfaceTable>(
+      `SELECT * FROM ${DB_STRUCTURE_TABLE.METHOD_INTERFACE} WHERE "createdAt" > $1`,
+      [date],
+    );
   }
 
   async insertMethodParameter(methodParameter: MethodParameterTable): Promise<void> {
@@ -177,7 +159,7 @@ export class LuksoStructureDbService implements OnModuleDestroy {
     try {
       const result = await this.client.query(query, values);
       return result.rows as T[];
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(
         `Error executing a query: ${error.message}, query: ${query}, values: ${values}`,
       );

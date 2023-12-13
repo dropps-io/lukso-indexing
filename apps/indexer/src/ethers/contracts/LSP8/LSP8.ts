@@ -1,18 +1,31 @@
 import winston from 'winston';
 import ERC725, { ERC725JSONSchema } from '@erc725/erc725.js';
 import { LSP4DigitalAsset } from '@lukso/lsp-factory.js/build/main/src/lib/interfaces/lsp4-digital-asset';
-import { GetDataDynamicKey } from '@erc725/erc725.js/build/main/src/types/GetData';
-import { getAddress, toUtf8String } from 'ethers';
+import { toUtf8String } from 'ethers';
+import { keccak } from '@utils/keccak';
+import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { MetadataResponse } from '@shared/types/metadata-response';
 
-import { MetadataResponse } from '../../types/metadata-response';
-import { IPFS_GATEWAY, RPC_URL } from '../../../globals';
+import { RPC_URL } from '../../../globals';
 import LSP8IdentifiableDigitalAssetSchema from '../schemas/LSP8IdentifiableDigitalAssetSchema.json';
 import { LSP8_TOKEN_ID_TYPE } from './enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
+import { erc725yGetData } from '../utils/erc725y-get-data';
+import { decodeJsonUrl } from '../../../utils/json-url';
+import { decodeLsp8TokenId } from '../../../decoding/utils/decode-lsp8-token-id';
+import { LSP4 } from '../LSP4/LSP4';
+import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class LSP8 {
-  constructor(protected readonly logger: winston.Logger) {}
+  private readonly lsp4: LSP4;
+  constructor(
+    protected readonly fetcherService: FetcherService,
+    protected readonly logger: winston.Logger,
+  ) {
+    this.lsp4 = new LSP4(fetcherService, logger);
+  }
 
   /**
    * Fetches the metadata and images associated with a LSP8 token.
@@ -22,35 +35,66 @@ export class LSP8 {
    *
    * @returns {Promise<MetadataResponse | null>} - The metadata and images associated with the LSP8 token or null if an error occurs.
    */
-  public async fetchTokenData(
+  @DebugLogger()
+  @ExceptionHandler(false, true, null)
+  public async fetchTokenData(address: string, tokenId: string): Promise<MetadataResponse | null> {
+    const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.fetchTokenIdType(address);
+    const decodedTokenId = decodeLsp8TokenId(tokenId, tokenIdType);
+
+    let metadata = await this.fetchDataFromBaseURI(address, decodedTokenId);
+
+    if (!metadata)
+      metadata = await this.fetchDataFromMetadataURI(address, decodedTokenId, tokenIdType);
+
+    if (!metadata)
+      metadata = await this.fetchDataFromMetadataURI(address, decodedTokenId, tokenIdType, true);
+
+    return this.buildMetadataResponse(metadata, address, tokenId);
+  }
+
+  protected async fetchDataFromMetadataURI(
     address: string,
-    tokenId: string,
-  ): Promise<{ metadata: MetadataResponse; decodedTokenId: string } | null> {
-    try {
-      this.logger.debug(`Fetching LSP8 data for ${address}:${tokenId}`, { address, tokenId });
+    decodedTokenId: string,
+    tokenIdType: LSP8_TOKEN_ID_TYPE,
+    legacy?: boolean,
+  ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
+    const tokenMetadataKey: string = this.getLsp8TokenMetadataKey(tokenIdType, legacy);
 
-      const erc725 = this.getErc725(address);
+    // Todo: Tmp fix as there is an issue with the new metadata key hash
+    let key = this.getErc725(address).encodeKeyName(tokenMetadataKey, decodedTokenId);
+    key = (legacy ? '0x9a26b4060ae7f7d5e3cd0000' : '0x4690256ef7e93288012f0000') + key.slice(26);
 
-      // Determine the tokenId type.
-      const tokenIdType: LSP8_TOKEN_ID_TYPE = await this.fetchTokenIdType(address);
-      // Generate the dynamic key for fetching the token metadata.
-      const tokenMetadataKey: GetDataDynamicKey = this.getTokenMetadataKey(tokenIdType, tokenId);
+    const response = await erc725yGetData(address, key);
+    if (!response) return null;
 
-      // Fetch metadata from the contract using the dynamic key.
-      const metadata = (
-        (await erc725.fetchData(tokenMetadataKey)).value as unknown as {
-          LSP4Metadata: LSP4DigitalAsset & { name?: string };
-        }
-      )?.LSP4Metadata;
+    const url = legacy ? decodeJsonUrl(response) : toUtf8String('0x' + response.slice(10));
 
-      return {
-        metadata: this.buildMetadataResponse(metadata, address, tokenId),
-        decodedTokenId: tokenMetadataKey.dynamicKeyParts as string,
-      };
-    } catch (error) {
-      this.logger.warn(`Failed to fetch lsp8 token metadata: ${error.message}`, { address });
-      return null;
-    }
+    return await this.lsp4.fetchLsp4MetadataFromUrl(url);
+  }
+
+  /**
+   * Fetches data from the base URI.
+   *
+   * @param {string} address - The address from which to fetch data.
+   * @param {string} decodedTokenId - The decoded token ID.
+   *
+   * @returns {Promise<(LSP4DigitalAsset & { name?: string }) | null>} -
+   * A promise that resolves to an object containing the digital asset's metadata, or null if an error occurs.
+   */
+  protected async fetchDataFromBaseURI(
+    address: string,
+    decodedTokenId: string,
+  ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
+    // Fetch data from the ERC725Y smart contract by providing the hash of 'LSP8TokenMetadataBaseURI'
+    const response = await erc725yGetData(address, keccak('LSP8TokenMetadataBaseURI'));
+    if (!response || response === '0x') return null;
+
+    // Convert the response to a UTF8 string, slicing off the first 10 characters
+    const baseURI = toUtf8String('0x' + response.slice(10));
+
+    // Format the token URI by appending the decoded token ID to the base URI
+    const tokenURI = `${baseURI}/${decodedTokenId}`;
+    return await this.lsp4.fetchLsp4MetadataFromUrl(tokenURI);
   }
 
   /**
@@ -61,19 +105,19 @@ export class LSP8 {
    *
    * @throws Will throw an error if the contract do no implements ERC725Y contract.
    */
-  protected async fetchTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
+  public async fetchTokenIdType(address: string): Promise<LSP8_TOKEN_ID_TYPE> {
     this.logger.debug(`Fetching LSP8 token id type for ${address}`, { address });
-
-    const erc725 = this.getErc725(address);
     let tokenIdType: LSP8_TOKEN_ID_TYPE = LSP8_TOKEN_ID_TYPE.unknown;
 
     try {
-      const fetchedData = (await erc725.fetchData(ERC725Y_KEY.LSP8_TOKEN_ID_TYPE)).value;
-      if (typeof fetchedData !== 'string') return tokenIdType;
-      const parsedData = parseInt(fetchedData);
-      if (parsedData >= LSP8_TOKEN_ID_TYPE.unknown && parsedData <= LSP8_TOKEN_ID_TYPE.string)
-        tokenIdType = parsedData as LSP8_TOKEN_ID_TYPE;
-    } catch (e) {
+      const response = await erc725yGetData(address, ERC725Y_KEY.LSP8_TOKEN_ID_TYPE);
+      if (response) {
+        // Slice off the 0x from the response, which are the hex prefix
+        const parsedData = parseInt(response.slice(2), 16);
+        if (parsedData >= LSP8_TOKEN_ID_TYPE.unknown && parsedData <= LSP8_TOKEN_ID_TYPE.string)
+          tokenIdType = parsedData as LSP8_TOKEN_ID_TYPE;
+      }
+    } catch (e: any) {
       this.logger.error(`Failed to fetch lsp8 token id type for ${address}: ${e.message}`, {
         address,
       });
@@ -87,37 +131,16 @@ export class LSP8 {
    * Generates the token metadata ERC725YSchema key based on the token ID type and token ID.
    *
    * @param {LSP8_TOKEN_ID_TYPE} tokenIdType - The token ID type of the LSP8 contract.
-   * @param {string} tokenId - The token ID to generate metadata key for.
-   * @returns {GetDataDynamicKey} - The generated token metadata key.
+   * @param legacy
+   * @returns string - The generated token metadata key.
    */
-  private getTokenMetadataKey(tokenIdType: LSP8_TOKEN_ID_TYPE, tokenId: string): GetDataDynamicKey {
-    let keyName: string;
-    let dynamicKeyParts: string;
+  protected getLsp8TokenMetadataKey(tokenIdType: LSP8_TOKEN_ID_TYPE, legacy?: boolean): string {
+    const keyNamePrefix = legacy ? 'LSP8MetadataJSON' : 'LSP8MetadataTokenURI';
 
-    switch (tokenIdType) {
-      case LSP8_TOKEN_ID_TYPE.address:
-        keyName = 'LSP8MetadataJSON:<address>';
-        dynamicKeyParts = getAddress(tokenId.slice(0, 42));
-        break;
-      case LSP8_TOKEN_ID_TYPE.uint256:
-        keyName = 'LSP8MetadataJSON:<uint256>';
-        dynamicKeyParts = parseInt(tokenId.slice(2), 16).toString();
-        break;
-      case LSP8_TOKEN_ID_TYPE.string:
-        keyName = 'LSP8MetadataJSON:<string>';
-        dynamicKeyParts = toUtf8String(tokenId);
-        break;
-      case LSP8_TOKEN_ID_TYPE.bytes32:
-      default: // When no tokenIdType, we assume it's a bytes32 type
-        keyName = 'LSP8MetadataJSON:<bytes32>';
-        dynamicKeyParts = tokenId;
-        break;
-    }
-
-    return {
-      keyName,
-      dynamicKeyParts,
-    };
+    if (tokenIdType === LSP8_TOKEN_ID_TYPE.address) return `${keyNamePrefix}:<address>`;
+    else if (tokenIdType === LSP8_TOKEN_ID_TYPE.uint256) return `${keyNamePrefix}:<uint256>`;
+    else if (tokenIdType === LSP8_TOKEN_ID_TYPE.string) return `${keyNamePrefix}:<string>`;
+    else return `${keyNamePrefix}:<bytes32>`;
   }
 
   /**
@@ -156,8 +179,6 @@ export class LSP8 {
    * @param {string} address - The contract address
    */
   private getErc725(address: string): ERC725 {
-    return new ERC725(LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL, {
-      ipfsGateway: IPFS_GATEWAY,
-    });
+    return new ERC725(LSP8IdentifiableDigitalAssetSchema as ERC725JSONSchema[], address, RPC_URL);
   }
 }
