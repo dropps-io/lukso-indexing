@@ -39,6 +39,13 @@ export class TokensService {
       await this.metadataService.indexContractTokenMetadata(token.address, token.tokenId);
     } catch (error) {
       this.logger.error(`Decoding token for ${token.tokenId} ${error}`);
+      await this.dataDB.insertContractToken(
+        {
+          ...token,
+          decodedTokenId: token.tokenId,
+        },
+        'update',
+      );
     }
   }
 

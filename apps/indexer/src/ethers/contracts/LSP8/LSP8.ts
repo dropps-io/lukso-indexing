@@ -169,7 +169,10 @@ export class LSP8 {
       images: formatMetadataImages(metadata?.images, null),
       tags: [],
       links: metadata?.links || [],
-      assets: metadata?.assets || [],
+      assets:
+        metadata?.assets.map((asset) => {
+          return { ...asset, hash: asset.verificationData };
+        }) || [],
     };
   }
 
