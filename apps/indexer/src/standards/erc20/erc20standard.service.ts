@@ -3,7 +3,6 @@ import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { EventTable } from '@db/lukso-data/entities/event.table';
-import { formatEther } from 'ethers';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 
@@ -46,7 +45,6 @@ export class Erc20standardService {
         contractAddress: tokenAddress,
         tokenId: null,
         balanceInWei: balance!,
-        balanceInEth: formatEther(balance!),
         holderSinceBlock: blockNumber,
       },
       'update',

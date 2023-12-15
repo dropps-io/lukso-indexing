@@ -27,7 +27,7 @@ describe('ERC20', () => {
     }).compile();
 
     const ethersService: EthersService = moduleRef.get<EthersService>(EthersService);
-    service = new ERC20(ethersService, new FetcherService(), logger.getChildLogger('ERC20'));
+    service = new ERC20(ethersService, logger.getChildLogger('ERC20'));
   });
 
   describe('fetchData', () => {
