@@ -84,7 +84,10 @@ export class LSP4 {
       images,
       tags: [],
       links: lsp4DigitalAsset?.links || [],
-      assets: lsp4DigitalAsset?.assets || [],
+      assets:
+        lsp4DigitalAsset?.assets.map((asset) => {
+          return { ...asset, hash: asset.verificationData };
+        }) || [],
     };
   }
 
