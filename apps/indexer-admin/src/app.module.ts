@@ -5,9 +5,10 @@ import { ContractInterfacesModule } from './contractInterfaces/contractInterface
 import { ERC725ySchemasModule } from './ERC725ySchemas/ERC725ySchemas.module';
 import { AuthModule } from './auth/auth.module';
 import { GoogleAuthMiddleware } from './auth/utils/google-auth-middleware';
+import {HealthModule} from "./health/health.module";
 
 @Module({
-  imports: [AbiModule, ContractInterfacesModule, ERC725ySchemasModule, AuthModule],
+  imports: [AbiModule, ContractInterfacesModule, ERC725ySchemasModule, AuthModule, HealthModule],
   controllers: [],
   providers: [],
 })
