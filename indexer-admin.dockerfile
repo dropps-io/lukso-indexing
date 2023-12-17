@@ -1,5 +1,8 @@
 # ---- Base Node ----
 FROM node:18-alpine AS base
+
+RUN apk add g++ make py3-pip
+
 WORKDIR /app
 COPY package*.json ./
 

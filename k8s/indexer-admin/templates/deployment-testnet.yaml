@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: indexer-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: indexer-admin
+  template:
+    metadata:
+      labels:
+        app: indexer-admin
+    spec:
+      containers:
+        - name: indexer-admin
+          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/indexer-admin:latest
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: LUKSO_DATA_CONNECTION_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-testnet
+                  key: LUKSO_DATA_CONNECTION_STRING
+            - name: LUKSO_STRUCTURE_CONNECTION_STRING
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-testnet
+                  key: LUKSO_STRUCTURE_CONNECTION_STRING
+            - name: RPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-testnet
+                  key: RPC_URL
+            - name: IPFS_GATEWAYS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-testnet
+                  key: IPFS_GATEWAYS
+            - name: ARWEAVE_GATEWAY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-testnet
+                  key: ARWEAVE_GATEWAY
+            - name: REDIS_URI
+              value: redis://redis-headless:6379
