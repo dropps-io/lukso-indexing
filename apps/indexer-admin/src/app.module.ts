@@ -3,12 +3,11 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AbiModule } from './abi/abi.module';
 import { ContractInterfacesModule } from './contractInterfaces/contractInterfaces.module';
 import { ERC725ySchemasModule } from './ERC725ySchemas/ERC725ySchemas.module';
-import { AuthModule } from './auth/auth.module';
 import { GoogleAuthMiddleware } from './auth/utils/google-auth-middleware';
-import {HealthModule} from "./health/health.module";
+import { HealthModule } from './health/health.module';
 
 @Module({
-  imports: [AbiModule, ContractInterfacesModule, ERC725ySchemasModule, AuthModule, HealthModule],
+  imports: [AbiModule, ContractInterfacesModule, ERC725ySchemasModule, HealthModule],
   controllers: [],
   providers: [],
 })
