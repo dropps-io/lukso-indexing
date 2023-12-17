@@ -43,3 +43,12 @@ services:
       LUKSO_STRUCTURE_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-structure
     ports:
       - "3001:3001"
+
+  indexer-admin:
+    build:
+      context: .
+      dockerfile: indexer-admin.dockerfile
+    depends_on:
+      - lukso-indexing
+    ports:
+      - "3001:3000"

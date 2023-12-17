@@ -1,6 +1,6 @@
 apiVersion: v2
-name: indexing-indexer
-description: DROPPS Indexing Indexer chart
+name: indexer
+description: DROPPS Indexer chart
 type: application
 version: 0.1.0
 appVersion: 1.0.0
