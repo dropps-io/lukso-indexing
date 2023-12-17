@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: indexer-admin-service
+  name: indexer-admin-service-mainnet
 spec:
   selector:
-    app: indexer-admin
+    app: indexer-admin-mainnet
   ports:
     - protocol: TCP
       port: 90

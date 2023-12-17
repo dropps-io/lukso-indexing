@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: indexer
+  name: indexer-mainnet
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: indexer
+      app: indexer-mainnet
   template:
     metadata:
       labels:
-        app: indexer
+        app: indexer-mainnet
     spec:
       containers:
-        - name: indexer
+        - name: indexer-mainnet
           image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/indexer:latest
           env:
             - name: NODE_ENV

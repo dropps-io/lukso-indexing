@@ -1,20 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: indexer-admin
+  name: indexer-admin-mainnet
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: indexer-admin
+      app: indexer-admin-mainnet
   template:
     metadata:
       labels:
-        app: indexer-admin
+        app: indexer-admin-mainnet
     spec:
       containers:
-        - name: indexer-admin
+        - name: indexer-admin-mainnet
           image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/indexer-admin:latest
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+          ports:
+            - containerPort: 3000
           env:
             - name: NODE_ENV
               value: "production"

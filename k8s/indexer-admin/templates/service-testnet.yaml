@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: indexer-admin-service-testnet
+spec:
+  selector:
+    app: indexer-admin-testnet
+  ports:
+    - protocol: TCP
+      port: 95
+      targetPort: 3000
+  type: NodePort
