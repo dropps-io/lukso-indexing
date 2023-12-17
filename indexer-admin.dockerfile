@@ -11,15 +11,17 @@ RUN npm install && npm cache clean --force
 # ---- Copy Files/Build ----
 FROM dependencies AS build
 COPY . .
-RUN npm run build:api
+RUN npm run build:indexer-admin
 
-# --- Release ----
+# ---- Release ----
 FROM base AS release
-# Install production dependencies.
-COPY --from=dependencies /app/package*.json ./
-RUN npm install --production && npm cache clean --force
-
-# Copy built api
+# Copy necessary node modules from previous stages
+COPY --from=dependencies /app/node_modules ./node_modules
+# Copy necessary files from build stage
 COPY --from=build /app/dist/apps/indexer-admin/main.js ./dist/apps/indexer-admin/main.js
-EXPOSE 3000
-CMD ["node", "dist/apps/api/main.js"]
+# Copy the 'shared/abi' directory
+COPY shared/abi ./shared/abi
+COPY config ./config
+
+ENV NODE_ENV=production
+CMD ["node", "dist/apps/indexer-admin/main.js"]
