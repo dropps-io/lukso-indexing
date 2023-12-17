@@ -31,19 +31,6 @@ services:
       IPFS_GATEWAYS: ${IPFS_GATEWAYS}
       ARWEAVE_GATEWAY: ${ARWEAVE_GATEWAY}
 
-  lukso-api:
-    build:
-      context: .
-      dockerfile: api.dockerfile
-    depends_on:
-      - lukso-db
-    environment:
-      API_PORT: 3001
-      LUKSO_DATA_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-data
-      LUKSO_STRUCTURE_CONNECTION_STRING: postgresql://postgres:password@lukso-db:5432/indexing-lukso-structure
-    ports:
-      - "3001:3001"
-
   indexer-admin:
     build:
       context: .
