@@ -16,6 +16,8 @@ import { DecodingService } from '../decoding/decoding.service';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { WrappedTransaction } from '../decoding/types/wrapped-tx';
+import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class TransactionsService {
@@ -26,6 +28,8 @@ export class TransactionsService {
     protected readonly ethersService: EthersService,
     protected readonly decodingService: DecodingService,
     protected readonly erc725Service: Erc725StandardService,
+    // Redis service is only used for exception handling
+    protected readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('EventsService');
   }
@@ -38,7 +42,7 @@ export class TransactionsService {
    * @param {string} transactionHash - The transaction hash to index.
    */
   @DebugLogger()
-  @ExceptionHandler(false, true)
+  @ExceptionHandler(false, true, null, REDIS_KEY.SKIP_TX_COUNT)
   public async indexTransaction(transactionHash: string) {
     if (await this.isTransactionIndexed(transactionHash)) return;
 

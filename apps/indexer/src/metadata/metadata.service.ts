@@ -60,6 +60,7 @@ export class MetadataService {
     await this.dataDB.insertMetadataAssets(id, metadata.assets, 'do nothing');
   }
 
+  @DebugLogger()
   protected async fetchContractMetadata(
     address: string,
     interfaceCode?: string,

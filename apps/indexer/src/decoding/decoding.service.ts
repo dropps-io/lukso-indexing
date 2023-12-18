@@ -16,6 +16,8 @@ import { DecodedParameter } from './types/decoded-parameter';
 import { permissionsToString } from './utils/permissions-to-string';
 import { parseDecodedParameter } from './utils/parse-decoded-parameter';
 import { decodedParamToKeyValueMapping } from './utils/decoded-param-to-mapping';
+import { RedisService } from '../redis/redis.service';
+import { REDIS_KEY } from '../redis/redis-keys';
 
 @Injectable()
 export class DecodingService {
@@ -25,6 +27,8 @@ export class DecodingService {
     protected readonly structureDB: LuksoStructureDbService,
     protected readonly ethersService: EthersService,
     protected loggerService: LoggerService,
+    // Redis service is only used for exception handling
+    protected readonly redisService: RedisService,
   ) {
     this.logger = loggerService.getChildLogger('Decoding');
   }
@@ -38,6 +42,7 @@ export class DecodingService {
    * @returns {Promise<{parameters: DecodedParameter[]; methodName: string;} | null>} - An object containing the decoded
    * parameters and the method name, or null if the method interface is not found.
    */
+  @DebugLogger()
   public async decodeTransactionInput(
     input: string,
     _methodInterface?: MethodInterfaceTable,
@@ -64,12 +69,15 @@ export class DecodingService {
         '0x' + input.slice(10),
         _methodParameters,
       );
+
+      await this.redisService.incrementNumber(REDIS_KEY.DECODED_TX_COUNT);
       return { methodName, parameters };
     } catch (e: any) {
       this.logger.error(
         `Error decoding transaction input with methodId ${methodId}: ${e.message}`,
         { input, methodId, stack: e.stack },
       );
+      await this.redisService.incrementNumber(REDIS_KEY.FAILED_DECODE_TX_COUNT);
       return methodName ? { methodName, parameters: [] } : null;
     }
   }
@@ -84,7 +92,7 @@ export class DecodingService {
    * @returns {Promise<DecodedParameter[] | null>} A Promise that resolves to an array of DecodedParameter objects,
    *          containing the decoded parameter values, positions, names, and types, or null if an error occurs.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(false, true, null, REDIS_KEY.FAILED_DECODE_EVENT_COUNT)
   public async decodeLogParameters(
     data: string,
     topics: string[],
@@ -122,6 +130,7 @@ export class DecodingService {
       nonIndexedParameters,
     );
 
+    await this.redisService.incrementNumber(REDIS_KEY.DECODED_EVENT_COUNT);
     return [...indexedParametersDecoded, ...nonIndexedParametersDecoded];
   }
 
@@ -163,7 +172,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction[] | null>} - An array containing the wrapped transaction object(s), or null if the method ID is not recognized.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(false, true, null, REDIS_KEY.FAILED_UNWRAP_TX_COUNT)
   public async unwrapTransaction(
     methodId: string,
     decodedParameters: DecodedParameter[],
@@ -210,7 +219,7 @@ export class DecodingService {
    * @param {string} value - The value to decode.
    * @returns {Promise<{ value: string; keyParameters: string[]; keyIndex: number | null } | null>} A Promise that resolves to an object containing the decoded value, key parameters, and key index. If the value cannot be decoded, it resolves to null.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(false, true, null, REDIS_KEY.FAILED_DECODE_ERC725Y_COUNT)
   public async decodeErc725YKeyValuePair(
     key: string,
     value: string,
@@ -231,6 +240,7 @@ export class DecodingService {
 
     if (!decodedValue) return null;
 
+    await this.redisService.incrementNumber(REDIS_KEY.DECODED_ERC725Y_COUNT);
     // Return the decoded value and key parameters, if applicable
     return { value: decodedValue, ...decodedKey };
   }
@@ -308,7 +318,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(true, true)
   protected async unwrapErc725XExecute(
     parametersMap: Record<string, string>,
   ): Promise<WrappedTransaction | null> {
@@ -331,7 +341,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(true, true)
   protected async unwrapLSP6Execute(
     contractAddress: string,
     parametersMap: Record<string, string>,

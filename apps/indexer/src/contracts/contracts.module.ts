@@ -5,9 +5,10 @@ import { LuksoDataDbModule } from '@db/lukso-data/lukso-data-db.module';
 import { ContractsService } from './contracts.service';
 import { EthersModule } from '../ethers/ethers.module';
 import { MetadataModule } from '../metadata/metadata.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
-  imports: [LoggerModule, LuksoDataDbModule, EthersModule, MetadataModule],
+  imports: [LoggerModule, LuksoDataDbModule, EthersModule, MetadataModule, RedisModule],
   providers: [ContractsService],
   exports: [ContractsService],
 })
