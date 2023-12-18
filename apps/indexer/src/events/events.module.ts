@@ -11,6 +11,7 @@ import { IndexingWsModule } from '../indexing-ws/indexing-ws.module';
 import { EthersModule } from '../ethers/ethers.module';
 import { Erc725StandardModule } from '../standards/erc725/erc725-standard.module';
 import { Erc20standardModule } from '../standards/erc20/erc20standard.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { Erc20standardModule } from '../standards/erc20/erc20standard.module';
     LuksoStructureDbModule,
     IndexingWsModule,
     EthersModule,
+    RedisModule,
   ],
   providers: [EventsService],
   exports: [EventsService],
