@@ -89,7 +89,6 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TOKEN_HOLDER} (
   "contractAddress" CHAR(42) NOT NULL,
   "tokenId" CHAR(66),
   "balanceInWei" BIGINT NOT NULL,
-  "balanceInEth" BIGINT NOT NULL,
   "holderSinceBlock" INTEGER NOT NULL,
   FOREIGN KEY ("contractAddress") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
   FOREIGN KEY ("contractAddress", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "tokenId") ON DELETE CASCADE
