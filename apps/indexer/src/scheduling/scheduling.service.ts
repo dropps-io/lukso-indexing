@@ -54,7 +54,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async indexByBlock() {
-    if ((await this.getIndexerStatus()) === 0) {
+    if ((await this.getIndexerStatus()) !== 1) {
       // Retrieve configuration and block data
       const lastBlock = await this.ethersService.getLastBlock();
       const fromBlock = (await this.getLatestTxIndexedBlock()) + 1;
@@ -100,7 +100,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async indexByEvents() {
-    if ((await this.getIndexerStatus()) === 0) {
+    if ((await this.getIndexerStatus()) !== 1) {
       // Retrieve configuration and block data
       const fromBlock: number = (await this.getLatestEventIndexedBlock()) + 1;
 
@@ -138,7 +138,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async processContractsToIndex() {
-    if ((await this.getIndexerStatus()) === 0) {
+    if ((await this.getIndexerStatus()) !== 1) {
       // Retrieve the list of contracts to be indexed
       const contractsToIndex = await this.dataDB.getContractsToIndex();
 
@@ -164,7 +164,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async processContractTokensToIndex() {
-    if ((await this.getIndexerStatus()) === 0) {
+    if ((await this.getIndexerStatus()) !== 1) {
       // Retrieve the list of contract tokens to be indexed
       const tokensToIndex = await this.dataDB.getTokensToIndex();
 
