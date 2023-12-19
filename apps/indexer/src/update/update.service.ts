@@ -10,8 +10,8 @@ import { TransactionTable } from '@db/lukso-data/entities/tx.table';
 import { TxInputTable } from '@db/lukso-data/entities/tx-input.table';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../../../../shared/redis/redis.service';
+import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 import { DecodingService } from '../decoding/decoding.service';
 import { ContractsService } from '../contracts/contracts.service';
 import { promiseAllSettledPLimit } from '../utils/promise-p-limit';

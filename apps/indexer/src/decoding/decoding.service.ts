@@ -16,8 +16,8 @@ import { DecodedParameter } from './types/decoded-parameter';
 import { permissionsToString } from './utils/permissions-to-string';
 import { parseDecodedParameter } from './utils/parse-decoded-parameter';
 import { decodedParamToKeyValueMapping } from './utils/decoded-param-to-mapping';
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../../../../shared/redis/redis.service';
+import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 
 @Injectable()
 export class DecodingService {

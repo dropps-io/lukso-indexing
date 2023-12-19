@@ -19,8 +19,8 @@ import {
   P_LIMIT,
 } from '../globals';
 import { TokensService } from '../tokens/tokens.service';
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../../../../shared/redis/redis.service';
+import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 import { promiseAllPLimit, promiseAllSettledPLimit } from '../utils/promise-p-limit';
 import { UpdateService } from '../update/update.service';
 

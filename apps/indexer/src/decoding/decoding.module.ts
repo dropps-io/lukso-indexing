@@ -4,7 +4,7 @@ import { LoggerModule } from '@libs/logger/logger.module';
 
 import { DecodingService } from './decoding.service';
 import { EthersModule } from '../ethers/ethers.module';
-import { RedisModule } from '../redis/redis.module';
+import { RedisModule } from '../../../../shared/redis/redis.module';
 
 @Module({
   imports: [LuksoStructureDbModule, EthersModule, LoggerModule, RedisModule],

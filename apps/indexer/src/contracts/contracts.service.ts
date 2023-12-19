@@ -8,8 +8,8 @@ import { DebugLogger } from '@decorators/debug-logging.decorator';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../../../../shared/redis/redis.service';
+import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 
 @Injectable()
 export class ContractsService {

@@ -1,7 +1,7 @@
 import winston from 'winston';
 
-import { REDIS_KEY } from '../../apps/indexer/src/redis/redis-keys';
-import { RedisService } from '../../apps/indexer/src/redis/redis.service';
+import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../redis/redis.service';
 
 interface ServiceInstance {
   logger: winston.Logger | undefined;

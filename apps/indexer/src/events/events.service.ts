@@ -21,8 +21,8 @@ import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 import { Erc20standardService } from '../standards/erc20/erc20standard.service';
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
+import { RedisService } from '../../../../shared/redis/redis.service';
+import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 
 @Injectable()
 export class EventsService {

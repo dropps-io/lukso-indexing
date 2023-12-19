@@ -16,8 +16,8 @@ import { DecodingService } from '../decoding/decoding.service';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { WrappedTransaction } from '../decoding/types/wrapped-tx';
-import { REDIS_KEY } from '../redis/redis-keys';
-import { RedisService } from '../redis/redis.service';
+import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
+import { RedisService } from '../../../../shared/redis/redis.service';
 
 @Injectable()
 export class TransactionsService {

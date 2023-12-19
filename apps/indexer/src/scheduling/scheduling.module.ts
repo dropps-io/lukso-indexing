@@ -9,7 +9,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 import { ContractsModule } from '../contracts/contracts.module';
 import { EventsModule } from '../events/events.module';
 import { TokensModule } from '../tokens/tokens.module';
-import { RedisModule } from '../redis/redis.module';
+import { RedisModule } from '../../../../shared/redis/redis.module';
 import { UpdateModule } from '../update/update.module';
 
 @Module({

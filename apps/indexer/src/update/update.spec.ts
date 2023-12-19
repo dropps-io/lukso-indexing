@@ -8,7 +8,7 @@ import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterfa
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
 
 import { UpdateService } from './update.service';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../../../../shared/redis/redis.service';
 import { DecodingService } from '../decoding/decoding.service';
 import { ContractsService } from '../contracts/contracts.service';
 
