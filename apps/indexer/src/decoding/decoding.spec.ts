@@ -11,14 +11,16 @@ import { ADDRESS1 } from '../../../../test/utils/test-values';
 import { LSP8_TOKEN_ID_TYPE } from '../ethers/contracts/LSP8/enums';
 import { decodeLsp8TokenId } from './utils/decode-lsp8-token-id';
 import { FetcherService } from '../fetcher/fetcher.service';
+import { RedisService } from '../redis/redis.service';
 
 class TestDecodingService extends DecodingService {
   constructor(
     protected readonly structureDB: LuksoStructureDbService,
     protected readonly ethersService: EthersService,
     protected readonly loggerService: LoggerService,
+    protected readonly redisService: RedisService,
   ) {
-    super(structureDB, ethersService, loggerService);
+    super(structureDB, ethersService, loggerService, redisService);
   }
 
   async testUnwrapLSP6Execute(contractAddress: string, parametersMap: Record<string, string>) {
@@ -118,6 +120,7 @@ describe('DecodingService', () => {
           useValue: new EthersService(new FetcherService(), logger, db),
         },
         { provide: LoggerService, useValue: logger },
+        { provide: RedisService, useValue: db },
       ],
     }).compile();
 

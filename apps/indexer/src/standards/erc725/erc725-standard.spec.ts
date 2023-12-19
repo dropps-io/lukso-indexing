@@ -14,6 +14,7 @@ import { executeQuery } from '../../../../../test/utils/db-helpers';
 import { FetcherService } from '../../fetcher/fetcher.service';
 import { MetadataService } from '../../metadata/metadata.service';
 import { Lsp8standardService } from '../lsp8/lsp8standard.service';
+import { RedisService } from '../../redis/redis.service';
 
 class TestErc725StandardService extends Erc725StandardService {
   testIndexDataChanged = this.indexDataChanged;
@@ -26,6 +27,7 @@ describe('Erc725StandardService', () => {
   const structureDB = new LuksoStructureDbService(logger);
   const ethersService = new EthersService(new FetcherService(), logger, structureDB);
   const metadataService = new MetadataService(logger, dataDB, ethersService);
+  const redisService = new RedisService(logger);
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -34,13 +36,14 @@ describe('Erc725StandardService', () => {
         { provide: LoggerService, useValue: logger },
         { provide: LuksoDataDbService, useValue: dataDB },
         { provide: MetadataService, useValue: metadataService },
+        { provide: RedisService, useValue: redisService },
         {
           provide: Lsp8standardService,
           useValue: new Lsp8standardService(logger, dataDB, metadataService),
         },
         {
           provide: DecodingService,
-          useValue: new DecodingService(structureDB, ethersService, logger),
+          useValue: new DecodingService(structureDB, ethersService, logger, redisService),
         },
       ],
     }).compile();

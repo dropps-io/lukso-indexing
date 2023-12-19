@@ -372,7 +372,6 @@ describe('LuksoDataDbService', () => {
         holderAddress: ADDRESS2,
         contractAddress: contractToken1.address,
         tokenId: null,
-        balanceInEth: '1',
         balanceInWei: '1000000000000000000',
         holderSinceBlock: 1234,
       };
@@ -405,7 +404,6 @@ describe('LuksoDataDbService', () => {
           {
             ...tokenHolder1,
             balanceInWei: '9999999',
-            balanceInEth: '999',
             holderSinceBlock: 2,
           },
           'update',
@@ -419,7 +417,6 @@ describe('LuksoDataDbService', () => {
         expect(res).toEqual({
           ...tokenHolder1,
           balanceInWei: '9999999',
-          balanceInEth: '999',
           holderSinceBlock: tokenHolder1.holderSinceBlock,
         });
       });
@@ -449,7 +446,6 @@ describe('LuksoDataDbService', () => {
         holderAddress: ADDRESS2,
         contractAddress: contractToken1.address,
         tokenId: contractToken1.tokenId,
-        balanceInEth: '1',
         balanceInWei: '1000000000000000000',
         holderSinceBlock: 1234,
       };
@@ -482,7 +478,6 @@ describe('LuksoDataDbService', () => {
           {
             ...tokenHolder1,
             balanceInWei: '9999999',
-            balanceInEth: '999',
             holderSinceBlock: 2,
           },
           'update',
@@ -496,7 +491,6 @@ describe('LuksoDataDbService', () => {
         expect(res).toEqual({
           ...tokenHolder1,
           balanceInWei: '9999999',
-          balanceInEth: '999',
           holderSinceBlock: tokenHolder1.holderSinceBlock,
         });
       });
