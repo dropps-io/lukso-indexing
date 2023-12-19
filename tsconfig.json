@@ -33,6 +33,7 @@
       "@utils/*": ["shared/utils/*"],
       "@shared/types": ["shared/types"],
       "@shared/types/*": ["shared/types/*"],
+      "@shared/redis/*": ["shared/redis/*"],
       "@decorators": ["shared/decorators"],
       "@decorators/*": ["shared/decorators/*"]
     },

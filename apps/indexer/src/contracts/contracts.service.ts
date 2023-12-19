@@ -5,11 +5,11 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { RedisService } from '@shared/redis/redis.service';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
-import { RedisService } from '../../../../shared/redis/redis.service';
-import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 
 @Injectable()
 export class ContractsService {
