@@ -1,15 +1,14 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
-import { AbiItem } from 'web3-utils';
+import { Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiHeader, ApiTags } from '@nestjs/swagger';
 
-import { IndexerToolsService } from './indexerTools.service';
+import { IndexerToolsService } from './indexer-tools.service';
 
 @ApiTags('IndexerTools')
-@Controller('indexertools')
+@Controller('indexer-tools')
 export class IndexerToolsController {
   constructor(private readonly indexerToolsService: IndexerToolsService) {}
 
-  @Get('lastIndexedBlocks')
+  @Get('last-indexed-blocks')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
@@ -29,7 +28,7 @@ export class IndexerToolsController {
     await this.indexerToolsService.getStatus();
   }
 
-  @Get('chunksSizes')
+  @Get('chunks-sizes')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
@@ -39,7 +38,7 @@ export class IndexerToolsController {
     await this.indexerToolsService.getChunksSizes();
   }
 
-  @Get('pLimit')
+  @Get('p-limit')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
@@ -49,7 +48,7 @@ export class IndexerToolsController {
     await this.indexerToolsService.getPLimit();
   }
 
-  @Post('changeLastIndexedBlocks')
+  @Post('change-last-indexed-blocks')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
@@ -59,7 +58,7 @@ export class IndexerToolsController {
     await this.indexerToolsService.setLastIndexedBlocks(newValue);
   }
 
-  @Post('changeStatus')
+  @Post('change-status')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
@@ -69,7 +68,7 @@ export class IndexerToolsController {
     await this.indexerToolsService.setStatus(newValue);
   }
 
-  @Post('changeChunksSizes')
+  @Post('change-chunks-sizes')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',
@@ -79,7 +78,7 @@ export class IndexerToolsController {
     await this.indexerToolsService.setChunkSizes(newValue);
   }
 
-  @Post('changePLimit')
+  @Post('change-p-limit')
   @ApiHeader({
     name: 'accessToken',
     description: 'Google Auth token',

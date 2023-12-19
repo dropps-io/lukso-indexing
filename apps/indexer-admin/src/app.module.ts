@@ -1,11 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 
 import { AbiModule } from './abi/abi.module';
-import { ContractInterfacesModule } from './contractInterfaces/contractInterfaces.module';
-import { ERC725ySchemasModule } from './ERC725ySchemas/ERC725ySchemas.module';
+import { ContractInterfacesModule } from './contract-interfaces/contract-interfaces.module';
+import { ERC725ySchemasModule } from './ERC725y-schemas/ERC725y-schemas.module';
 import { AuthModule } from './auth/auth.module';
 import { GoogleAuthMiddleware } from './auth/utils/google-auth-middleware';
-import { IndexerToolsModule } from './indexerTools/indexerTools.module';
+import { IndexerToolsModule } from './indexer-tools/indexer-tools.module';
 
 @Module({
   imports: [

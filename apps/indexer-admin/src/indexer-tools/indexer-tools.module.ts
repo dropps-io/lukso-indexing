@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { IndexerToolsController } from './indexerTools.controller';
-import { IndexerToolsService } from './indexerTools.service';
+import { IndexerToolsController } from './indexer-tools.controller';
+import { IndexerToolsService } from './indexer-tools.service';
 import { RedisModule } from '../../../../shared/redis/redis.module';
 
 @Module({

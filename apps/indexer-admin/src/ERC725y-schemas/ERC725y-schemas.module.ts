@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { ERC725ySchemasController } from './ERC725ySchemas.controller';
-import { ERC725ySchemasService } from './ERC725ySchemas.service';
+import { ERC725ySchemasController } from './ERC725y-schemas.controller';
+import { ERC725ySchemasService } from './ERC725y-schemas.service';
 
 @Module({
   imports: [],
