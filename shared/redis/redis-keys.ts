@@ -21,4 +21,5 @@ export enum REDIS_KEY {
   BLOCKS_P_LIMIT = 'blocks_p_limit',
   EVENTS_CHUNK_SIZE = 'event_chunk_size',
   BLOCK_CHUNK_SIZE = 'block_chunk_size',
+  INDEXER_STATUS = 'indexer_status',
 }
