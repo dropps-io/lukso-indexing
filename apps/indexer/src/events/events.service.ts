@@ -9,6 +9,8 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
+import { RedisService } from '@shared/redis/redis.service';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
@@ -21,8 +23,6 @@ import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 import { Erc20standardService } from '../standards/erc20/erc20standard.service';
-import { RedisService } from '../../../../shared/redis/redis.service';
-import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
 
 @Injectable()
 export class EventsService {
