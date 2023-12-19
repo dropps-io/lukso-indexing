@@ -15,7 +15,7 @@ import { REDIS_KEY } from '@shared/redis/redis-keys';
 import { DecodingService } from '../decoding/decoding.service';
 import { ContractsService } from '../contracts/contracts.service';
 import { promiseAllSettledPLimit } from '../utils/promise-p-limit';
-import { P_LIMIT } from '../globals';
+import { DEFAULT_P_LIMIT } from '../globals';
 
 /**
  * @class UpdateService
@@ -44,7 +44,7 @@ export class UpdateService {
     const contracts = await this.dataDB.getUnidentifiedContracts();
     await promiseAllSettledPLimit(
       contracts.map((c) => this.contractsService.indexContract(c)),
-      P_LIMIT,
+      await this.getPLimit(),
       { logger: this.logger },
     );
   }
@@ -61,7 +61,7 @@ export class UpdateService {
     const newMethodInterfaces = await this.structureDB.getMethodInterfaceCreatedAfter(latestUpdate);
     await promiseAllSettledPLimit(
       newMethodInterfaces.map((i) => this.updateWithNewMethodInterface(i)),
-      P_LIMIT,
+      await this.getPLimit(),
       { logger: this.logger },
     );
     await this.redisService.setDate(REDIS_KEY.LATEST_UPDATE_DATE, now);
@@ -106,7 +106,7 @@ export class UpdateService {
 
     await promiseAllSettledPLimit(
       events.map((e) => this.decodeAndUpdateEvent(e, methodInterface, methodParameters)),
-      P_LIMIT,
+      await this.getPLimit(),
       { logger: this.logger },
     );
   }
@@ -149,7 +149,7 @@ export class UpdateService {
 
     await promiseAllSettledPLimit(
       transactions.map((tx) => this.decodeAndUpdateTx(tx, methodInterface, methodParameters)),
-      P_LIMIT,
+      await this.getPLimit(),
       { logger: this.logger },
     );
   }
@@ -190,5 +190,10 @@ export class UpdateService {
     const latestUpdateDate = await this.redisService.getDate(REDIS_KEY.LATEST_UPDATE_DATE);
     if (!latestUpdateDate) throw new Error(`Missing ${REDIS_KEY.LATEST_UPDATE_DATE} REDIS config`);
     return latestUpdateDate;
+  }
+
+  protected async getPLimit(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.P_LIMIT);
+    return value || DEFAULT_P_LIMIT;
   }
 }

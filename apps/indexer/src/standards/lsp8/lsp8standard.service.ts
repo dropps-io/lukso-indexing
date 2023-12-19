@@ -5,14 +5,15 @@ import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { EventTable } from '@db/lukso-data/entities/event.table';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { RedisService } from '@shared/redis/redis.service';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { buildTokenUniqueId } from '../../utils/build-token-unique-id';
 import { SUPPORTED_STANDARD } from '../../ethers/types/enums';
 import { promiseAllSettledPLimit } from '../../utils/promise-p-limit';
-import { P_LIMIT } from '../../globals';
+import { DEFAULT_P_LIMIT } from '../../globals';
 import { MetadataService } from '../../metadata/metadata.service';
-
 @Injectable()
 export class Lsp8standardService {
   private readonly logger: winston.Logger;
@@ -20,6 +21,7 @@ export class Lsp8standardService {
     private readonly loggerService: LoggerService,
     private readonly dataDB: LuksoDataDbService,
     private readonly metadataService: MetadataService,
+    private readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('Erc725Standard');
   }
@@ -55,7 +57,12 @@ export class Lsp8standardService {
       tokenIds.map((tokenId) =>
         this.metadataService.indexContractTokenMetadata(address, tokenId, SUPPORTED_STANDARD.LSP8),
       ),
-      P_LIMIT,
+      await this.getPLimit(),
     );
+  }
+
+  protected async getPLimit(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.P_LIMIT);
+    return value || DEFAULT_P_LIMIT;
   }
 }
