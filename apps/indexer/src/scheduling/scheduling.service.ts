@@ -54,40 +54,39 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async indexByBlock() {
-    if ((await this.getIndexerStatus()) !== 1) {
-      // Retrieve configuration and block data
-      const lastBlock = await this.ethersService.getLastBlock();
-      const fromBlock = (await this.getLatestTxIndexedBlock()) + 1;
+    if ((await this.getIndexerStatus()) === 0) return;
+    // Retrieve configuration and block data
+    const lastBlock = await this.ethersService.getLastBlock();
+    const fromBlock = (await this.getLatestTxIndexedBlock()) + 1;
 
-      // Function to index all transactions within a block
-      const indexBlock = async (blockNumber: number) => {
-        // Get transaction hashes for the block
-        const txHashes = await this.ethersService.getBlockTransactions(blockNumber);
-        this.logger.debug(`Indexing ${txHashes.length} transactions from block ${blockNumber}`);
+    // Function to index all transactions within a block
+    const indexBlock = async (blockNumber: number) => {
+      // Get transaction hashes for the block
+      const txHashes = await this.ethersService.getBlockTransactions(blockNumber);
+      this.logger.debug(`Indexing ${txHashes.length} transactions from block ${blockNumber}`);
 
-        await promiseAllSettledPLimit(
-          txHashes.map((txHash) => this.transactionsService.indexTransaction(txHash)),
-          await this.getPLimit(),
-          { logger: this.logger },
-        );
-      };
-
-      const toBlock = Math.min(fromBlock + (await this.getBlockChunkSize()) - 1, lastBlock);
-
-      if (fromBlock >= toBlock) return;
-
-      this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
-
-      const promises = Array.from({ length: toBlock - fromBlock + 1 }, (_, i) =>
-        indexBlock(fromBlock + i),
+      await promiseAllSettledPLimit(
+        txHashes.map((txHash) => this.transactionsService.indexTransaction(txHash)),
+        await this.getPLimit(),
+        { logger: this.logger },
       );
+    };
 
-      // Wait for all promises in the current chunk to resolve
-      await promiseAllPLimit(promises, await this.getBlocksPLimit());
+    const toBlock = Math.min(fromBlock + (await this.getBlockChunkSize()) - 1, lastBlock);
 
-      // Update the latest indexed block for the current chunk
-      await this.redisService.setNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK, toBlock);
-    }
+    if (fromBlock >= toBlock) return;
+
+    this.logger.info(`Indexing transactions from blocks ${fromBlock} to ${toBlock}`);
+
+    const promises = Array.from({ length: toBlock - fromBlock + 1 }, (_, i) =>
+      indexBlock(fromBlock + i),
+    );
+
+    // Wait for all promises in the current chunk to resolve
+    await promiseAllPLimit(promises, await this.getBlocksPLimit());
+
+    // Update the latest indexed block for the current chunk
+    await this.redisService.setNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK, toBlock);
   }
 
   /**
@@ -100,30 +99,29 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async indexByEvents() {
-    if ((await this.getIndexerStatus()) !== 1) {
-      // Retrieve configuration and block data
-      const fromBlock: number = (await this.getLatestEventIndexedBlock()) + 1;
+    if ((await this.getIndexerStatus()) === 0) return;
+    // Retrieve configuration and block data
+    const fromBlock: number = (await this.getLatestEventIndexedBlock()) + 1;
 
-      const lastBlock = await this.ethersService.getLastBlock();
-      // Determine the block number until which we should index in this iteration
-      const toBlock = Math.min(fromBlock + (await this.getEventChunkSize()) - 1, lastBlock);
+    const lastBlock = await this.ethersService.getLastBlock();
+    // Determine the block number until which we should index in this iteration
+    const toBlock = Math.min(fromBlock + (await this.getEventChunkSize()) - 1, lastBlock);
 
-      if (fromBlock >= toBlock) return;
+    if (fromBlock >= toBlock) return;
 
-      this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
+    this.logger.info(`Indexing events from block ${fromBlock} to ${toBlock}`);
 
-      // Retrieve logs from the specified block range
-      const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
+    // Retrieve logs from the specified block range
+    const logs = await this.ethersService.getPastLogs(fromBlock, toBlock);
 
-      // Process transactions and events in batches concurrently
-      await promiseAllPLimit(
-        logs.map((log) => this.eventsService.indexEvent(log)),
-        await this.getPLimit(),
-      );
+    // Process transactions and events in batches concurrently
+    await promiseAllPLimit(
+      logs.map((log) => this.eventsService.indexEvent(log)),
+      await this.getPLimit(),
+    );
 
-      // Update the latest indexed event block in the database and logger
-      await this.redisService.setNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK, toBlock);
-    }
+    // Update the latest indexed event block in the database and logger
+    await this.redisService.setNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK, toBlock);
   }
 
   /**
@@ -138,21 +136,20 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async processContractsToIndex() {
-    if ((await this.getIndexerStatus()) !== 1) {
-      // Retrieve the list of contracts to be indexed
-      const contractsToIndex = await this.dataDB.getContractsToIndex();
+    if ((await this.getIndexerStatus()) === 0) return;
+    // Retrieve the list of contracts to be indexed
+    const contractsToIndex = await this.dataDB.getContractsToIndex();
 
-      if (contractsToIndex.length > 0)
-        this.logger.info(`Processing ${contractsToIndex.length} contracts to index`);
-      else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
+    if (contractsToIndex.length > 0)
+      this.logger.info(`Processing ${contractsToIndex.length} contracts to index`);
+    else this.logger.debug(`Processing ${contractsToIndex.length} contracts to index`);
 
-      // Process contract chunks concurrently
-      await promiseAllSettledPLimit(
-        contractsToIndex.map((contract) => this.contractsService.indexContract(contract)),
-        await this.getPLimit(),
-        { logger: this.logger },
-      );
-    }
+    // Process contract chunks concurrently
+    await promiseAllSettledPLimit(
+      contractsToIndex.map((contract) => this.contractsService.indexContract(contract)),
+      await this.getPLimit(),
+      { logger: this.logger },
+    );
   }
 
   /**
@@ -164,20 +161,19 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async processContractTokensToIndex() {
-    if ((await this.getIndexerStatus()) !== 1) {
-      // Retrieve the list of contract tokens to be indexed
-      const tokensToIndex = await this.dataDB.getTokensToIndex();
+    if ((await this.getIndexerStatus()) === 0) return;
+    // Retrieve the list of contract tokens to be indexed
+    const tokensToIndex = await this.dataDB.getTokensToIndex();
 
-      if (tokensToIndex.length > 0)
-        this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
-      else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
+    if (tokensToIndex.length > 0)
+      this.logger.info(`Processing ${tokensToIndex.length} contract tokens to index`);
+    else this.logger.debug(`Processing ${tokensToIndex.length} contract tokens to index`);
 
-      await promiseAllSettledPLimit(
-        tokensToIndex.map((token) => this.tokensService.indexToken(token)),
-        await this.getPLimit(),
-        { logger: this.logger },
-      );
-    }
+    await promiseAllSettledPLimit(
+      tokensToIndex.map((token) => this.tokensService.indexToken(token)),
+      await this.getPLimit(),
+      { logger: this.logger },
+    );
   }
 
   @Cron(CRON_UPDATE)
