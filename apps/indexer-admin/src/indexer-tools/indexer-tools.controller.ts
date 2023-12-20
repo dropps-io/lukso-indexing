@@ -15,7 +15,7 @@ export class IndexerToolsController {
     required: true,
   })
   async lastIndexedBlocks() {
-    await this.indexerToolsService.getLastIndexedBlocks();
+    return await this.indexerToolsService.getLastIndexedBlocks();
   }
 
   @Get('status')
@@ -25,7 +25,7 @@ export class IndexerToolsController {
     required: true,
   })
   async status() {
-    await this.indexerToolsService.getStatus();
+    return await this.indexerToolsService.getStatus();
   }
 
   @Get('chunks-sizes')
@@ -35,7 +35,7 @@ export class IndexerToolsController {
     required: true,
   })
   async chunksSizes() {
-    await this.indexerToolsService.getChunksSizes();
+    return await this.indexerToolsService.getChunksSizes();
   }
 
   @Get('p-limit')
@@ -45,7 +45,7 @@ export class IndexerToolsController {
     required: true,
   })
   async pLimit() {
-    await this.indexerToolsService.getPLimit();
+    return await this.indexerToolsService.getPLimit();
   }
 
   @Post('change-last-indexed-blocks')
