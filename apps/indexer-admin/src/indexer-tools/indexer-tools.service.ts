@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-
-import { RedisService } from '../../../../shared/redis/redis.service';
-import { REDIS_KEY } from '../../../../shared/redis/redis-keys';
+import { RedisService } from '@shared/redis/redis.service';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 @Injectable()
 export class IndexerToolsService {
