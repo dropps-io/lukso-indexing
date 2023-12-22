@@ -208,8 +208,8 @@ export class LuksoDataDbService implements OnModuleDestroy {
   ): Promise<{ id: number }> {
     let query = `
         INSERT INTO ${DB_DATA_TABLE.METADATA}
-        ("address", "tokenId", "name", "symbol", "description", "isNFT")
-        VALUES ($1, $2, $3, $4, $5, $6)
+        ("address", "eventHash", "tokenId", "name", "symbol", "description", "blocknUMBER", "isNFT")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id;
       `;
 
@@ -217,10 +217,12 @@ export class LuksoDataDbService implements OnModuleDestroy {
     try {
       rows = await this.executeQuery(query, [
         metadata.address,
+        metadata.eventHash,
         metadata.tokenId,
         metadata.name,
         metadata.symbol,
         metadata.description,
+        metadata.blockNumber,
         metadata.isNFT,
       ]);
     } catch (error: any) {
@@ -228,21 +230,24 @@ export class LuksoDataDbService implements OnModuleDestroy {
         const id = (await this.getMetadata(metadata.address, metadata.tokenId || undefined))?.id;
         if (!id) throw new Error('Could not get id of metadata');
         else return { id };
+        //SAMUELQ Should here be where "eventHash" =1 ?
       } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
         query = `
         UPDATE ${DB_DATA_TABLE.METADATA}
-        SET "name" = $3, "symbol" = $4, "description" = $5, "isNFT" = $6
-        WHERE "address" = $1 AND 
-        (("tokenId" = $2 AND $2 IS NOT NULL) OR ("tokenId" IS NULL AND $2 IS NULL))
+        SET "name" = $3, "symbol" = $4, "description" = $5, "blockNumber" = $6 "isNFT" = $7
+        WHERE "eventHash" = $2 AND 
+        (("tokenId" = $3 AND $3 IS NOT NULL) OR ("tokenId" IS NULL AND $3 IS NULL))
           RETURNING id;
       `;
 
         rows = await this.executeQuery(query, [
           metadata.address,
+          metadata.eventHash,
           metadata.tokenId,
           metadata.name,
           metadata.symbol,
           metadata.description,
+          metadata.blockNumber,
           metadata.isNFT,
         ]);
       } else {
@@ -253,6 +258,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
     return { id: rows[0].id };
   }
 
+  //SAMUELQ Same here right?
   public async getMetadata(address: string, tokenId?: string): Promise<MetadataTable | null> {
     const query = `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId"${
       tokenId ? '=$2' : ' IS NULL'
