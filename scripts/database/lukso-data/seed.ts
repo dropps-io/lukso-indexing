@@ -107,15 +107,35 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.TOKEN_HOLDER} (
   `);
 
   await client.query(`
+    CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT} (
+      "id" CHAR(66) NOT NULL,
+      "blockNumber" INTEGER NOT NULL,
+      "date" TIMESTAMPTZ NOT NULL,
+      "transactionHash" CHAR(66) NOT NULL,
+      "logIndex" INTEGER NOT NULL,
+      "address" CHAR(42) NOT NULL,
+      "eventName" VARCHAR(40),
+      "methodId" CHAR(10) NOT NULL,
+      "topic0" CHAR(66) NOT NULL,
+      "topic1" CHAR(66),
+      "topic2" CHAR(66),
+      "topic3" CHAR(66),
+      "data" VARCHAR(16384),
+      PRIMARY KEY ("id")
+      )`);
+
+  await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA} (
   "id" SERIAL PRIMARY KEY,
-  "address" CHAR(42) NOT NULL,
+  "address" CHAR(42),
+  "eventHash" CHAR(66) NOT NULL,
   "tokenId" CHAR(66),
   "name" VARCHAR(256),
   "symbol" VARCHAR(50),
   "description" VARCHAR(4096),
+  "blockNumber" VARCHAR(66),
   "isNFT" BOOLEAN,
-  FOREIGN KEY ("address") REFERENCES ${DB_DATA_TABLE.CONTRACT}("address") ON DELETE CASCADE,
+  FOREIGN KEY ("eventHash") REFERENCES ${DB_DATA_TABLE.EVENT}("id") ON DELETE CASCADE,
   FOREIGN KEY ("address", "tokenId") REFERENCES ${DB_DATA_TABLE.CONTRACT_TOKEN}("address", "tokenId") ON DELETE CASCADE
 )`);
 
@@ -250,24 +270,6 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.WRAPPED_TRANSACTION_PARAMETER} (
   FOREIGN KEY ("wrappedTransactionId") REFERENCES ${DB_DATA_TABLE.WRAPPED_TRANSACTION}("id") ON DELETE CASCADE,
   UNIQUE ("wrappedTransactionId", "position")
 )`);
-
-  await client.query(`
-CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT} ( 
-    "id" CHAR(66) NOT NULL, 
-    "blockNumber" INTEGER NOT NULL, 
-    "date" TIMESTAMPTZ NOT NULL,
-    "transactionHash" CHAR(66) NOT NULL, 
-    "logIndex" INTEGER NOT NULL, 
-    "address" CHAR(42) NOT NULL, 
-    "eventName" VARCHAR(40), 
-    "methodId" CHAR(10) NOT NULL, 
-    "topic0" CHAR(66) NOT NULL, 
-    "topic1" CHAR(66), 
-    "topic2" CHAR(66), 
-    "topic3" CHAR(66), 
-    "data" VARCHAR(16384), 
-    PRIMARY KEY ("id")
-    )`);
 
   await client.query(`
 CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.EVENT_PARAMETER} ( 
