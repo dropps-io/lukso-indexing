@@ -6,9 +6,9 @@ import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInt
 import { CONTRACT_TYPE } from '@shared/types/enums';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 import { MethodParameterTable } from '@db/lukso-structure/entities/methodParameter.table';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { UpdateService } from './update.service';
-import { RedisService } from '../redis/redis.service';
 import { DecodingService } from '../decoding/decoding.service';
 import { ContractsService } from '../contracts/contracts.service';
 

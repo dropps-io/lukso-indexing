@@ -5,22 +5,23 @@ import { LoggerService } from '@libs/logger/logger.service';
 import { Cron } from '@nestjs/schedule';
 import { PreventOverlap } from '@decorators/prevent-overlap.decorator';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
+import { RedisService } from '@shared/redis/redis.service';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { EthersService } from '../ethers/ethers.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { ContractsService } from '../contracts/contracts.service';
 import { EventsService } from '../events/events.service';
 import {
-  BLOCKS_CHUNK_SIZE,
-  BLOCKS_P_LIMIT,
+  DEFAULT_BLOCKS_CHUNK_SIZE,
+  DEFAULT_BLOCKS_P_LIMIT,
   CRON_PROCESS,
   CRON_UPDATE,
-  EVENTS_CHUNK_SIZE,
-  P_LIMIT,
+  DEFAULT_EVENTS_CHUNK_SIZE,
+  DEFAULT_P_LIMIT,
+  DEFAULT_INDEXER_STATUS,
 } from '../globals';
 import { TokensService } from '../tokens/tokens.service';
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
 import { promiseAllPLimit, promiseAllSettledPLimit } from '../utils/promise-p-limit';
 import { UpdateService } from '../update/update.service';
 
@@ -53,6 +54,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async indexByBlock() {
+    if ((await this.getIndexerStatus()) === 0) return;
     // Retrieve configuration and block data
     const lastBlock = await this.ethersService.getLastBlock();
     const fromBlock = (await this.getLatestTxIndexedBlock()) + 1;
@@ -65,12 +67,12 @@ export class SchedulingService {
 
       await promiseAllSettledPLimit(
         txHashes.map((txHash) => this.transactionsService.indexTransaction(txHash)),
-        P_LIMIT,
+        await this.getPLimit(),
         { logger: this.logger },
       );
     };
 
-    const toBlock = Math.min(fromBlock + BLOCKS_CHUNK_SIZE - 1, lastBlock);
+    const toBlock = Math.min(fromBlock + (await this.getBlockChunkSize()) - 1, lastBlock);
 
     if (fromBlock >= toBlock) return;
 
@@ -81,7 +83,7 @@ export class SchedulingService {
     );
 
     // Wait for all promises in the current chunk to resolve
-    await promiseAllPLimit(promises, BLOCKS_P_LIMIT);
+    await promiseAllPLimit(promises, await this.getBlocksPLimit());
 
     // Update the latest indexed block for the current chunk
     await this.redisService.setNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK, toBlock);
@@ -97,12 +99,13 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async indexByEvents() {
+    if ((await this.getIndexerStatus()) === 0) return;
     // Retrieve configuration and block data
     const fromBlock: number = (await this.getLatestEventIndexedBlock()) + 1;
 
     const lastBlock = await this.ethersService.getLastBlock();
     // Determine the block number until which we should index in this iteration
-    const toBlock = Math.min(fromBlock + EVENTS_CHUNK_SIZE - 1, lastBlock);
+    const toBlock = Math.min(fromBlock + (await this.getEventChunkSize()) - 1, lastBlock);
 
     if (fromBlock >= toBlock) return;
 
@@ -114,7 +117,7 @@ export class SchedulingService {
     // Process transactions and events in batches concurrently
     await promiseAllPLimit(
       logs.map((log) => this.eventsService.indexEvent(log)),
-      P_LIMIT,
+      await this.getPLimit(),
     );
 
     // Update the latest indexed event block in the database and logger
@@ -133,6 +136,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async processContractsToIndex() {
+    if ((await this.getIndexerStatus()) === 0) return;
     // Retrieve the list of contracts to be indexed
     const contractsToIndex = await this.dataDB.getContractsToIndex();
 
@@ -143,7 +147,7 @@ export class SchedulingService {
     // Process contract chunks concurrently
     await promiseAllSettledPLimit(
       contractsToIndex.map((contract) => this.contractsService.indexContract(contract)),
-      P_LIMIT,
+      await this.getPLimit(),
       { logger: this.logger },
     );
   }
@@ -157,6 +161,7 @@ export class SchedulingService {
   @PreventOverlap()
   @ExceptionHandler(false)
   protected async processContractTokensToIndex() {
+    if ((await this.getIndexerStatus()) === 0) return;
     // Retrieve the list of contract tokens to be indexed
     const tokensToIndex = await this.dataDB.getTokensToIndex();
 
@@ -166,7 +171,7 @@ export class SchedulingService {
 
     await promiseAllSettledPLimit(
       tokensToIndex.map((token) => this.tokensService.indexToken(token)),
-      P_LIMIT,
+      await this.getPLimit(),
       { logger: this.logger },
     );
   }
@@ -193,5 +198,47 @@ export class SchedulingService {
   protected async getLatestEventIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK);
     return value || 0;
+  }
+
+  protected async getPLimit(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.P_LIMIT);
+    if (value == null) {
+      await this.redisService.setNumber(REDIS_KEY.P_LIMIT, DEFAULT_P_LIMIT);
+    }
+    return value || DEFAULT_P_LIMIT;
+  }
+
+  protected async getBlocksPLimit(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.BLOCKS_P_LIMIT);
+    if (value == null) {
+      await this.redisService.setNumber(REDIS_KEY.BLOCKS_P_LIMIT, DEFAULT_BLOCKS_P_LIMIT);
+    }
+    return value || DEFAULT_BLOCKS_P_LIMIT;
+  }
+
+  protected async getEventChunkSize(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.EVENTS_CHUNK_SIZE);
+    if (value == null) {
+      await this.redisService.setNumber(REDIS_KEY.EVENTS_CHUNK_SIZE, DEFAULT_EVENTS_CHUNK_SIZE);
+    }
+    return value || DEFAULT_EVENTS_CHUNK_SIZE;
+  }
+
+  protected async getBlockChunkSize(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.BLOCK_CHUNK_SIZE);
+    if (value == null) {
+      await this.redisService.setNumber(REDIS_KEY.BLOCK_CHUNK_SIZE, DEFAULT_BLOCKS_CHUNK_SIZE);
+    }
+    return value || DEFAULT_BLOCKS_CHUNK_SIZE;
+  }
+
+  // The indexer status determines whether the indexer is on or off
+  // 0 = OFF / 1 = ON
+  protected async getIndexerStatus(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.INDEXER_STATUS);
+    if (value == null) {
+      await this.redisService.setNumber(REDIS_KEY.INDEXER_STATUS, DEFAULT_INDEXER_STATUS);
+    }
+    return value || DEFAULT_INDEXER_STATUS;
   }
 }

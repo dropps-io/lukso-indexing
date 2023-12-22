@@ -17,4 +17,9 @@ export enum REDIS_KEY {
   FAILED_UNWRAP_TX_COUNT = 'failed_unwrap_tx_count',
   FETCHED_METADATA_COUNT = 'fetched_metadata_count',
   FAILED_FETCH_METADATA_COUNT = 'failed_fetch_metadata_count',
+  P_LIMIT = 'p_limit',
+  BLOCKS_P_LIMIT = 'blocks_p_limit',
+  EVENTS_CHUNK_SIZE = 'event_chunk_size',
+  BLOCK_CHUNK_SIZE = 'block_chunk_size',
+  INDEXER_STATUS = 'indexer_status',
 }

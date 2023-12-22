@@ -4,7 +4,7 @@ import winston from 'winston';
 import Redis from 'ioredis';
 
 import { REDIS_KEY } from './redis-keys';
-import { REDIS_URI } from '../globals';
+import { REDIS_URI } from '../../apps/indexer/src/globals';
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {

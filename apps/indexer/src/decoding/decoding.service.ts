@@ -8,6 +8,8 @@ import { MethodParameterTable } from '@db/lukso-structure/entities/methodParamet
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
+import { RedisService } from '@shared/redis/redis.service';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { EthersService } from '../ethers/ethers.service';
@@ -16,8 +18,6 @@ import { DecodedParameter } from './types/decoded-parameter';
 import { permissionsToString } from './utils/permissions-to-string';
 import { parseDecodedParameter } from './utils/parse-decoded-parameter';
 import { decodedParamToKeyValueMapping } from './utils/decoded-param-to-mapping';
-import { RedisService } from '../redis/redis.service';
-import { REDIS_KEY } from '../redis/redis-keys';
 
 @Injectable()
 export class DecodingService {

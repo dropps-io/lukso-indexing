@@ -8,6 +8,8 @@ import { TX_METHOD_ID } from '@shared/types/enums';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { TransactionReceipt, TransactionResponse } from 'ethers';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
@@ -16,8 +18,6 @@ import { DecodingService } from '../decoding/decoding.service';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { WrappedTransaction } from '../decoding/types/wrapped-tx';
-import { REDIS_KEY } from '../redis/redis-keys';
-import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class TransactionsService {
