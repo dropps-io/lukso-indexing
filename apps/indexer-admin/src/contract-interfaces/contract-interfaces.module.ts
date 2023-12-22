@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { ContractInterfacesController } from './contractInterfaces.controller';
-import { ContractInterfacesService } from './contractInterfaces.service';
+import { ContractInterfacesController } from './contract-interfaces.controller';
+import { ContractInterfacesService } from './contract-interfaces.service';
 
 @Module({
   imports: [],
