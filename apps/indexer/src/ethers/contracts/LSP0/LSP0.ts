@@ -52,9 +52,11 @@ export class LSP0 {
       metadata: {
         address,
         tokenId: null,
+        eventHash: null,
         name: lsp3Profile.name,
         description: lsp3Profile.description,
         symbol: null,
+        blockNumber: null,
         isNFT: null,
       },
       images: [

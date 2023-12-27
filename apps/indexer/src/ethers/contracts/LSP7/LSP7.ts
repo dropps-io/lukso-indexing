@@ -26,10 +26,12 @@ export class LSP7 {
       return {
         metadata: {
           address,
+          eventHash: null,
           tokenId: null,
           name: lsp4Data?.metadata.name || null,
           description: lsp4Data?.metadata.description || null,
           symbol: lsp4Data?.metadata.symbol || null,
+          blockNumber: null,
           isNFT,
         },
         images: lsp4Data?.images || [],

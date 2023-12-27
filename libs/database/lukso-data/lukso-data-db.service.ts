@@ -227,7 +227,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
       ]);
     } catch (error: any) {
       if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
-        const id = (await this.getMetadata(metadata.eventHash, metadata.tokenId || undefined))?.id;
+        const id = (await this.getMetadata(metadata.eventHash!, metadata.tokenId || undefined))?.id;
         if (!id) throw new Error('Could not get id of metadata');
         else return { id };
       } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {

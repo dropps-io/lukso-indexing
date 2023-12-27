@@ -75,10 +75,12 @@ export class LSP4 {
     return {
       metadata: {
         address,
+        eventHash: null,
         tokenId: null,
         name,
         description: lsp4DigitalAsset?.description || null,
         symbol: symbol,
+        blockNumber: null,
         isNFT: null,
       },
       images,

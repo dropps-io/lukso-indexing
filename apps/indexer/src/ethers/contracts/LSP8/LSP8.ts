@@ -160,9 +160,11 @@ export class LSP8 {
     return {
       metadata: {
         address,
+        eventHash: null,
         tokenId,
         name: metadata?.name || null,
         description: metadata?.description || null,
+        blockNumber: null,
         symbol: null,
         isNFT: true,
       },

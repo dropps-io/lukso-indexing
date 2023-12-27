@@ -27,10 +27,12 @@ export class ERC20 {
     return {
       metadata: {
         address,
+        eventHash: null,
         tokenId: null,
         name: (await this.getName(address)) || null,
         symbol: (await this.getSymbol(address)) || null,
         description: null,
+        blockNumber: null,
         isNFT: null,
       },
       assets: [],

@@ -23,7 +23,7 @@ export class MetadataService {
   }
 
   public async indexContractMetadata(
-    eventHash: string,
+    eventHash: string | null,
     address: string,
     interfaceCode?: string,
   ): Promise<void> {
