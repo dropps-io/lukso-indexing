@@ -147,12 +147,12 @@ export class Erc725StandardService {
   ): Promise<void> {
     switch (key.slice(0, 26)) {
       case ERC725Y_KEY.LSP3_PROFILE.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(address, SUPPORTED_STANDARD.LSP0);
+        return await this.metadataService.indexContractMetadata(value, SUPPORTED_STANDARD.LSP0);
       case ERC725Y_KEY.LSP4_METADATA.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(address, undefined);
+        return await this.metadataService.indexContractMetadata(value, address);
       case ERC725Y_KEY.LSP4_TOKEN_NAME.slice(0, 26):
       case ERC725Y_KEY.LSP4_TOKEN_SYMBOL.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(address);
+        return await this.metadataService.indexContractMetadata(value, address);
       case ERC725Y_KEY.LSP8_METADATA_JSON.slice(0, 26):
       case ERC725Y_KEY.LSP8_METADATA_JSON_LEGACY.slice(0, 26):
         return await this.lsp8Service.processTokensMetadataChanges(address, key.slice(26));

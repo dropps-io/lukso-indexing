@@ -22,9 +22,13 @@ export class MetadataService {
     this.logger = this.loggerService.getChildLogger('MetadataService');
   }
 
-  public async indexContractMetadata(address: string, interfaceCode?: string): Promise<void> {
+  public async indexContractMetadata(
+    eventHash: string,
+    address: string,
+    interfaceCode?: string,
+  ): Promise<void> {
     const metadata = await this.fetchContractMetadata(address, interfaceCode);
-    await this.insertMetadata(metadata || defaultMetadata(address));
+    await this.insertMetadata(metadata || defaultMetadata(eventHash, address));
   }
 
   public async indexContractTokenMetadata(
@@ -33,7 +37,7 @@ export class MetadataService {
     interfaceCode?: string,
   ): Promise<void> {
     const res = await this.fetchContractTokenMetadata(address, tokenId, interfaceCode);
-    await this.insertMetadata(res || defaultMetadata(address));
+    await this.insertMetadata(res || defaultMetadata(null, address));
   }
 
   /**

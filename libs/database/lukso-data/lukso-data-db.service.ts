@@ -227,10 +227,9 @@ export class LuksoDataDbService implements OnModuleDestroy {
       ]);
     } catch (error: any) {
       if (onConflict === 'do nothing' && JSON.stringify(error.message).includes('duplicate')) {
-        const id = (await this.getMetadata(metadata.address, metadata.tokenId || undefined))?.id;
+        const id = (await this.getMetadata(metadata.eventHash, metadata.tokenId || undefined))?.id;
         if (!id) throw new Error('Could not get id of metadata');
         else return { id };
-        //SAMUELQ Should here be where "eventHash" =1 ?
       } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
         query = `
         UPDATE ${DB_DATA_TABLE.METADATA}
@@ -258,12 +257,11 @@ export class LuksoDataDbService implements OnModuleDestroy {
     return { id: rows[0].id };
   }
 
-  //SAMUELQ Same here right?
-  public async getMetadata(address: string, tokenId?: string): Promise<MetadataTable | null> {
-    const query = `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "address" = $1 AND "tokenId"${
-      tokenId ? '=$2' : ' IS NULL'
+  public async getMetadata(eventHash: string, tokenId?: string): Promise<MetadataTable | null> {
+    const query = `SELECT * FROM ${DB_DATA_TABLE.METADATA} WHERE "eventHash" = $2 AND "tokenId"${
+      tokenId ? '=$3' : ' IS NULL'
     }`;
-    const queryParams = tokenId ? [address, tokenId] : [address];
+    const queryParams = tokenId ? [eventHash, tokenId] : [eventHash];
 
     const rows = await this.executeQuery<MetadataTable>(query, queryParams);
     return rows.length > 0 ? rows[0] : null;

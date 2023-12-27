@@ -1,7 +1,7 @@
 export interface MetadataTable {
   id: number;
   address: string;
-  eventHash: string;
+  eventHash: string | null;
   tokenId: string | null;
   name: string | null;
   symbol: string | null;
