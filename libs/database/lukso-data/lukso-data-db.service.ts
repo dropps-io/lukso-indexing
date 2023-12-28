@@ -208,7 +208,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
   ): Promise<{ id: number }> {
     let query = `
         INSERT INTO ${DB_DATA_TABLE.METADATA}
-        ("address", "eventHash", "tokenId", "name", "symbol", "description", "blocknUMBER", "isNFT")
+        ("address", "eventHash", "tokenId", "name", "symbol", "description", "blockNumber", "isNFT")
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id;
       `;
