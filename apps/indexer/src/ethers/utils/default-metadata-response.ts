@@ -1,9 +1,9 @@
 import { MetadataResponse } from '@shared/types/metadata-response';
 
 export const defaultMetadata = (
-  eventHash: string,
+  eventHash: string | null,
   address: string,
-  blockNumber: number,
+  blockNumber: number | null,
 ): MetadataResponse => {
   return {
     metadata: {

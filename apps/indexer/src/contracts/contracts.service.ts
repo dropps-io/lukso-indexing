@@ -36,7 +36,7 @@ export class ContractsService {
 
     const contractInterface = await this.identifyContractInterface(address);
     await this.insertOrUpdateContract(address, contractInterface);
-    await this.metadataService.indexContractMetadata(null, address, contractInterface?.code);
+    await this.metadataService.indexContractMetadata(null, address, null, contractInterface?.code);
   }
 
   @DebugLogger()

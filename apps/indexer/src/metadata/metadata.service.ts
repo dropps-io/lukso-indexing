@@ -23,13 +23,13 @@ export class MetadataService {
   }
 
   public async indexContractMetadata(
-    eventHash: string,
+    eventHash: string | null,
     address: string,
-    blockNumber: number,
+    blockNumber: number | null,
     interfaceCode?: string,
   ): Promise<void> {
     const metadata = await this.fetchContractMetadata(address, interfaceCode);
-    await this.insertMetadata(metadata || defaultMetadata(eventHash, address, blockNumber));
+    await this.insertMetadata(metadata || defaultMetadata(eventHash!, address, blockNumber!));
   }
 
   public async indexContractTokenMetadata(
@@ -38,7 +38,7 @@ export class MetadataService {
     interfaceCode?: string,
   ): Promise<void> {
     const res = await this.fetchContractTokenMetadata(address, tokenId, interfaceCode);
-    await this.insertMetadata(res || defaultMetadata(null, address));
+    await this.insertMetadata(res || defaultMetadata(null, address, null));
   }
 
   /**
