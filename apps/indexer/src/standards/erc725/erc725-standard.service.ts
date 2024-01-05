@@ -39,7 +39,7 @@ export class Erc725StandardService {
     assertNonEmptyString(dataKey);
     assertString(dataValue);
 
-    await this.indexDataChanged(event.address, dataKey, dataValue, event.blockNumber);
+    await this.indexDataChanged(event.address, event.id, dataKey, dataValue, event.blockNumber);
   }
 
   /**
@@ -64,7 +64,7 @@ export class Erc725StandardService {
 
     // Iterate through the data keys and values, and index the data changes
     for (let i = 0; i < dataKeys.length; i++)
-      await this.indexDataChanged(address, dataKeys[i], dataValues[i], blockNumber);
+      await this.indexDataChanged(address, null, dataKeys[i], dataValues[i], blockNumber);
   }
 
   /**
@@ -85,6 +85,7 @@ export class Erc725StandardService {
     assertNonEmptyString(parameters.dataKey.value);
     await this.indexDataChanged(
       address,
+      null,
       (parameters.dataKey || parameters.key).value,
       (parameters.dataValue || parameters.value).value,
       blockNumber,
@@ -95,6 +96,7 @@ export class Erc725StandardService {
    * Indexes a data change for a given address, key, value, and block number.
    *
    * @param {string} address - The address associated with the data change.
+   * @param {string} eventHash - The hash of the dataChanged event.
    * @param {string} key - The key associated with the data change.
    * @param {string} value - The value associated with the data change.
    * @param {number} blockNumber - The block number associated with the data change.
@@ -103,6 +105,7 @@ export class Erc725StandardService {
   @ExceptionHandler(false, true)
   protected async indexDataChanged(
     address: string,
+    eventHash: string | null,
     key: string,
     value: string,
     blockNumber: number,
@@ -122,7 +125,14 @@ export class Erc725StandardService {
       if (!JSON.stringify(error.message).includes('duplicate')) throw error;
     }
 
-    await this.routeDataChanged(address, blockNumber, key, value, decodedKeyValue?.value);
+    await this.routeDataChanged(
+      address,
+      eventHash!,
+      blockNumber,
+      key,
+      value,
+      decodedKeyValue?.value,
+    );
   }
 
   protected validateBatchDataKeysAndValues(dataKeys: string[], dataValues: string[]): void {
@@ -138,6 +148,7 @@ export class Erc725StandardService {
 
   protected async routeDataChanged(
     address: string,
+    eventHash: string,
     blockNumber: number,
     key: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -147,12 +158,27 @@ export class Erc725StandardService {
   ): Promise<void> {
     switch (key.slice(0, 26)) {
       case ERC725Y_KEY.LSP3_PROFILE.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(value, SUPPORTED_STANDARD.LSP0);
+        return await this.metadataService.indexContractMetadata(
+          address,
+          eventHash,
+          blockNumber,
+          SUPPORTED_STANDARD.LSP0,
+        );
       case ERC725Y_KEY.LSP4_METADATA.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(value, address);
+        return await this.metadataService.indexContractMetadata(
+          address,
+          eventHash,
+          blockNumber,
+          SUPPORTED_STANDARD.LSP0,
+        );
       case ERC725Y_KEY.LSP4_TOKEN_NAME.slice(0, 26):
       case ERC725Y_KEY.LSP4_TOKEN_SYMBOL.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(value, address);
+        return await this.metadataService.indexContractMetadata(
+          address,
+          eventHash,
+          blockNumber,
+          SUPPORTED_STANDARD.LSP0,
+        );
       case ERC725Y_KEY.LSP8_METADATA_JSON.slice(0, 26):
       case ERC725Y_KEY.LSP8_METADATA_JSON_LEGACY.slice(0, 26):
         return await this.lsp8Service.processTokensMetadataChanges(address, key.slice(26));
