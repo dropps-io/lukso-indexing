@@ -1,15 +1,19 @@
 import { MetadataResponse } from '@shared/types/metadata-response';
 
-export const defaultMetadata = (eventHash: string | null, address: string): MetadataResponse => {
+export const defaultMetadata = (
+  eventHash: string,
+  address: string,
+  blockNumber: number,
+): MetadataResponse => {
   return {
     metadata: {
       address,
-      eventHash: null,
+      eventHash: eventHash,
       tokenId: null,
       name: null,
       symbol: null,
       description: null,
-      blockNumber: null,
+      blockNumber: blockNumber,
       isNFT: null,
     },
     tags: [],
