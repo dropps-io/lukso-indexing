@@ -122,6 +122,7 @@ export class Erc725StandardService {
       if (!JSON.stringify(error.message).includes('duplicate')) throw error;
     }
 
+    // TODO: Add queue to avoid overloading the system (in term of IPFS requests, etc.)
     await this.routeDataChanged(address, blockNumber, key, value, decodedKeyValue?.value);
   }
 

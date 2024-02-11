@@ -10,19 +10,22 @@ import { LSP8_TOKEN_ID_TYPE } from '../../ethers/contracts/LSP8/enums';
  * @returns {string} - The decoded token ID.
  *
  * @example
- * const decodedId = decodeLsp8TokenId('0x123...', LSP8_TOKEN_ID_TYPE.address);
+ * const decodedId = decodeLsp8TokenId('0x123...', DEPRECATED_LSP8_TOKEN_ID_TYPE.address);
  */
 export const decodeLsp8TokenId = (tokenId: string, tokenIdType?: LSP8_TOKEN_ID_TYPE): string => {
-  if (!tokenIdType) return tokenId;
+  if (typeof tokenIdType === 'undefined') return tokenId;
 
   switch (tokenIdType) {
     case LSP8_TOKEN_ID_TYPE.address:
       return getAddress(tokenId.slice(0, 42));
     case LSP8_TOKEN_ID_TYPE.uint256:
       return parseInt(tokenId.slice(2), 16).toString(); // Converts hex to decimal string
-    case LSP8_TOKEN_ID_TYPE.string:
-      return toUtf8String(tokenId);
+    case LSP8_TOKEN_ID_TYPE.string: {
+      const trimmedTokenId = tokenId.replace(/(0x[0-9a-fA-F]*?)0+$/, '$1');
+      return toUtf8String(trimmedTokenId);
+    }
     case LSP8_TOKEN_ID_TYPE.bytes32:
+    case LSP8_TOKEN_ID_TYPE.bytes32Digest:
     default: // When no tokenIdType, we assume it's a bytes32 type
       return tokenId;
   }

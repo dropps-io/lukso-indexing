@@ -192,12 +192,12 @@ export class SchedulingService {
 
   protected async getLatestTxIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK);
-    return value || 0;
+    return value || 1_500_000;
   }
 
   protected async getLatestEventIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK);
-    return value || 0;
+    return value || 1_500_000;
   }
 
   protected async getPLimit(): Promise<number> {

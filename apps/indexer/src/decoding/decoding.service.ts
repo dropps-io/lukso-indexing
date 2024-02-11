@@ -252,6 +252,7 @@ export class DecodingService {
    * @param {ERC725JSONSchema} schema - The schema associated with the key.
    * @returns {{ keyParameters: string[]; keyIndex: number | null }} An object containing the key parameters and key index.
    */
+  @DebugLogger()
   protected decodeErc725YKey(
     key: string,
     schema: ERC725JSONSchema,
@@ -297,6 +298,7 @@ export class DecodingService {
         {
           ...schema,
           keyType: schema.keyType === 'Array' ? 'Singleton' : schema.keyType,
+          valueType: schema.keyType === 'Array' ? 'uint256' : schema.valueType,
         },
       ],
     );
