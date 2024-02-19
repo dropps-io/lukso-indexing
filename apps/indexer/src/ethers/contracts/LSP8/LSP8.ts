@@ -79,7 +79,7 @@ export class LSP8 {
     const baseURI = toUtf8String('0x' + response.slice(10));
 
     // Format the token URI by appending the decoded token ID to the base URI
-    const tokenURI = `${baseURI}/${decodedTokenId.length === 66 ? decodedTokenId.slice(2) : decodedTokenId}`;
+    const tokenURI = `${baseURI}${baseURI.slice(baseURI.length - 1) === '/' ? '' : '/'}${decodedTokenId.length === 66 ? decodedTokenId.slice(2) : decodedTokenId}`;
     return await this.lsp4.fetchLsp4MetadataFromUrl(tokenURI);
   }
 

@@ -24,6 +24,7 @@ import {
 import { TokensService } from '../tokens/tokens.service';
 import { promiseAllPLimit, promiseAllSettledPLimit } from '../utils/promise-p-limit';
 import { UpdateService } from '../update/update.service';
+import { MetadataService } from '../metadata/metadata.service';
 
 @Injectable()
 export class SchedulingService {
@@ -39,6 +40,7 @@ export class SchedulingService {
     private readonly tokensService: TokensService,
     protected readonly redisService: RedisService,
     protected readonly updateService: UpdateService,
+    protected readonly metadataService: MetadataService,
   ) {
     this.logger = loggerService.getChildLogger('SchedulingService');
     this.logger.info('Indexer starting...');
@@ -176,6 +178,29 @@ export class SchedulingService {
     );
   }
 
+  @Cron(CRON_PROCESS)
+  @PreventOverlap()
+  @ExceptionHandler(false)
+  protected async indexMetadata() {
+    if ((await this.getIndexerStatus()) === 0) return;
+    const assets = await this.redisService.getRefreshMetadataAssets(
+      await this.getMetadataChunkSize(),
+    );
+
+    const promises = assets.map((asset) => {
+      if (asset.tokenId)
+        return this.metadataService.indexContractTokenMetadata(
+          asset.address,
+          asset.tokenId,
+          asset.interfaceCode,
+        );
+      else return this.metadataService.indexContractMetadata(asset.address, asset.interfaceCode);
+    });
+
+    await promiseAllSettledPLimit(promises, await this.getPLimit(), { logger: this.logger });
+    await this.redisService.markMessagesAsProcessed(assets.map((asset) => asset.messageId));
+  }
+
   @Cron(CRON_UPDATE)
   @PreventOverlap()
   @ExceptionHandler(false)
@@ -190,14 +215,15 @@ export class SchedulingService {
     await this.updateService.updateTransactionsAndEvents();
   }
 
+  // TODO DELETE THIS SHIT (1_500_000) replace by 0
   protected async getLatestTxIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK);
-    return value || 1_500_000;
+    return value || 1_800_000;
   }
 
   protected async getLatestEventIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK);
-    return value || 1_500_000;
+    return value || 1_800_000;
   }
 
   protected async getPLimit(): Promise<number> {
@@ -228,6 +254,14 @@ export class SchedulingService {
     const value = await this.redisService.getNumber(REDIS_KEY.BLOCK_CHUNK_SIZE);
     if (value == null) {
       await this.redisService.setNumber(REDIS_KEY.BLOCK_CHUNK_SIZE, DEFAULT_BLOCKS_CHUNK_SIZE);
+    }
+    return value || DEFAULT_BLOCKS_CHUNK_SIZE;
+  }
+
+  protected async getMetadataChunkSize(): Promise<number> {
+    const value = await this.redisService.getNumber(REDIS_KEY.METADATA_CHUNK_SIZE);
+    if (value == null) {
+      await this.redisService.setNumber(REDIS_KEY.METADATA_CHUNK_SIZE, DEFAULT_BLOCKS_CHUNK_SIZE);
     }
     return value || DEFAULT_BLOCKS_CHUNK_SIZE;
   }

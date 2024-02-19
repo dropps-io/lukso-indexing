@@ -5,8 +5,6 @@ setupEnv();
 
 export const RPC_URL = getEnvOrThrow<string>('RPC_URL');
 export const REDIS_URI = getEnvOrThrow<string>('REDIS_URI');
-export const WS_PORT = getEnvOrConfig<string>('WS_PORT', 'ws_port');
-
 export const DROP_DB_ON_START = getEnvOrThrow<boolean>('DROP_DB_ON_START', false);
 
 export const IPFS_GATEWAYS = getEnvOrThrow<string>('IPFS_GATEWAYS').split(',');
@@ -23,6 +21,11 @@ export const DEFAULT_EVENTS_CHUNK_SIZE = getEnvOrConfig<number>(
 export const DEFAULT_BLOCKS_CHUNK_SIZE = getEnvOrConfig<number>(
   'BLOCKS_CHUNK_SIZE',
   'blocks_chunk_size',
+);
+
+export const DEFAULT_METADATA_CHUNK_SIZE = getEnvOrConfig<number>(
+  'METADATA_CHUNK_SIZE',
+  'metadata_chunk_size',
 );
 
 export const DEFAULT_INDEXER_STATUS = getEnvOrConfig<number>(

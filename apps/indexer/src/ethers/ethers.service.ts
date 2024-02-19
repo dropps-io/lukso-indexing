@@ -95,6 +95,20 @@ export class EthersService {
 
     const contractInterfaces = await this.structureDB.getContractInterfaces();
 
+    const priorityCodes = ['LSP0', 'LSP7', 'LSP8'];
+
+    contractInterfaces.sort((a, b) => {
+      const aPriority = priorityCodes.includes(a.code) ? 0 : 1;
+      const bPriority = priorityCodes.includes(b.code) ? 0 : 1;
+
+      // If both have the same priority, you can further sort by another criteria, like name or id
+      if (aPriority === bPriority) {
+        return a.name.localeCompare(b.name); // For example, sort alphabetically by name if priorities are equal
+      }
+
+      return aPriority - bPriority; // Prioritize by predefined codes
+    });
+
     for (const contractInterface of contractInterfaces) {
       // Check if the contract bytecode contains the contract interface id.
       if (contractCode.includes(contractInterface.id.slice(2, 10))) {

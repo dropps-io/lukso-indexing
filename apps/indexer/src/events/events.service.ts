@@ -10,7 +10,6 @@ import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 import { RedisService } from '@shared/redis/redis.service';
-import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
@@ -18,7 +17,6 @@ import { Lsp7standardService } from '../standards/lsp7/lsp7standard.service';
 import { Lsp8standardService } from '../standards/lsp8/lsp8standard.service';
 import { buildLogId } from '../utils/build-log-id';
 import { DecodingService } from '../decoding/decoding.service';
-import { IndexingWsGateway } from '../indexing-ws/indexing-ws.gateway';
 import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
@@ -36,7 +34,6 @@ export class EventsService {
     protected readonly decodingService: DecodingService,
     protected readonly dataDB: LuksoDataDbService,
     protected readonly structureDB: LuksoStructureDbService,
-    protected readonly indexingWebSocket: IndexingWsGateway,
     protected readonly ethersService: EthersService,
     // Redis service is only used for exception handling
     protected readonly redisService: RedisService,
@@ -52,7 +49,7 @@ export class EventsService {
    * @param {Log} log - The log object containing event data.
    */
   @DebugLogger()
-  @ExceptionHandler(false, true, null, REDIS_KEY.SKIP_EVENT_COUNT)
+  @ExceptionHandler(false, true, null)
   public async indexEvent(log: Log) {
     const logId = buildLogId(log.transactionHash, log.index);
     const methodId = methodIdFromInput(log.topics[0]);
@@ -68,14 +65,12 @@ export class EventsService {
   }
 
   @DebugLogger()
-  @ExceptionHandler(false, true, null, REDIS_KEY.SKIP_EVENT_PARAMS_COUNT)
+  @ExceptionHandler(false, true, null)
   private async indexEventParameters(log: Log, logId: string, eventRow: EventTable) {
     const decodedParameters = await this.decodingService.decodeLogParameters(log.data, [
       ...log.topics,
     ]);
     await this.handleDecodedParameters(logId, eventRow, decodedParameters || []);
-
-    this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
   }
 
   @DebugLogger()
