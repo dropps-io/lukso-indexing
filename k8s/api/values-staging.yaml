@@ -1,3 +1,0 @@
-staticIPName: 'indexing-staging-api'
-host: 'indexing.staging.dropps.io'
-targetPort: 3001
