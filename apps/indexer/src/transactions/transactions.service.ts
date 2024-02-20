@@ -42,7 +42,7 @@ export class TransactionsService {
    * @param {string} transactionHash - The transaction hash to index.
    */
   @DebugLogger()
-  @ExceptionHandler(false, true, null, REDIS_KEY.SKIP_TX_COUNT)
+  @ExceptionHandler(false, true, null)
   public async indexTransaction(transactionHash: string) {
     if (await this.isTransactionIndexed(transactionHash)) return;
 

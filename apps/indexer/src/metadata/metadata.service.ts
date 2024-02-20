@@ -22,11 +22,13 @@ export class MetadataService {
     this.logger = this.loggerService.getChildLogger('MetadataService');
   }
 
+  @ExceptionHandler(false, true)
   public async indexContractMetadata(address: string, interfaceCode?: string): Promise<void> {
     const metadata = await this.fetchContractMetadata(address, interfaceCode);
     await this.insertMetadata(metadata || defaultMetadata(address));
   }
 
+  @ExceptionHandler(false, true)
   public async indexContractTokenMetadata(
     address: string,
     tokenId: string,

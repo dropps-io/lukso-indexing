@@ -11,6 +11,7 @@ import { ContractsModule } from '../contracts/contracts.module';
 import { EventsModule } from '../events/events.module';
 import { TokensModule } from '../tokens/tokens.module';
 import { UpdateModule } from '../update/update.module';
+import { MetadataModule } from '../metadata/metadata.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UpdateModule } from '../update/update.module';
     TokensModule,
     RedisModule,
     UpdateModule,
+    MetadataModule,
   ],
   providers: [SchedulingService],
   exports: [SchedulingService],

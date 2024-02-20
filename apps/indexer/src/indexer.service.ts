@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-
 import { RedisService } from '@shared/redis/redis.service';
+
 import { DROP_DB_ON_START } from './globals';
 
 /**

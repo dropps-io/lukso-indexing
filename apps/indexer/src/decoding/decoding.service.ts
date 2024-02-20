@@ -9,7 +9,6 @@ import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
 import { RedisService } from '@shared/redis/redis.service';
-import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { EthersService } from '../ethers/ethers.service';
@@ -70,14 +69,12 @@ export class DecodingService {
         _methodParameters,
       );
 
-      await this.redisService.incrementNumber(REDIS_KEY.DECODED_TX_COUNT);
       return { methodName, parameters };
     } catch (e: any) {
       this.logger.error(
         `Error decoding transaction input with methodId ${methodId}: ${e.message}`,
         { input, methodId, stack: e.stack },
       );
-      await this.redisService.incrementNumber(REDIS_KEY.FAILED_DECODE_TX_COUNT);
       return methodName ? { methodName, parameters: [] } : null;
     }
   }
@@ -92,7 +89,7 @@ export class DecodingService {
    * @returns {Promise<DecodedParameter[] | null>} A Promise that resolves to an array of DecodedParameter objects,
    *          containing the decoded parameter values, positions, names, and types, or null if an error occurs.
    */
-  @ExceptionHandler(false, true, null, REDIS_KEY.FAILED_DECODE_EVENT_COUNT)
+  @ExceptionHandler(false, true, null)
   public async decodeLogParameters(
     data: string,
     topics: string[],
@@ -130,7 +127,6 @@ export class DecodingService {
       nonIndexedParameters,
     );
 
-    await this.redisService.incrementNumber(REDIS_KEY.DECODED_EVENT_COUNT);
     return [...indexedParametersDecoded, ...nonIndexedParametersDecoded];
   }
 
@@ -172,7 +168,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction[] | null>} - An array containing the wrapped transaction object(s), or null if the method ID is not recognized.
    */
-  @ExceptionHandler(false, true, null, REDIS_KEY.FAILED_UNWRAP_TX_COUNT)
+  @ExceptionHandler(false, true, null)
   public async unwrapTransaction(
     methodId: string,
     decodedParameters: DecodedParameter[],
@@ -219,7 +215,7 @@ export class DecodingService {
    * @param {string} value - The value to decode.
    * @returns {Promise<{ value: string; keyParameters: string[]; keyIndex: number | null } | null>} A Promise that resolves to an object containing the decoded value, key parameters, and key index. If the value cannot be decoded, it resolves to null.
    */
-  @ExceptionHandler(false, true, null, REDIS_KEY.FAILED_DECODE_ERC725Y_COUNT)
+  @ExceptionHandler(false, true, null)
   public async decodeErc725YKeyValuePair(
     key: string,
     value: string,
@@ -240,7 +236,6 @@ export class DecodingService {
 
     if (!decodedValue) return null;
 
-    await this.redisService.incrementNumber(REDIS_KEY.DECODED_ERC725Y_COUNT);
     // Return the decoded value and key parameters, if applicable
     return { value: decodedValue, ...decodedKey };
   }
@@ -252,6 +247,7 @@ export class DecodingService {
    * @param {ERC725JSONSchema} schema - The schema associated with the key.
    * @returns {{ keyParameters: string[]; keyIndex: number | null }} An object containing the key parameters and key index.
    */
+  @DebugLogger()
   protected decodeErc725YKey(
     key: string,
     schema: ERC725JSONSchema,
@@ -297,6 +293,7 @@ export class DecodingService {
         {
           ...schema,
           keyType: schema.keyType === 'Array' ? 'Singleton' : schema.keyType,
+          valueType: schema.keyType === 'Array' ? 'uint256' : schema.valueType,
         },
       ],
     );

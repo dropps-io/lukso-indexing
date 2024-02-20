@@ -1,7 +1,7 @@
 export enum LSP8_TOKEN_ID_TYPE {
-  unknown = 0,
-  address = 1,
-  uint256 = 2,
+  uint256 = 0,
+  string = 1,
+  address = 2,
   bytes32 = 3,
-  string = 4,
+  bytes32Digest = 4,
 }

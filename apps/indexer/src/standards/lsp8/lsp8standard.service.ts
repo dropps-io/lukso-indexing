@@ -20,7 +20,6 @@ export class Lsp8standardService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly dataDB: LuksoDataDbService,
-    private readonly metadataService: MetadataService,
     private readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('Erc725Standard');
@@ -55,7 +54,7 @@ export class Lsp8standardService {
     const tokenIds = tokens.map((token) => token.tokenId);
     await promiseAllSettledPLimit(
       tokenIds.map((tokenId) =>
-        this.metadataService.indexContractTokenMetadata(address, tokenId, SUPPORTED_STANDARD.LSP8),
+        this.redisService.addAssetToRefreshDataStream(address, tokenId, SUPPORTED_STANDARD.LSP8),
       ),
       await this.getPLimit(),
     );

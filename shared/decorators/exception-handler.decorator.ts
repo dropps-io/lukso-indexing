@@ -1,15 +1,13 @@
 import winston from 'winston';
 
-import { REDIS_KEY } from '../redis/redis-keys';
 import { RedisService } from '../redis/redis.service';
 
 interface ServiceInstance {
   logger: winston.Logger | undefined;
-  redisService: RedisService | undefined;
 }
 
 export const ExceptionHandler =
-  (shouldThrow = true, logArgs = false, returnValue?: any, redisValueIncr?: REDIS_KEY) =>
+  (shouldThrow = true, logArgs = false, returnValue?: any) =>
   (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<any>): void => {
     const originalMethod = descriptor.value;
 
@@ -22,8 +20,6 @@ export const ExceptionHandler =
             stack: e.stack,
             ...(logArgs ? argsToObject(args) : {}),
           });
-        if (this.redisService && redisValueIncr)
-          await this.redisService.incrementNumber(redisValueIncr);
 
         if (shouldThrow) throw e;
         else if (returnValue !== undefined) return returnValue;

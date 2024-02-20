@@ -6,6 +6,7 @@ import { assertNonEmptyString, assertString } from '@utils/validators';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { EventTable } from '@db/lukso-data/entities/event.table';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { DecodedParameter } from '../../decoding/types/decoded-parameter';
 import { DecodingService } from '../../decoding/decoding.service';
@@ -22,8 +23,8 @@ export class Erc725StandardService {
     private readonly loggerService: LoggerService,
     private readonly dataDB: LuksoDataDbService,
     private readonly decodingService: DecodingService,
-    protected readonly metadataService: MetadataService,
     protected readonly lsp8Service: Lsp8standardService,
+    protected readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('Erc725Standard');
   }
@@ -122,6 +123,7 @@ export class Erc725StandardService {
       if (!JSON.stringify(error.message).includes('duplicate')) throw error;
     }
 
+    // TODO: Add queue to avoid overloading the system (in term of IPFS requests, etc.)
     await this.routeDataChanged(address, blockNumber, key, value, decodedKeyValue?.value);
   }
 
@@ -147,12 +149,16 @@ export class Erc725StandardService {
   ): Promise<void> {
     switch (key.slice(0, 26)) {
       case ERC725Y_KEY.LSP3_PROFILE.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(address, SUPPORTED_STANDARD.LSP0);
+        return await this.redisService.addAssetToRefreshDataStream(
+          address,
+          undefined,
+          SUPPORTED_STANDARD.LSP0,
+        );
       case ERC725Y_KEY.LSP4_METADATA.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(address, undefined);
+        return await this.redisService.addAssetToRefreshDataStream(address);
       case ERC725Y_KEY.LSP4_TOKEN_NAME.slice(0, 26):
       case ERC725Y_KEY.LSP4_TOKEN_SYMBOL.slice(0, 26):
-        return await this.metadataService.indexContractMetadata(address);
+        return await this.redisService.addAssetToRefreshDataStream(address);
       case ERC725Y_KEY.LSP8_METADATA_JSON.slice(0, 26):
       case ERC725Y_KEY.LSP8_METADATA_JSON_LEGACY.slice(0, 26):
         return await this.lsp8Service.processTokensMetadataChanges(address, key.slice(26));

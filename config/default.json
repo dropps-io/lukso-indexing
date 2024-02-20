@@ -1,10 +1,10 @@
 {
-  "ws_port": 3002,
   "cron_process": "*/30 * * * * *",
   "cron_update": "0 0 * * *",
-  "p_limit": 10,
-  "blocks_p_limit": 50,
-  "events_chunk_size": 1000,
-  "blocks_chunk_size": 1000,
+  "p_limit": 4,
+  "blocks_p_limit": 10,
+  "events_chunk_size": 100,
+  "blocks_chunk_size": 100,
+  "metadata_chunk_size": 100,
   "default_indexer_status": 1
 }

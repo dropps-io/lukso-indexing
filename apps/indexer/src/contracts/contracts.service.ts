@@ -6,7 +6,6 @@ import { ContractTable } from '@db/lukso-data/entities/contract.table';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { RedisService } from '@shared/redis/redis.service';
-import { REDIS_KEY } from '@shared/redis/redis-keys';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
@@ -25,7 +24,7 @@ export class ContractsService {
   }
 
   @DebugLogger()
-  @ExceptionHandler(true, true, null, REDIS_KEY.SKIP_CONTRACT_COUNT)
+  @ExceptionHandler(true, true, null)
   public async indexContract(address: string): Promise<void> {
     this.logger.debug(`Indexing address ${address}`, { address });
 
@@ -34,24 +33,19 @@ export class ContractsService {
       return;
     }
 
-    const contractInterface = await this.identifyContractInterface(address);
+    const contractInterface = await this.ethersService.identifyContractInterface(address);
     await this.insertOrUpdateContract(address, contractInterface);
-    await this.metadataService.indexContractMetadata(address, contractInterface?.code);
+    await this.redisService.addAssetToRefreshDataStream(
+      address,
+      undefined,
+      contractInterface?.code,
+    );
   }
 
   @DebugLogger()
   private async isContractIndexed(address: string): Promise<boolean> {
     const contract = await this.dataDB.getContractByAddress(address);
     return !!contract?.interfaceCode;
-  }
-
-  @DebugLogger()
-  private async identifyContractInterface(address: string) {
-    const contractInterface = await this.ethersService.identifyContractInterface(address);
-    if (contractInterface)
-      await this.redisService.incrementNumber(REDIS_KEY.DECODED_CONTRACT_COUNT);
-    else await this.redisService.incrementNumber(REDIS_KEY.FAILED_DECODE_CONTRACT_COUNT);
-    return contractInterface;
   }
 
   @DebugLogger()

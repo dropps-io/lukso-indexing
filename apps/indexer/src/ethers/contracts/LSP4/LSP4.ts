@@ -12,7 +12,7 @@ import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 import { erc725yGetData } from '../utils/erc725y-get-data';
-import { decodeJsonUrl } from '../../../utils/json-url';
+import { decodeVerifiableUrl } from '../../../utils/json-url';
 import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class LSP4 {
@@ -51,7 +51,7 @@ export class LSP4 {
       const response = await erc725yGetData(address, ERC725Y_KEY.LSP4_METADATA);
 
       if (response) {
-        const url = decodeJsonUrl(response);
+        const url = decodeVerifiableUrl(response);
         lsp4DigitalAsset = await this.fetchLsp4MetadataFromUrl(url);
 
         if (lsp4DigitalAsset) {
@@ -86,7 +86,7 @@ export class LSP4 {
       links: lsp4DigitalAsset?.links || [],
       assets:
         lsp4DigitalAsset?.assets.map((asset) => {
-          return { ...asset, hash: asset.verificationData };
+          return { ...asset, hash: asset.verification.data };
         }) || [],
     };
   }
@@ -103,13 +103,7 @@ export class LSP4 {
   public async fetchLsp4MetadataFromUrl(
     url: string,
   ): Promise<(LSP4DigitalAsset & { name?: string }) | null> {
-    const tokenMetadata = await this.fetcherService.fetch<Lsp4DigitalAssetJson>(
-      url,
-      {},
-      3,
-      0,
-      5000,
-    );
+    const tokenMetadata = await this.fetcherService.fetch<Lsp4DigitalAssetJson>(url, {}, 2, 0);
 
     if ('LSP4Metadata' in tokenMetadata) {
       // Case when tokenMetadata has a shape of { LSP4Metadata: LSP4DigitalAsset & { name?: string } }

@@ -4,6 +4,7 @@ import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { EthersService } from '../ethers/ethers.service';
 import { MetadataService } from '../metadata/metadata.service';
@@ -18,7 +19,7 @@ export class TokensService {
     protected readonly loggerService: LoggerService,
     protected readonly dataDB: LuksoDataDbService,
     protected readonly ethersService: EthersService,
-    protected readonly metadataService: MetadataService,
+    protected readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('TokensService');
   }
@@ -27,6 +28,7 @@ export class TokensService {
   public async indexToken(token: ContractTokenTable) {
     try {
       const decodedTokenId = await this.getDecodedTokenId(token.address, token.tokenId);
+      const contract = await this.dataDB.getContractByAddress(token.address);
 
       await this.dataDB.insertContractToken(
         {
@@ -36,7 +38,11 @@ export class TokensService {
         'update',
       );
 
-      await this.metadataService.indexContractTokenMetadata(token.address, token.tokenId);
+      await this.redisService.addAssetToRefreshDataStream(
+        token.address,
+        token.tokenId,
+        contract?.interfaceCode || undefined,
+      );
     } catch (error) {
       this.logger.error(`Decoding token for ${token.tokenId} ${error}`);
       await this.dataDB.insertContractToken(
