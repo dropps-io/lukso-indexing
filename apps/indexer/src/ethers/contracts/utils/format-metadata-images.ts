@@ -9,7 +9,7 @@ export const formatMetadataImages = (
 ): Omit<MetadataImageTable, 'metadataId'>[] => {
   return images
     ? images.flat().map((image) => {
-        return { ...image, type: type || null };
+        return { ...image, type: type || null, hash: image.verification.data };
       })
     : [];
 };

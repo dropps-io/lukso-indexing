@@ -41,31 +41,38 @@ describe('EthersService', () => {
 
     it('should return null if contract interface not found', async () => {
       const contractInterface = await service.identifyContractInterface(
-        '0xA5257143E09Bc5A493D914fBCb6347437Ae639e3',
+        '0xc5966895BE86be5CC6dE436B63fD41F60c75B917',
       );
       expect(contractInterface).toBeNull();
     });
 
     it('should identify a LSP7', async () => {
       const contractInterface = await service.identifyContractInterface(
-        '0xDfC36914b30DE4985C739B7ddEba16165F3bB313',
+        '0xDF9124ee97d7a8eB8fe845b6C6eE8a8D75B55a57',
       );
       expect(contractInterface?.code).toEqual('LSP7');
-    });
+    }, 30000);
 
     it('should identify a LSP8', async () => {
       const contractInterface = await service.identifyContractInterface(
-        '0x8AfC7c0E68432A44E7834e9D2d4F537673d7312a',
+        '0x402e916fa2b5d5420d1e65466e9553d41d0f66f7',
       );
       expect(contractInterface?.code).toEqual('LSP8');
-    });
+    }, 30000);
 
     it('should identify a LSP6', async () => {
       const contractInterface = await service.identifyContractInterface(
-        '0xfb0937538945238BE8009BCf5b8D77c1644a801D',
+        '0xb8eF04DF9c64E53e1770cBA05FE387356DC563aB',
       );
       expect(contractInterface?.code).toEqual('LSP6');
-    });
+    }, 30000);
+
+    it('should identify a LSP0', async () => {
+      const contractInterface = await service.identifyContractInterface(
+        '0xA36C2c15207F19E133c9E64c57dE9eA1F49Dcc66',
+      );
+      expect(contractInterface?.code).toEqual('LSP0');
+    }, 30000);
 
     it('should identify an EOA', async () => {
       const contractInterface = await service.identifyContractInterface(

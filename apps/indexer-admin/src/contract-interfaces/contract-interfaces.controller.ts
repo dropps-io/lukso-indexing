@@ -2,10 +2,10 @@ import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/commo
 import { ApiHeader, ApiTags } from '@nestjs/swagger';
 import { ContractInterfaceTable } from '@db/lukso-structure/entities/contractInterface.table';
 
-import { ContractInterfacesService } from './contractInterfaces.service';
+import { ContractInterfacesService } from './contract-interfaces.service';
 
-@ApiTags('contractInterfaces')
-@Controller('contractInterfaces')
+@ApiTags('contract-interfaces')
+@Controller('contract-interfaces')
 export class ContractInterfacesController {
   constructor(private readonly contractInterfaceService: ContractInterfacesService) {}
 

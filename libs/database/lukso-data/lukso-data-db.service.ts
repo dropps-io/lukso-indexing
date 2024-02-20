@@ -153,12 +153,12 @@ export class LuksoDataDbService implements OnModuleDestroy {
   }
 
   public async insertTokenHolder(
-    tokenHolder: TokenHolderTable, // 'balanceInEth' is not supplied, hence we omit it
+    tokenHolder: TokenHolderTable,
     onConflict: 'throw' | 'update' | 'do nothing' = 'throw',
   ): Promise<void> {
     let query = `
-          INSERT INTO ${DB_DATA_TABLE.TOKEN_HOLDER} ("holderAddress", "contractAddress", "tokenId", "balanceInWei", "balanceInEth", "holderSinceBlock")
-          VALUES ($1, $2, $3, $4, $5, $6)
+          INSERT INTO ${DB_DATA_TABLE.TOKEN_HOLDER} ("holderAddress", "contractAddress", "tokenId", "balanceInWei", "holderSinceBlock")
+          VALUES ($1, $2, $3, $4, $5)
         `;
 
     try {
@@ -167,7 +167,6 @@ export class LuksoDataDbService implements OnModuleDestroy {
         tokenHolder.contractAddress,
         tokenHolder.tokenId,
         tokenHolder.balanceInWei,
-        tokenHolder.balanceInEth,
         tokenHolder.holderSinceBlock,
       ]);
     } catch (error: any) {
@@ -176,7 +175,7 @@ export class LuksoDataDbService implements OnModuleDestroy {
       } else if (onConflict === 'update' && JSON.stringify(error.message).includes('duplicate')) {
         query = `
           UPDATE ${DB_DATA_TABLE.TOKEN_HOLDER} 
-          SET "balanceInWei" = $4, "balanceInEth" = $5
+          SET "balanceInWei" = $4
           WHERE "holderAddress" = $1 AND "contractAddress" = $2 
           AND (("tokenId" = $3 AND $3 IS NOT NULL) OR ("tokenId" IS NULL AND $3 IS NULL));
         `;
@@ -186,7 +185,6 @@ export class LuksoDataDbService implements OnModuleDestroy {
           tokenHolder.contractAddress,
           tokenHolder.tokenId,
           tokenHolder.balanceInWei,
-          tokenHolder.balanceInEth,
         ]);
       } else {
         // If some other error occurred, rethrow it

@@ -3,7 +3,6 @@ import { LoggerService } from '@libs/logger/logger.service';
 import winston from 'winston';
 import { LuksoDataDbService } from '@db/lukso-data/lukso-data-db.service';
 import { EventTable } from '@db/lukso-data/entities/event.table';
-import { formatEther } from 'ethers';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 
@@ -40,14 +39,12 @@ export class Lsp7standardService {
     blockNumber: number,
   ): Promise<void> {
     const balance = await this.ethersService.lsp7.balanceOf(tokenAddress, holderAddress);
-    const isNFT = await this.ethersService.lsp7.isNFT(tokenAddress);
     await this.dataDB.insertTokenHolder(
       {
         holderAddress,
         contractAddress: tokenAddress,
         tokenId: null,
         balanceInWei: balance,
-        balanceInEth: isNFT ? balance : formatEther(balance),
         holderSinceBlock: blockNumber,
       },
       'update',

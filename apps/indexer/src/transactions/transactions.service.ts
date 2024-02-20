@@ -8,6 +8,8 @@ import { TX_METHOD_ID } from '@shared/types/enums';
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { TransactionReceipt, TransactionResponse } from 'ethers';
+import { REDIS_KEY } from '@shared/redis/redis-keys';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
@@ -26,6 +28,8 @@ export class TransactionsService {
     protected readonly ethersService: EthersService,
     protected readonly decodingService: DecodingService,
     protected readonly erc725Service: Erc725StandardService,
+    // Redis service is only used for exception handling
+    protected readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('EventsService');
   }
@@ -38,7 +42,7 @@ export class TransactionsService {
    * @param {string} transactionHash - The transaction hash to index.
    */
   @DebugLogger()
-  @ExceptionHandler(false, true)
+  @ExceptionHandler(false, true, null)
   public async indexTransaction(transactionHash: string) {
     if (await this.isTransactionIndexed(transactionHash)) return;
 

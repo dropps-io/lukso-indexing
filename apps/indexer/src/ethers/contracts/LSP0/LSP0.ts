@@ -8,7 +8,7 @@ import { METADATA_IMAGE_TYPE } from '../../types/enums';
 import { ERC725Y_KEY } from '../config';
 import { formatMetadataImages } from '../utils/format-metadata-images';
 import { erc725yGetData } from '../utils/erc725y-get-data';
-import { decodeJsonUrl } from '../../../utils/json-url';
+import { decodeVerifiableUrl } from '../../../utils/json-url';
 import { FetcherService } from '../../../fetcher/fetcher.service';
 
 export class LSP0 {
@@ -36,7 +36,7 @@ export class LSP0 {
       return null;
     }
 
-    const url = decodeJsonUrl(response);
+    const url = decodeVerifiableUrl(response);
 
     // Extract the LSP3Profile from the fetched data, if available.
     const lsp3Profile = await this.fetchLsp3ProfileFromUrl(url);
@@ -77,7 +77,7 @@ export class LSP0 {
    */
   @ExceptionHandler(false, true, null)
   protected async fetchLsp3ProfileFromUrl(url: string): Promise<LSP3Profile | null> {
-    const profileMetadata = await this.fetcherService.fetch<Lsp3ProfileJson>(url, {}, 3, 0, 5000);
+    const profileMetadata = await this.fetcherService.fetch<Lsp3ProfileJson>(url, {}, 2, 0);
 
     if (typeof profileMetadata === 'object' && profileMetadata !== null) {
       if ('LSP3Profile' in profileMetadata) {

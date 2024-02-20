@@ -8,6 +8,7 @@ import { MethodParameterTable } from '@db/lukso-structure/entities/methodParamet
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { ERC725Y_SUPPORTED_KEYS, WRAPPING_METHOD } from './types/enums';
 import { EthersService } from '../ethers/ethers.service';
@@ -25,6 +26,8 @@ export class DecodingService {
     protected readonly structureDB: LuksoStructureDbService,
     protected readonly ethersService: EthersService,
     protected loggerService: LoggerService,
+    // Redis service is only used for exception handling
+    protected readonly redisService: RedisService,
   ) {
     this.logger = loggerService.getChildLogger('Decoding');
   }
@@ -38,6 +41,7 @@ export class DecodingService {
    * @returns {Promise<{parameters: DecodedParameter[]; methodName: string;} | null>} - An object containing the decoded
    * parameters and the method name, or null if the method interface is not found.
    */
+  @DebugLogger()
   public async decodeTransactionInput(
     input: string,
     _methodInterface?: MethodInterfaceTable,
@@ -64,6 +68,7 @@ export class DecodingService {
         '0x' + input.slice(10),
         _methodParameters,
       );
+
       return { methodName, parameters };
     } catch (e: any) {
       this.logger.error(
@@ -242,6 +247,7 @@ export class DecodingService {
    * @param {ERC725JSONSchema} schema - The schema associated with the key.
    * @returns {{ keyParameters: string[]; keyIndex: number | null }} An object containing the key parameters and key index.
    */
+  @DebugLogger()
   protected decodeErc725YKey(
     key: string,
     schema: ERC725JSONSchema,
@@ -287,6 +293,7 @@ export class DecodingService {
         {
           ...schema,
           keyType: schema.keyType === 'Array' ? 'Singleton' : schema.keyType,
+          valueType: schema.keyType === 'Array' ? 'uint256' : schema.valueType,
         },
       ],
     );
@@ -308,7 +315,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(true, true)
   protected async unwrapErc725XExecute(
     parametersMap: Record<string, string>,
   ): Promise<WrappedTransaction | null> {
@@ -331,7 +338,7 @@ export class DecodingService {
    *
    * @returns {Promise<WrappedTransaction | null>} - The wrapped transaction object, or null if an error occurs.
    */
-  @ExceptionHandler(false, true, null)
+  @ExceptionHandler(true, true)
   protected async unwrapLSP6Execute(
     contractAddress: string,
     parametersMap: Record<string, string>,

@@ -7,7 +7,7 @@ import LSP1DelegateUP from '@lukso/lsp-smart-contracts/artifacts/LSP1UniversalRe
 import LSP1DelegateVault from '@lukso/lsp-smart-contracts/artifacts/LSP1UniversalReceiverDelegateVault.json';
 import { AbiItem } from 'web3-utils';
 import JSONSCHEMALSP1 from '@erc725/erc725.js/schemas/LSP1UniversalReceiverDelegate.json';
-import JSONSCHEMALSP3 from '@erc725/erc725.js/schemas/LSP3UniversalProfileMetadata.json';
+import JSONSCHEMALSP3 from '@erc725/erc725.js/schemas/LSP3ProfileMetadata.json';
 import JSONSCHEMALSP4 from '@erc725/erc725.js/schemas/LSP4DigitalAsset.json';
 import JSONSCHEMALSP5 from '@erc725/erc725.js/schemas/LSP5ReceivedAssets.json';
 import JSONSCHEMALSP6 from '@erc725/erc725.js/schemas/LSP6KeyManager.json';
@@ -70,11 +70,19 @@ const standardInterfaces = [
     version: '0.11',
     type: CONTRACT_TYPE.PROFILE,
   },
+  {
+    id: '0x6bb56a14',
+    code: 'LSP1',
+    name: 'Universal Receiver',
+    version: '0.11',
+    type: CONTRACT_TYPE.PROFILE,
+  },
   { id: '0xc403d48f', code: 'LSP6', name: 'Key Manager', version: '0.7', type: null },
   { id: '0xfb437414', code: 'LSP6', name: 'Key Manager', version: '0.8', type: null },
   { id: '0x06561226', code: 'LSP6', name: 'Key Manager', version: '0.10', type: null },
   { id: '0x38bb3cdb', code: 'LSP6', name: 'Key Manager', version: '0.10', type: null },
   { id: '0x66918867', code: 'LSP6', name: 'Key Manager', version: '0.11', type: null },
+  { id: '0x23f34c62', code: 'LSP6', name: 'Key Manager', version: '0.12', type: null },
   {
     id: '0xe33f65c3',
     code: 'LSP7',
@@ -104,6 +112,20 @@ const standardInterfaces = [
     type: CONTRACT_TYPE.ASSET,
   },
   {
+    id: '0xdaa746b7',
+    code: 'LSP7',
+    name: 'Digital Asset',
+    version: '0.12',
+    type: CONTRACT_TYPE.ASSET,
+  },
+  {
+    id: '0xb3c4928f',
+    code: 'LSP7',
+    name: 'Digital Asset',
+    version: '0.13',
+    type: CONTRACT_TYPE.ASSET,
+  },
+  {
     id: '0x49399145',
     code: 'LSP8',
     name: 'Identifiable Digital Asset',
@@ -124,10 +146,33 @@ const standardInterfaces = [
     version: '0.11',
     type: CONTRACT_TYPE.COLLECTION,
   },
+  {
+    id: '0x30dc5278',
+    code: 'LSP8',
+    name: 'Identifiable Digital Asset',
+    version: '0.12',
+    type: CONTRACT_TYPE.COLLECTION,
+  },
+  {
+    id: '0xecad9f75',
+    code: 'LSP8',
+    name: 'Identifiable Digital Asset',
+    version: '0.13',
+    type: CONTRACT_TYPE.COLLECTION,
+  },
+  {
+    id: '0x3a271706',
+    code: 'LSP8',
+    name: 'Identifiable Digital Asset',
+    version: '0.14',
+    type: CONTRACT_TYPE.COLLECTION,
+  },
   { id: '0xfd4d5c50', code: 'LSP9', name: 'Vault', version: '0.7', type: null },
   { id: '0x7050cee9', code: 'LSP9', name: 'Vault', version: '0.8', type: null },
   { id: '0x19331ad1', code: 'LSP9', name: 'Vault', version: '0.9', type: null },
   { id: '0x28af17e6', code: 'LSP9', name: 'Vault', version: '0.10', type: null },
+  { id: '0x480c0ec2', code: 'LSP20', name: 'Call Verifier', version: '0.11', type: null },
+  { id: '0x0d6ecac7', code: 'LSP20', name: 'Call Verifier', version: '0.12', type: null },
 ];
 
 const readJsonFiles = async (dir: string): Promise<any[]> => {

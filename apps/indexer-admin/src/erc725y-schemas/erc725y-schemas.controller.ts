@@ -2,12 +2,12 @@ import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/commo
 import { ApiHeader, ApiTags } from '@nestjs/swagger';
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 
-import { ERC725ySchemasService } from './ERC725ySchemas.service';
+import { Erc725ySchemasService } from './erc725y-schemas.service';
 
-@ApiTags('erc725ySchemas')
-@Controller('erc725ySchemas')
-export class ERC725ySchemasController {
-  constructor(private readonly erc725ySchemasService: ERC725ySchemasService) {}
+@ApiTags('erc725y-schemas')
+@Controller('erc725y-schemas')
+export class Erc725ySchemasController {
+  constructor(private readonly erc725ySchemasService: Erc725ySchemasService) {}
 
   @Post()
   @ApiHeader({

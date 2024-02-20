@@ -6,7 +6,7 @@ import { tryExecuting } from '@utils/try-executing';
 import { ERC725YSchemaTable } from '@db/lukso-structure/entities/erc725YSchema.table';
 
 @Injectable()
-export class ERC725ySchemasService {
+export class Erc725ySchemasService {
   async uploadERC725ySchemas(erc725ySchemas: Array<ERC725YSchemaTable>): Promise<void> {
     try {
       for (const erc725ySchema of erc725ySchemas) {

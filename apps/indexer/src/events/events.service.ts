@@ -9,6 +9,7 @@ import { LuksoStructureDbService } from '@db/lukso-structure/lukso-structure-db.
 import { ExceptionHandler } from '@decorators/exception-handler.decorator';
 import { DebugLogger } from '@decorators/debug-logging.decorator';
 import { MethodInterfaceTable } from '@db/lukso-structure/entities/methodInterface.table';
+import { RedisService } from '@shared/redis/redis.service';
 
 import { DecodedParameter } from '../decoding/types/decoded-parameter';
 import { decodedParamToMapping } from '../decoding/utils/decoded-param-to-mapping';
@@ -16,7 +17,6 @@ import { Lsp7standardService } from '../standards/lsp7/lsp7standard.service';
 import { Lsp8standardService } from '../standards/lsp8/lsp8standard.service';
 import { buildLogId } from '../utils/build-log-id';
 import { DecodingService } from '../decoding/decoding.service';
-import { IndexingWsGateway } from '../indexing-ws/indexing-ws.gateway';
 import { EthersService } from '../ethers/ethers.service';
 import { methodIdFromInput } from '../utils/method-id-from-input';
 import { Erc725StandardService } from '../standards/erc725/erc725-standard.service';
@@ -34,8 +34,9 @@ export class EventsService {
     protected readonly decodingService: DecodingService,
     protected readonly dataDB: LuksoDataDbService,
     protected readonly structureDB: LuksoStructureDbService,
-    protected readonly indexingWebSocket: IndexingWsGateway,
     protected readonly ethersService: EthersService,
+    // Redis service is only used for exception handling
+    protected readonly redisService: RedisService,
   ) {
     this.logger = this.loggerService.getChildLogger('EventsService');
   }
@@ -48,7 +49,7 @@ export class EventsService {
    * @param {Log} log - The log object containing event data.
    */
   @DebugLogger()
-  @ExceptionHandler(false, true)
+  @ExceptionHandler(false, true, null)
   public async indexEvent(log: Log) {
     const logId = buildLogId(log.transactionHash, log.index);
     const methodId = methodIdFromInput(log.topics[0]);
@@ -60,15 +61,19 @@ export class EventsService {
     const eventRow = this.prepareEventRow(log, logId, methodId, eventInterface, timestamp);
 
     await this.insertEventData(eventRow, log);
+    await this.indexEventParameters(log, logId, eventRow);
+  }
 
+  @DebugLogger()
+  @ExceptionHandler(false, true, null)
+  private async indexEventParameters(log: Log, logId: string, eventRow: EventTable) {
     const decodedParameters = await this.decodingService.decodeLogParameters(log.data, [
       ...log.topics,
     ]);
     await this.handleDecodedParameters(logId, eventRow, decodedParameters || []);
-
-    this.indexingWebSocket.emitEvent(eventRow, decodedParameters || []);
   }
 
+  @DebugLogger()
   private async eventAlreadyIndexed(logId: string, log: Log): Promise<boolean> {
     const eventAlreadyIndexed = await this.dataDB.getEventById(logId);
     if (eventAlreadyIndexed) {
@@ -81,6 +86,7 @@ export class EventsService {
     return false;
   }
 
+  @DebugLogger()
   private prepareEventRow(
     log: Log,
     logId: string,
@@ -102,6 +108,7 @@ export class EventsService {
     };
   }
 
+  @DebugLogger()
   private async insertEventData(eventRow: EventTable, log: Log) {
     await this.dataDB.insertEvent(eventRow);
     await this.dataDB.insertContract(
@@ -110,6 +117,7 @@ export class EventsService {
     );
   }
 
+  @DebugLogger()
   private async handleDecodedParameters(
     logId: string,
     eventRow: EventTable,
@@ -121,6 +129,7 @@ export class EventsService {
     }
   }
 
+  @DebugLogger()
   async routeEvent(event: EventTable, decodedParameters: DecodedParameter[]): Promise<void> {
     this.logger.debug(
       `Routing event ${event.transactionHash}:${event.logIndex} of methodId ${event.methodId} to appropriate service`,

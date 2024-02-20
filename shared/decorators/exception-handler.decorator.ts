@@ -1,5 +1,7 @@
 import winston from 'winston';
 
+import { RedisService } from '../redis/redis.service';
+
 interface ServiceInstance {
   logger: winston.Logger | undefined;
 }

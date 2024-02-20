@@ -1,3 +1,0 @@
-staticIPName: 'indexing-testnet-api'
-host: 'indexing.testnet.dropps.io'
-targetPort: 3001
