@@ -8,4 +8,4 @@ node_modules
 test
 docs
 api.dockerfile
-indexer.dockerfile
+Dockerfile

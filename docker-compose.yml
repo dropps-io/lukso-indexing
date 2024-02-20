@@ -20,7 +20,7 @@ services:
   lukso-indexing:
     build:
       context: .
-      dockerfile: indexer.dockerfile
+      dockerfile: Dockerfile
     depends_on:
       - lukso-db
     environment:
