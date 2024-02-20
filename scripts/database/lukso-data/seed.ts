@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_IMAGE} (
   "width" SMALLINT,
   "height" SMALLINT,
   "type" VARCHAR(40),
-  "hash" CHAR(66) NOT NULL,
+  "hash" CHAR(66),
   FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE,
   UNIQUE ("metadataId", "url")
 )`);
@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS ${DB_DATA_TABLE.METADATA_ASSET} (
   "metadataId" INTEGER NOT NULL,
   "url" VARCHAR(2048) NOT NULL,
   "fileType" VARCHAR(32) NOT NULL,
-  "hash" CHAR(66) NOT NULL,
+  "hash" CHAR(66),
    FOREIGN KEY ("metadataId") REFERENCES ${DB_DATA_TABLE.METADATA}("id") ON DELETE CASCADE,
    UNIQUE ("metadataId", "url")
 )`);
