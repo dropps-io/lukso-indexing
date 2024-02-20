@@ -218,12 +218,12 @@ export class SchedulingService {
   // TODO DELETE THIS SHIT (1_500_000) replace by 0
   protected async getLatestTxIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_TX_INDEXED_BLOCK);
-    return value || 1_800_000;
+    return value || 0;
   }
 
   protected async getLatestEventIndexedBlock(): Promise<number> {
     const value = await this.redisService.getNumber(REDIS_KEY.LATEST_EVENT_INDEXED_BLOCK);
-    return value || 1_800_000;
+    return value || 0;
   }
 
   protected async getPLimit(): Promise<number> {
