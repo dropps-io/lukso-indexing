@@ -1,3 +1,9 @@
+targetPort: 3000
+deployEnv: staging
+IPFS_GATEWAYS: https://ipfs.io/ipfs/,https://api.universalprofile.cloud/ipfs/
+ARWEAVE_GATEWAY: https://arweave.net/
+RPC_URL: https://rpc.testnet.lukso.network
+
 redis:
   enabled: true
   fullnameOverride: redis
@@ -13,7 +19,7 @@ redis:
 
   master:
     persistence: &redis-size
-      size: 1Gi
+      size: 2Gi
     resources: &redis-resources
       requests:
         cpu: 50m

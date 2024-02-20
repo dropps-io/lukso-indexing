@@ -1,47 +1,38 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: indexing-indexer
+  name: indexing-indexer-{{ .Values.deployEnv }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: indexing-indexer
+      app: indexing-indexer-{{ .Values.deployEnv }}
   template:
     metadata:
       labels:
-        app: indexing-indexer
+        app: indexing-indexer-{{ .Values.deployEnv }}
     spec:
       containers:
         - name: indexing-indexer
-          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/indexer:latest
+          image: europe-west1-docker.pkg.dev/dropps-indexing/indexing/indexer:{{ .Values.deployEnv }}
           env:
             - name: NODE_ENV
               value: "production"
             - name: LUKSO_DATA_CONNECTION_STRING
               valueFrom:
                 configMapKeyRef:
-                  name: app-config
+                  name: indexer-{{ .Values.deployEnv }}
                   key: LUKSO_DATA_CONNECTION_STRING
             - name: LUKSO_STRUCTURE_CONNECTION_STRING
               valueFrom:
                 configMapKeyRef:
-                  name: app-config
+                  name: indexer-{{ .Values.deployEnv }}
                   key: LUKSO_STRUCTURE_CONNECTION_STRING
             - name: RPC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: RPC_URL
+              value: {{ .Values.RPC_URL }}
             - name: IPFS_GATEWAYS
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: IPFS_GATEWAYS
+              value: {{ .Values.IPFS_GATEWAYS }}
             - name: ARWEAVE_GATEWAY
-              valueFrom:
-                configMapKeyRef:
-                  name: app-config
-                  key: ARWEAVE_GATEWAY
+              value: {{ .Values.ARWEAVE_GATEWAY }}
             - name: REDIS_URI
               value: redis://redis-headless:6379

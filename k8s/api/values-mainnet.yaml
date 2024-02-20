@@ -1,3 +1,0 @@
-staticIPName: 'indexing-mainnet-api'
-host: 'indexing.mainnet.dropps.io'
-targetPort: 3001
