@@ -3,6 +3,7 @@ deployEnv: prod
 IPFS_GATEWAYS: https://ipfs.io/ipfs/,https://api.universalprofile.cloud/ipfs/
 ARWEAVE_GATEWAY: https://arweave.net/
 RPC_URL: http://leequid-0.leequid.org:8545
+REDIS_URI: redis://redis-headless:6379/2
 
 redis:
   enabled: true

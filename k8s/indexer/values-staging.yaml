@@ -2,7 +2,8 @@ targetPort: 3000
 deployEnv: staging
 IPFS_GATEWAYS: https://ipfs.io/ipfs/,https://api.universalprofile.cloud/ipfs/
 ARWEAVE_GATEWAY: https://arweave.net/
-RPC_URL: https://rpc.testnet.lukso.network
+RPC_URL: http://leequid-0.leequid.org:8545
+REDIS_URI: redis://redis-headless:6379
 
 redis:
   enabled: true
