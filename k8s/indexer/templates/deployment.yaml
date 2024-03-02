@@ -35,4 +35,4 @@ spec:
             - name: ARWEAVE_GATEWAY
               value: {{ .Values.ARWEAVE_GATEWAY }}
             - name: REDIS_URI
-              value: redis://redis-headless:6379
+              value: {{ .Values.REDIS_URI }}
